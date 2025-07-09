@@ -2,19 +2,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest): NextResponse {
+export function middleware(request: NextRequest) {
 	try {
-		// Handle session cookie renewal on GET requests
 		if (request.method === "GET") {
 			const response = NextResponse.next();
-			const token = request.cookies.get("session")?.value ?? null;
+			const token = request.cookies.get("session")?.value;
 
-			if (token !== null) {
-				// Only extend cookie expiration on GET requests since we can be sure
-				// a new session wasn't set when handling the request.
-				response.cookies.set({
-					name: "session",
-					value: token,
+			if (token) {
+				response.cookies.set("session", token, {
 					path: "/",
 					maxAge: 60 * 60 * 24 * 30, // 30 days
 					sameSite: "lax",
@@ -31,6 +26,7 @@ export function middleware(request: NextRequest): NextResponse {
 		const hostHeader = request.headers.get("host");
 
 		if (!originHeader || !hostHeader) {
+			console.warn("Missing origin or host headers");
 			return new NextResponse("Forbidden: Missing headers", { status: 403 });
 		}
 
