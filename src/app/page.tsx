@@ -10,9 +10,10 @@ const Home = async () => {
 
   return (
     <div>
-      {JSON.stringify(user)}
+      {/* {JSON.stringify(user)}
    
-      {JSON.stringify(categories)}
+      {JSON.stringify(categories)} */}
+      <p>Hello</p>
     </div>
   );
 };
