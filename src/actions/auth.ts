@@ -23,7 +23,7 @@ export async function createSession(token: string, userId: number): Promise<Sess
 	const session: Session = {
 		id: sessionId,
 		userId,
-		expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
+		expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
 	};
 	await prisma.session.create({ data: session });
 	return session;
@@ -51,11 +51,16 @@ export async function validateSessionToken(token: string): Promise<SessionValida
 		session.expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30);
 		await prisma.session.update({
 			where: { id: session.id },
-			data: { expiresAt: session.expiresAt }
+			data: { expiresAt: session.expiresAt },
 		});
 	}
 
-	const { passwordHash: _omit, ...safeUser } = user;
+	// Return only necessary user fields (exclude passwordHash)
+	const safeUser = {
+		id: user.id,
+		email: user.email,
+		// Add more fields if needed, but exclude passwordHash
+	};
 
 	return { session, user: safeUser };
 }
@@ -120,7 +125,11 @@ export const registerUser = async (email: string, password: string) => {
 			data: { email, passwordHash },
 		});
 
-		const { passwordHash: _omit, ...safeUser } = user;
+		const safeUser = {
+			id: user.id,
+			email: user.email,
+			// add more safe fields as needed
+		};
 
 		return { user: safeUser, error: null };
 	} catch {
@@ -144,7 +153,11 @@ export const loginUser = async (email: string, password: string) => {
 	const session = await createSession(token, user.id);
 	await setSessionTokenCookie(token, session.expiresAt);
 
-	const { passwordHash: _omit, ...safeUser } = user;
+	const safeUser = {
+		id: user.id,
+		email: user.email,
+		// add more safe fields as needed
+	};
 
 	return { user: safeUser, error: null };
 };

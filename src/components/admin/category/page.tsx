@@ -2,11 +2,22 @@
 
 import React, { useState } from "react";
 
+type Category = {
+  id: number;
+  name: string;
+  slug: string;
+};
+
+type ActionResponse = {
+  message?: string;
+  results?: Category[];
+};
+
 type Props = {
-  categories: { id: number; name: string; slug: string }[];
-  onSubmit: (prev: any, formData: FormData) => Promise<any>;
-  onDelete: (prev: any, formData: FormData) => Promise<any>;
-  onSearch: (prev: any, formData: FormData) => Promise<any>;
+  categories: Category[];
+  onSubmit: (prev: null, formData: FormData) => Promise<ActionResponse>;
+  onDelete: (prev: null, formData: FormData) => Promise<ActionResponse>;
+  onSearch: (prev: null, formData: FormData) => Promise<ActionResponse>;
 };
 
 const CategoryManager = ({ categories, onSubmit, onDelete, onSearch }: Props) => {
