@@ -18,15 +18,15 @@ model User {
   id            Int       @id @default(autoincrement())
   email         String    @unique
   passwordHash  String
-  sessions      Sessions[]
+  session      Session[]
 }
 
-model Sessions {
-  id         String   @id
-  userId     Int
-  expiresAt  DateTime
+model Session {
+  id        String   @id
+  userId    Int
+  expiresAt DateTime
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(references: [id], fields: [userId], onDelete: Cascade)
 }
 
 
