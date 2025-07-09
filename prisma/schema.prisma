@@ -18,10 +18,10 @@ model User {
   id            Int       @id @default(autoincrement())
   email         String    @unique
   passwordHash  String
-  sessions      Session[]
+  sessions      Sessions[]
 }
 
-model Session {
+model Sessions {
   id         String   @id
   userId     Int
   expiresAt  DateTime
