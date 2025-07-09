@@ -4,10 +4,10 @@ import { encodeBase32LowerCaseNoPadding, encodeHexLowerCase } from "@oslojs/enco
 import { sha256 } from "@oslojs/crypto/sha2";
 import bcrypt from "bcryptjs";
 
-import type { Session, User } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { cache } from "react";
+import { Session, User } from "@prisma/client";
 
 /* -------------------
   Session Token Logic
