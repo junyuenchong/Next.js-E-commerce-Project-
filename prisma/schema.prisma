@@ -15,23 +15,20 @@ datasource db {
 }
 
 model User {
-  id Int @id @default(autoincrement())
-
-  email        String @unique
-
-  passwordHash  String 
-
-  sessions Session[]
-
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  passwordHash  String
+  sessions      Session[]
 }
 
 model Session {
-  id        String   @id
-  userId    Int
-  expiresAt DateTime
+  id         String   @id
+  userId     Int
+  expiresAt  DateTime
 
-  user User @relation(references: [id], fields: [userId], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
 
 model Category {
   id         Int       @id @default(autoincrement())
