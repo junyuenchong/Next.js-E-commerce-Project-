@@ -1,12 +1,20 @@
+import { getCurrentSession } from '@/actions/auth';
+import { getAllCategories } from '@/actions/category';
 
+import React from 'react';
 
 const Home = async () => {
+  const { user } = await getCurrentSession();
+
+  const categories = await getAllCategories();
+
   return (
     <div>
-      <p>Hello</p>
+      {JSON.stringify(user)}
+   
+      {JSON.stringify(categories)}
     </div>
   );
 };
-
 
 export default Home;
