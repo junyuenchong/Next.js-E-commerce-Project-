@@ -4,7 +4,7 @@ import { encodeBase32LowerCaseNoPadding, encodeHexLowerCase } from "@oslojs/enco
 import { sha256 } from "@oslojs/crypto/sha2";
 import bcrypt from "bcryptjs";
 
-import type { User, Session } from "@prisma/client";
+import type { User, Session } from ".prisma/client"; 
 import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { cache } from "react";
