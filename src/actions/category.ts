@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import slugify from "slugify";
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 
 /* ----------------------
  Generate Unique Slug
@@ -39,8 +40,11 @@ export async function createCategory(name: string) {
 
     revalidatePath("/admin/categories");
     return category;
-  } catch (error: any) {
-    if (error.code === "P2002") {
+  } catch (error: unknown) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
       throw new Error("Category with this name already exists.");
     }
     throw error;
@@ -90,8 +94,11 @@ export async function updateCategory(id: number, name: string) {
 
     revalidatePath("/admin/categories");
     return updated;
-  } catch (error: any) {
-    if (error.code === "P2002") {
+  } catch (error: unknown) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
       throw new Error("A category with this name or slug already exists.");
     }
     throw error;

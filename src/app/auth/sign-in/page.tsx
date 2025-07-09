@@ -1,8 +1,8 @@
-import { getCurrentSession, loginUser, registerUser } from '@/actions/auth'
-import SignIn from '@/components/auth/SignIn';
-import { redirect } from 'next/navigation';
-import React from 'react'
-import zod from 'zod';
+import { getCurrentSession, loginUser } from "@/actions/auth";
+import SignIn from "@/components/auth/SignIn";
+import { redirect } from "next/navigation";
+import React from "react";
+import zod from "zod";
 
 // Form validation schema
 const SignInSchema = zod.object({
@@ -20,7 +20,7 @@ const SignInPage = async () => {
   }
 
   // Server action for form submission
-  const action = async (prevState: any, formData: FormData) => {
+  const action = async (_: unknown, formData: FormData) => {
     "use server";
 
     // Validate form data
