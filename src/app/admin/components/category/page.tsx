@@ -34,18 +34,30 @@ const CategoryManager = ({ categories, onSubmit, onDelete, onSearch }: Props) =>
 
   const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
     const formData = new FormData();
-    formData.append("query", searchQuery);
+    formData.append("query", searchQuery.trim());
+
     const res = await onSearch(null, formData);
-    if (res?.results) setFiltered(res.results);
+    if (res?.results) {
+      setFiltered(res.results);
+    } else {
+      alert("No results found.");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!name.trim()) {
+      alert("Category name cannot be empty.");
+      return;
+    }
+
     setLoading(true);
 
     const formData = new FormData();
-    formData.append("name", name);
+    formData.append("name", name.trim());
     if (editId) formData.append("id", String(editId));
 
     const res = await onSubmit(null, formData);

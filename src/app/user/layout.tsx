@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import '../globals.css';
 import { Inter } from "next/font/google";
-import Header from "@/components/layout/Header/Header";
+import Header from "@/app/user/components/layout/Header/Header";
 import { getCurrentSession } from "@/actions/auth";
 
 

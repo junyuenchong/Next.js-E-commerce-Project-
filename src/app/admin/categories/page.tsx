@@ -6,8 +6,9 @@ import {
   searchCategories,
   getAllCategories,
 } from "@/actions/category";
-import CategoryManager from "@/components/admin/category/page";
+
 import * as zod from "zod";
+import CategoryManager from "../components/category/page";
 
 const CategorySchema = zod.object({
   id: zod.string().optional(),
@@ -64,7 +65,6 @@ const CategoryPage = async () => {
   const handleSearch = async (_: unknown, formData: FormData) => {
     "use server";
     const query = formData.get("query") as string;
-    if (!query) return { message: "No search query" };
 
     const results = await searchCategories(query);
     return { results };
