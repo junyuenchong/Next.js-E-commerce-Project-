@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { LayoutDashboard, Tag, Package, LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const links = [
   { name: "Dashboard", href: "/admin/dashboard", icon: <LayoutDashboard size={18} /> },
@@ -13,9 +14,22 @@ const links = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <aside className="fixed top-0 left-0 h-full w-64 bg-gray-950 text-white shadow-lg z-50">
+        {/* Empty state for SSR */}
+      </aside>
+    );
+  }
 
   return (
-    <aside className="min-h-screen w-64 bg-gray-950 text-white flex flex-col justify-between shadow-lg">
+    <aside className="fixed top-0 left-0 h-full w-64 bg-gray-950 text-white flex flex-col justify-between shadow-lg z-50">
       <div>
         {/* Logo / Brand */}
         <div className="p-6 border-b border-gray-800">
