@@ -3,6 +3,9 @@ import { Inter } from "next/font/google";
 import "../globals.css";
 import Sidebar from "./components/layout/Sidebar/Sidebar";
 
+// Prevent prerendering since admin pages require database access
+export const dynamic = 'force-dynamic';
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {

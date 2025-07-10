@@ -114,7 +114,7 @@ export default function ProductList({
 
       {/* 📦 Product Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {products.map((p) => (
+        {(products || []).map((p) => (
           <div key={p.id} className="border rounded p-4 shadow space-y-2">
             {editingId === p.id ? (
               <>
@@ -158,7 +158,7 @@ export default function ProductList({
                   onChange={handleEditChange}
                   className="border px-2 py-1 w-full"
                 >
-                  {categories.map((cat) => (
+                  {(categories || []).map((cat) => (
                     <option key={cat.id} value={cat.id}>
                       {cat.name}
                     </option>

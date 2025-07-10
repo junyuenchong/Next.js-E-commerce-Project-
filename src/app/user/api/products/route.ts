@@ -5,6 +5,11 @@ import { NextResponse } from "next/server";
 
 
 export async function GET() {
-  const products = await getAllProducts();
-  return NextResponse.json(products);
+  try {
+    const products = await getAllProducts();
+    return NextResponse.json(products || []);
+  } catch (error) {
+    console.error("Failed to fetch products:", error);
+    return NextResponse.json([]);
+  }
 }

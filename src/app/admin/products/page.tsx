@@ -3,9 +3,16 @@ import { getAllCategories } from "@/actions/category";
 import ProductForm from "../components/products/ProductForm";
 import ProductList from "../components/products/ProductList";
 
+// Prevent prerendering since this page requires database access
+export const dynamic = 'force-dynamic';
+
 interface ProductsPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
+
+// Define types for Product and Category
+import type { Category } from "@prisma/client";
+import type { Product } from "@prisma/client";
 
 export default async function ProductsPage(
   props: ProductsPageProps
@@ -14,10 +21,23 @@ export default async function ProductsPage(
   const queryParam = searchParams?.q;
   const searchQuery = typeof queryParam === "string" ? queryParam.trim() : "";
 
-  const [products, categories] = await Promise.all([
-    searchQuery ? searchProducts(searchQuery) : getAllProducts(),
-    getAllCategories(),
-  ]);
+  let products: Product[] = [];
+  let categories: Category[] = [];
+
+  try {
+    const [productsResult, categoriesResult] = await Promise.all([
+      searchQuery ? searchProducts(searchQuery) : getAllProducts(),
+      getAllCategories(),
+    ]);
+    
+    products = productsResult || [];
+    categories = categoriesResult || [];
+  } catch (error) {
+    console.error("Failed to fetch data:", error);
+    // During prerendering, if database is not available, use empty arrays
+    products = [];
+    categories = [];
+  }
 
   return (
     <main className="p-6 max-w-6xl mx-auto space-y-10">
