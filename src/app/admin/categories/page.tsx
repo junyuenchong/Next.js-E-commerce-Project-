@@ -10,31 +10,13 @@ import {
 import * as zod from "zod";
 import CategoryManager from "../components/category/page";
 
-// Prevent prerendering since this page requires database access
-export const dynamic = 'force-dynamic';
-
-// Define Category type
-interface Category {
-  id: number;
-  name: string;
-  slug: string;
-}
-
 const CategorySchema = zod.object({
   id: zod.string().optional(),
   name: zod.string().min(1),
 });
 
 const CategoryPage = async () => {
-  let categories: Category[] = [];
-  
-  try {
-    categories = await getAllCategories();
-  } catch (error) {
-    console.error("Failed to fetch categories:", error);
-    // During prerendering, if database is not available, use empty array
-    categories = [];
-  }
+  const categories = await getAllCategories();
 
   // Server actions
   const handleAction = async (_: unknown, formData: FormData) => {

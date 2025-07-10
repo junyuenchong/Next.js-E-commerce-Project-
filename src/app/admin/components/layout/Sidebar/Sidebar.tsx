@@ -6,7 +6,7 @@ import clsx from "clsx";
 import { LayoutDashboard, Tag, Package, LogOut } from "lucide-react";
 
 const links = [
-  { name: "Dashboard", href: "/admin/dashboard", icon: <LayoutDashboard size={18} /> },
+  { name: "Dashboard", href: "/admin", icon: <LayoutDashboard size={18} /> },
   { name: "Categories", href: "/admin/categories", icon: <Tag size={18} /> },
   { name: "Products", href: "/admin/products", icon: <Package size={18} /> },
 ];
