@@ -1,6 +1,9 @@
 // app/layout.tsx
 
+import { Inter } from "next/font/google";
 import "./globals.css"; // <-- Import TailwindCSS (or your global styles)
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   title: "E-Commerce",
@@ -13,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.className}>
       <body className="bg-white text-black min-h-screen antialiased">
         {children}
       </body>

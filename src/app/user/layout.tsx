@@ -20,15 +20,10 @@ const RootLayout= async ({
   const {user} = await getCurrentSession();
 
   return (
-    <html lang="en" >
-      <body
-        className={`${inter.className} antialiased min-h-[125vh]`}
-      >
-        <Header user = {user}/>
-        {children}
-
-      </body>
-    </html>
+    <div className={`${inter.className} antialiased min-h-[125vh]`}>
+      <Header user = {user}/>
+      {children}
+    </div>
   );
 }
 

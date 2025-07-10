@@ -24,7 +24,7 @@ const CategoryManager = ({ categories, onSubmit, onDelete, onSearch }: Props) =>
   const [name, setName] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filtered, setFiltered] = useState(categories || []);
+  const [filtered, setFiltered] = useState(categories);
   const [loading, setLoading] = useState(false);
 
   const handleEdit = (id: number, name: string) => {
@@ -120,7 +120,7 @@ const CategoryManager = ({ categories, onSubmit, onDelete, onSearch }: Props) =>
 
       {/* List */}
       <ul className="space-y-2">
-        {filtered?.map((cat) => (
+        {filtered.map((cat) => (
           <li
             key={cat.id}
             className="flex justify-between items-center border p-2 rounded"
