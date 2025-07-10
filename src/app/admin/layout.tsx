@@ -12,9 +12,11 @@ export const metadata = {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`${inter.className} antialiased min-h-screen flex`}>
-      <Sidebar />
-      <main className="flex-1 p-6 bg-gray-100 overflow-auto">{children}</main>
-    </div>
+    <html lang="en" className={inter.className}>
+      <body className="antialiased min-h-screen flex">
+        <Sidebar />
+        <main className="flex-1 p-6 bg-gray-100 overflow-auto">{children}</main>
+      </body>
+    </html>
   );
 }

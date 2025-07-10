@@ -4,13 +4,13 @@ import ProductForm from "../components/products/ProductForm";
 import ProductList from "../components/products/ProductList";
 
 interface ProductsPageProps {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export default async function ProductsPage(
   props: ProductsPageProps
 ) {
-  const searchParams = props.searchParams;
+  const searchParams = await props.searchParams;
   const queryParam = searchParams?.q;
   const searchQuery = typeof queryParam === "string" ? queryParam.trim() : "";
 
