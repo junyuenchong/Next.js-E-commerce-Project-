@@ -114,11 +114,11 @@ const Header = ({ user }: HeaderProps) => {
                 </div>
               ) : (
                 <React.Fragment>
-                  <Link href='/auth/sign-in'>
+                  <Link href='/user/auth/sign-in'>
                     Sign In
                   </Link>
 
-                  <Link href='/auth/sign-up'>
+                  <Link href='/user/auth/sign-up'>
                     Sign Up
                   </Link>
                 </React.Fragment>
