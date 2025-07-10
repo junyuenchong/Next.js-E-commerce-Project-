@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image"; // ✅ import next/image
 import { createProduct } from "@/actions/product";
 
 export default function ProductForm({ categories }: { categories: { id: number; name: string }[] }) {
@@ -33,19 +34,19 @@ export default function ProductForm({ categories }: { categories: { id: number; 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-  
+
     let imageUrl = formData.imageUrl;
-  
+
     if (imageFile) {
       const form = new FormData();
-      form.append("file", imageFile); // must match field name in API
-  
+      form.append("file", imageFile);
+
       try {
         const res = await fetch("/api/upload", {
           method: "POST",
           body: form,
         });
-  
+
         const contentType = res.headers.get("content-type");
         if (!res.ok) {
           const message = contentType?.includes("application/json")
@@ -53,7 +54,7 @@ export default function ProductForm({ categories }: { categories: { id: number; 
             : "Unknown upload error";
           throw new Error(message);
         }
-  
+
         const data = await res.json();
         imageUrl = data.secure_url;
       } catch (error) {
@@ -63,18 +64,18 @@ export default function ProductForm({ categories }: { categories: { id: number; 
         return;
       }
     }
-  
+
     const payload = {
       ...formData,
       imageUrl,
       price: parseFloat(formData.price),
       description: formData.description?.trim() || undefined,
     };
-  
+
     try {
       await createProduct(payload);
       alert("✅ Product created!");
-  
+
       setFormData({
         title: "",
         description: "",
@@ -91,8 +92,6 @@ export default function ProductForm({ categories }: { categories: { id: number; 
       setLoading(false);
     }
   };
-  
-  
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto">
@@ -126,13 +125,17 @@ export default function ProductForm({ categories }: { categories: { id: number; 
         onChange={handleImageChange}
         className="border px-3 py-2 w-full rounded"
       />
+
       {previewUrl && (
-        <img
+        <Image
           src={previewUrl}
           alt="Preview"
-          className="w-32 h-32 object-cover rounded border"
+          width={128}
+          height={128}
+          className="rounded border object-cover w-32 h-32"
         />
       )}
+
       <select
         name="categoryId"
         value={formData.categoryId}

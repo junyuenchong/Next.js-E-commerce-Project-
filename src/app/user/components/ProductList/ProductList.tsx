@@ -1,17 +1,21 @@
-// app/user/products/page.tsx or a component file
 "use client";
 
 import useSWR from "swr";
 import axios from "axios";
 import { Product } from "@prisma/client";
+import Image from "next/image";
 
-// Fetcher function for SWR
+// SWR fetcher
 const fetcher = (url: string) => axios.get(url).then((res) => res.data);
 
 const ProductList = () => {
-  const { data: products, isLoading } = useSWR<Product[]>("/user/api/products", fetcher, {
-    refreshInterval: 5000, // Poll every 5 seconds
-  });
+  const { data: products, isLoading } = useSWR<Product[]>(
+    "/user/api/products",
+    fetcher,
+    {
+      refreshInterval: 5000, // Optional polling every 5s
+    }
+  );
 
   if (isLoading || !products) return <div>Loading...</div>;
 
@@ -31,11 +35,14 @@ const ProductList = () => {
             </div>
 
             {/* Product Image */}
-            <div className="w-full aspect-[1/1] overflow-hidden rounded-t-lg">
-              <img
-                src={product.imageUrl ?? "/placeholder.png"}
+            <div className="w-full aspect-[1/1] overflow-hidden rounded-t-lg relative">
+              <Image
+                src={product.imageUrl || "/placeholder.png"}
                 alt={product.title}
-                className="w-full h-full object-cover"
+                fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                className="object-cover rounded-t-lg"
+                unoptimized={product.imageUrl?.startsWith("blob:") ?? false} // For previews or Cloudinary if needed
               />
             </div>
 

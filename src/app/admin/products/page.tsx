@@ -3,19 +3,21 @@ import { getAllCategories } from "@/actions/category";
 import ProductForm from "../components/products/ProductForm";
 import ProductList from "../components/products/ProductList";
 
+interface ProductsPageProps {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}
 
-export default async function ProductsPage({
-  searchParams,
-}: {
-  searchParams?: { q?: string }; // ✅ Correct type
-}) {
-  const searchQuery = searchParams?.q ?? ""; // ✅ Safe access
+export default async function ProductsPage(
+  props: ProductsPageProps
+) {
+  const searchParams = await props.searchParams;
+  const queryParam = searchParams?.q;
+  const searchQuery = typeof queryParam === "string" ? queryParam.trim() : "";
 
-  const products = searchQuery
-    ? await searchProducts(searchQuery)
-    : await getAllProducts();
-
-  const categories = await getAllCategories();
+  const [products, categories] = await Promise.all([
+    searchQuery ? searchProducts(searchQuery) : getAllProducts(),
+    getAllCategories(),
+  ]);
 
   return (
     <main className="p-6 max-w-6xl mx-auto space-y-10">

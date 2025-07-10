@@ -1,25 +1,31 @@
 "use server";
 
-
 import slugify from "slugify";
 import { revalidatePath } from "next/cache";
 import { productSchema } from "@/lib/validators/product";
 import prisma from "@/lib/prisma";
 
-
-
 /* ----------------------
  CREATE PRODUCT
 ------------------------- */
 export async function createProduct(data: unknown) {
+  if (typeof data !== "object" || data === null) {
+    throw new Error("Invalid input data");
+  }
+
+  const raw = data as Record<string, unknown>;
+
   const parsed = {
-    ...(data as any),
-    price: parseFloat((data as any).price),
-    categoryId: parseInt((data as any).categoryId, 10),
+    ...raw,
+    price: Number(raw.price),
+    categoryId: Number(raw.categoryId),
   };
 
   const validated = productSchema.safeParse(parsed);
-  if (!validated.success) throw new Error("Invalid product data");
+  if (!validated.success) {
+    console.error("❌ Validation error:", validated.error.format());
+    throw new Error("Invalid product data");
+  }
 
   const { title, description, price, imageUrl, categoryId } = validated.data;
 
@@ -35,7 +41,6 @@ export async function createProduct(data: unknown) {
   });
 
   revalidatePath("/admin/products");
-
 
   return product;
 }
@@ -69,8 +74,23 @@ export async function getAllProducts() {
  UPDATE PRODUCT
 ------------------------- */
 export async function updateProduct(id: number, data: unknown) {
-  const validated = productSchema.safeParse(data);
-  if (!validated.success) throw new Error("Invalid product data");
+  if (typeof data !== "object" || data === null) {
+    throw new Error("Invalid input data");
+  }
+
+  const raw = data as Record<string, unknown>;
+
+  const parsed = {
+    ...raw,
+    price: Number(raw.price),
+    categoryId: Number(raw.categoryId),
+  };
+
+  const validated = productSchema.safeParse(parsed);
+  if (!validated.success) {
+    console.error("❌ Validation error:", validated.error.format());
+    throw new Error("Invalid product data");
+  }
 
   const { title, description, price, imageUrl, categoryId } = validated.data;
 
@@ -85,7 +105,6 @@ export async function updateProduct(id: number, data: unknown) {
       categoryId,
     },
   });
-
 
   revalidatePath("/admin/products");
 
