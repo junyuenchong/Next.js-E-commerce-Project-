@@ -1,6 +1,9 @@
 // app/layout.tsx
 
 import "./globals.css"; // <-- Import TailwindCSS (or your global styles)
+import { Inter } from "next/font/google";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   title: "E-Commerce",
@@ -14,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-white text-black min-h-screen antialiased">
+      <body className={`${inter.className} bg-white text-black min-h-screen antialiased`}>
         {children}
       </body>
     </html>

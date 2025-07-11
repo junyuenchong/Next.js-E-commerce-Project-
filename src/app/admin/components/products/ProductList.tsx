@@ -23,7 +23,6 @@ export default function ProductList({
   initialSearch = "",
 }: ProductListProps) {
   const router = useRouter();
-
   const [search, setSearch] = useState(initialSearch);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({
@@ -54,7 +53,9 @@ export default function ProductList({
     setImageFile(null);
   };
 
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleEditChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setEditForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -97,66 +98,76 @@ export default function ProductList({
   };
 
   return (
-    <div className="space-y-4">
-      {/* 🔍 Search Form */}
-      <form onSubmit={handleSearch} className="flex items-center space-x-2">
+    <div className="space-y-6 px-4">
+      {/* 🔍 Search */}
+      <form
+        onSubmit={handleSearch}
+        className="flex flex-col sm:flex-row items-center gap-2 max-w-lg"
+      >
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search products"
-          className="border px-2 py-1 w-full max-w-sm"
+          className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
         />
-        <button type="submit" className="bg-blue-600 text-white px-3 py-1 rounded">
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto"
+        >
           Search
         </button>
       </form>
 
-      {/* 📦 Product Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* 🧱 Product Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((p) => (
-          <div key={p.id} className="border rounded p-4 shadow space-y-2">
+          <div
+            key={p.id}
+            className="border rounded-lg p-4 shadow-md bg-white flex flex-col"
+          >
             {editingId === p.id ? (
-              <>
+              <div className="space-y-3">
                 <input
                   name="title"
                   value={editForm.title}
                   onChange={handleEditChange}
-                  className="border px-2 py-1 w-full"
+                  className="border px-3 py-2 rounded w-full text-sm"
                 />
                 <input
                   name="description"
                   value={editForm.description}
                   onChange={handleEditChange}
-                  className="border px-2 py-1 w-full"
+                  className="border px-3 py-2 rounded w-full text-sm"
                 />
                 <input
                   name="price"
                   type="number"
                   value={editForm.price}
                   onChange={handleEditChange}
-                  className="border px-2 py-1 w-full"
+                  className="border px-3 py-2 rounded w-full text-sm"
                 />
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleImageChange}
-                  className="border px-2 py-1 w-full"
+                  className="border px-3 py-2 rounded w-full text-sm"
                 />
                 {previewUrl && (
-                  <Image
-                    src={previewUrl}
-                    alt="Preview"
-                    width={96}
-                    height={96}
-                    className="rounded object-cover w-24 h-24"
-                  />
+                  <div className="w-full aspect-[4/3] relative">
+                    <Image
+                      src={previewUrl}
+                      alt="Preview"
+                      fill
+                      className="rounded object-cover"
+                    />
+                  </div>
                 )}
                 <select
                   name="categoryId"
                   value={editForm.categoryId}
                   onChange={handleEditChange}
-                  className="border px-2 py-1 w-full"
+                  className="border px-3 py-2 rounded w-full text-sm"
                 >
                   {categories.map((cat) => (
                     <option key={cat.id} value={cat.id}>
@@ -164,48 +175,51 @@ export default function ProductList({
                     </option>
                   ))}
                 </select>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     onClick={() => handleUpdate(p.id)}
-                    className="bg-green-600 text-white px-3 py-1 rounded"
+                    className="bg-green-600 text-white px-4 py-2 rounded text-sm w-full sm:w-auto"
                   >
                     Save
                   </button>
                   <button
                     onClick={() => setEditingId(null)}
-                    className="bg-gray-400 text-white px-3 py-1 rounded"
+                    className="bg-gray-400 text-white px-4 py-2 rounded text-sm w-full sm:w-auto"
                   >
                     Cancel
                   </button>
                 </div>
-              </>
+              </div>
             ) : (
               <>
                 {p.imageUrl && (
-                  <Image
-                    src={p.imageUrl}
-                    alt={p.title}
-                    width={300}
-                    height={160}
-                    className="w-full h-40 object-cover rounded"
-                  />
+                  <div className="w-full aspect-[4/3] relative">
+                    <Image
+                      src={p.imageUrl}
+                      alt={p.title}
+                      fill
+                      className="rounded object-cover"
+                    />
+                  </div>
                 )}
-                <div className="font-bold text-lg">{p.title}</div>
-                <div>{p.description}</div>
-                <div>${p.price}</div>
-                <div className="text-sm text-gray-600">
-                  Category: {p.category?.name}
+                <div className="font-semibold text-lg mt-3">{p.title}</div>
+                <div className="text-sm text-gray-700">{p.description}</div>
+                <div className="font-medium text-gray-800 mt-1">
+                  ${p.price}
                 </div>
-                <div className="flex gap-2 mt-2">
+                <div className="text-sm text-gray-500">
+                  Category: {p.category?.name || "Uncategorized"}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 mt-3">
                   <button
                     onClick={() => handleEditClick(p)}
-                    className="bg-yellow-500 text-white px-3 py-1 rounded"
+                    className="bg-yellow-500 text-white px-4 py-2 rounded text-sm w-full sm:w-auto"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(p.id)}
-                    className="bg-red-600 text-white px-3 py-1 rounded"
+                    className="bg-red-600 text-white px-4 py-2 rounded text-sm w-full sm:w-auto"
                   >
                     Delete
                   </button>

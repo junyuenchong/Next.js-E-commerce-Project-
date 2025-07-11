@@ -3,15 +3,12 @@ import { getAllCategories } from "@/actions/category";
 import ProductForm from "../components/products/ProductForm";
 import ProductList from "../components/products/ProductList";
 
-interface ProductsPageProps {
-  searchParams?: Record<string, string | string[] | undefined>;
-}
-
-export default async function ProductsPage(
-  props: ProductsPageProps
-) {
-  const searchParams = props.searchParams;
-  const queryParam = searchParams?.q;
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const queryParam = (await searchParams)?.q;
   const searchQuery = typeof queryParam === "string" ? queryParam.trim() : "";
 
   const [products, categories] = await Promise.all([

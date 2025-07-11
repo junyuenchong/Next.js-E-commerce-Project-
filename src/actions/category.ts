@@ -21,6 +21,57 @@ async function generateUniqueSlug(name: string): Promise<string> {
 }
 
 /* ----------------------
+ GET CATEGORY BY SLUG
+------------------------- */
+export async function getCategoryBySlug(slug: string) {
+  if (!slug || slug.trim().length === 0) {
+    throw new Error("Slug is required");
+  }
+
+  const category = await prisma.category.findUnique({
+    where: { slug },
+  });
+
+  if (!category) {
+    throw new Error("Category not found");
+  }
+
+  return category;
+}
+
+/* ----------------------
+ GET PRODUCTS BY CATEGORY SLUG
+------------------------- */
+export async function getProductsByCategorySlug(slug: string) {
+  if (!slug || slug.trim().length === 0) {
+    throw new Error("Slug is required");
+  }
+
+  // Get the category by slug
+  const category = await prisma.category.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+
+  if (!category) {
+    throw new Error("Category not found");
+  }
+
+  // Get products by categoryId
+  const products = await prisma.product.findMany({
+    where: {
+      categoryId: category.id,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  return products;
+}
+
+
+/* ----------------------
  CREATE CATEGORY
 ------------------------- */
 export async function createCategory(name: string) {
