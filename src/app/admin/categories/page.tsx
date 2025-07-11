@@ -8,7 +8,7 @@ import {
 } from "@/actions/category";
 
 import * as zod from "zod";
-import CategoryManager from "../components/category/page";
+import CategoryManager from "../components/category/CategoryManager";
 
 const CategorySchema = zod.object({
   id: zod.string().optional(),
