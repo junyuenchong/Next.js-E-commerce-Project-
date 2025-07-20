@@ -64,10 +64,18 @@ export default function CategoryManagerWrapper(props: CategoryManagerWrapperProp
     );
   }
 
+  const categoriesWithDates = Array.isArray(categories)
+    ? categories.map(cat => ({
+        ...cat,
+        createdAt: cat.createdAt ? new Date(cat.createdAt) : undefined,
+        updatedAt: cat.updatedAt ? new Date(cat.updatedAt) : undefined,
+      }))
+    : [];
+
   return (
     <CategoryManager
       {...props}
-      categories={categories}
+      categories={categoriesWithDates}
       onRefresh={handleRefresh}
     />
   );

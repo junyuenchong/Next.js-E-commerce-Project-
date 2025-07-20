@@ -5,6 +5,8 @@ import slugify from "slugify";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { categorySchema, categorySlugSchema } from "@/lib/validators/category";
+// Import the emitCategoriesUpdate function from ws-server.js
+const { emitCategoriesUpdate } = require('../../ws-server.js');
 
 /* ----------------------
  Generate Unique Slug
@@ -19,18 +21,6 @@ async function generateUniqueSlug(name: string): Promise<string> {
   }
 
   return slug;
-}
-
-/* ----------------------
- EMIT CATEGORIES UPDATE
-------------------------- */
-async function emitCategoriesUpdate() {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    await fetch(`${baseUrl}/api/emit-categories-update`);
-  } catch (e) {
-    console.error("WebSocket emit failed", e);
-  }
 }
 
 /* ----------------------
@@ -154,7 +144,7 @@ export async function createCategory(name: string) {
     revalidatePath("/admin/categories");
     
     // Emit WebSocket event for real-time updates
-    await emitCategoriesUpdate();
+    emitCategoriesUpdate();
 
     return category;
   } catch (error: unknown) {
@@ -208,7 +198,7 @@ export async function updateCategory(id: number, name: string) {
     revalidatePath("/admin/categories");
     
     // Emit WebSocket event for real-time updates
-    await emitCategoriesUpdate();
+    emitCategoriesUpdate();
 
     return updated;
   } catch (error: unknown) {
@@ -234,7 +224,7 @@ export async function deleteCategory(id: number) {
   revalidatePath("/admin/categories");
   
   // Emit WebSocket event for real-time updates
-  await emitCategoriesUpdate();
+  emitCategoriesUpdate();
   
   return deleted;
 }
