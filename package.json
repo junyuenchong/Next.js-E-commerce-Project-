@@ -17,6 +17,7 @@
     "@reduxjs/toolkit": "^2.8.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/next-auth": "^3.13.0",
+    "amqplib": "^0.10.8",
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.7.0",
