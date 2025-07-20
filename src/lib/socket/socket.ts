@@ -7,8 +7,15 @@ let isInitializing = false;
 const getSocketUrl = () => {
   if (typeof window === 'undefined') return undefined;
   if (process.env.NODE_ENV === 'production') {
-    // You can set NEXT_PUBLIC_RAILWAY_URL in Railway's environment variables
-    return process.env.NEXT_PUBLIC_RAILWAY_URL || window.location.origin;
+    // Ensure protocol is included for Railway URL
+    let url = process.env.NEXT_PUBLIC_RAILWAY_URL;
+    if (url) {
+      if (!/^https?:\/\//.test(url)) {
+        url = `https://${url}`;
+      }
+      return url;
+    }
+    return window.location.origin;
   }
   return 'http://localhost:3000';
 };
