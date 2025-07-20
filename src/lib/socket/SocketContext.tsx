@@ -78,7 +78,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       setSocketError(err.message || 'Connection failed');
     });
 
-    socketInstance.on('joined', (room: string) => {
+    socketInstance.on('joined', () => {
       // Room join event
     });
 
