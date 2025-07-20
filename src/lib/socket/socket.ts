@@ -7,17 +7,17 @@ let isInitializing = false;
 const getSocketUrl = () => {
   if (typeof window === 'undefined') return undefined;
   if (process.env.NODE_ENV === 'production') {
-    // Ensure protocol is included for Railway URL
     let url = process.env.NEXT_PUBLIC_RAILWAY_URL;
     if (url) {
-      if (!/^https?:\/\//.test(url)) {
-        url = `https://${url}`;
+      // Always use wss:// for production
+      if (!/^wss?:\/\//.test(url)) {
+        url = `wss://${url}`;
       }
       return url;
     }
-    return window.location.origin;
+    return window.location.origin.replace(/^http/, 'ws');
   }
-  return 'http://localhost:3000';
+  return 'ws://localhost:3000';
 };
 
 export function getSocket(forceNew = false) {
@@ -42,9 +42,9 @@ export function getSocket(forceNew = false) {
 
   const url = getSocketUrl();
   socket = io(url, {
-    path: "/api/socket",
+    path: "/socket",
     autoConnect: false,
-    transports: ["polling", "websocket"],
+    transports: ["websocket"],
     timeout: 45000,
     reconnection: true,
     reconnectionAttempts: 5,
@@ -56,8 +56,8 @@ export function getSocket(forceNew = false) {
 
   console.log('✅ Socket.IO client configuration:', {
     url,
-    path: "/api/socket",
-    transports: ["polling", "websocket"],
+    path: "/socket",
+    transports: ["websocket"],
     timeout: 45000,
     reconnection: true,
     reconnectionAttempts: 5,
