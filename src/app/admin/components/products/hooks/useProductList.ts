@@ -8,6 +8,7 @@ import { productSchema } from "@/lib/validators/product";
 import { Product, Category } from "@prisma/client";
 import useSWR from "swr";
 import axios from "axios";
+import { getSocket } from '@/lib/socket/socket';
 
 // Types
 interface ProductWithCategory extends Product {
@@ -79,6 +80,26 @@ export function useProductList() {
       loadingTimeout: 5000,
     }
   );
+
+  // WebSocket for real-time product updates
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.connect();
+    socket.on('connect', () => {
+      console.log('[DEBUG] Connected to WebSocket for admin products');
+      socket.emit('join', 'products');
+    });
+    socket.on('products_updated', () => {
+      console.log('[DEBUG] Received products_updated event, mutating SWR');
+      mutate();
+    });
+    return () => {
+      socket.off('products_updated');
+      socket.off('connect');
+      socket.disconnect();
+    };
+  }, [mutate]);
 
   const applyOptimisticUpdates = useCallback(
     (products: ProductWithCategory[]) => {

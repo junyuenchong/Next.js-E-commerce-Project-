@@ -1,10 +1,9 @@
 const http = require('http');
+const express = require('express');
 const { Server } = require('socket.io');
 
-const server = http.createServer((req, res) => {
-  res.writeHead(200);
-  res.end('Socket.IO server is running.');
-});
+const app = express();
+const server = http.createServer(app);
 
 const io = new Server(server, {
   path: '/socket',
@@ -23,6 +22,10 @@ io.on('connection', (socket) => {
       socket.join('categories');
       console.log('Client joined categories room');
     }
+    if (room === 'products') {
+      socket.join('products');
+      console.log('Client joined products room');
+    }
   });
 
   socket.emit('message', 'Hello from Railway Socket.IO!');
@@ -31,14 +34,19 @@ io.on('connection', (socket) => {
   });
 });
 
-// Function to emit category updates to all clients in the 'categories' room
-function emitCategoriesUpdate() {
+// HTTP endpoint to emit products_updated
+app.post('/emit-products-update', (req, res) => {
+  io.to('products').emit('products_updated');
+  res.sendStatus(200);
+});
+
+// HTTP endpoint to emit categories_updated
+app.post('/emit-categories-update', (req, res) => {
   io.to('categories').emit('categories_updated');
-}
+  res.sendStatus(200);
+});
 
-module.exports = { server, emitCategoriesUpdate };
-
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Socket.IO server listening on port ${PORT}`);
 }); 

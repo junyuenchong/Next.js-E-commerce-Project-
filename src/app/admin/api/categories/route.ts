@@ -10,9 +10,8 @@ export async function GET() {
     return NextResponse.json(categories, { 
       status: 200,
       headers: { 
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
-        "x-nextjs-cache-tags": "categories" 
-      } 
+        "Cache-Control": "no-store"
+      }
     });
   } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

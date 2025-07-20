@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useSocket } from "@/lib/socket/SocketContext";
+import useSWR from 'swr';
+import { getSocket } from '@/lib/socket/socket';
 import AddToCartButton from "../AddToCartButton/AddToCartButton";
 
 import Image from "next/image";
@@ -15,32 +16,29 @@ const formatPriceRM = (price: number): string => {
 };
 
 export default function ProductDetailClient({ productId, initialProduct }: { productId: string | number, initialProduct: Product }) {
-  const [product, setProduct] = useState<Product>(initialProduct);
-  const { socket } = useSocket();
+  const fetcher = (url: string) => fetch(url).then(res => res.json());
+  const { data: product, mutate } = useSWR(`/user/api/products/${productId}`, fetcher, {
+    fallbackData: initialProduct,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: true,
+    dedupingInterval: 0,
+  });
 
   useEffect(() => {
+    const socket = getSocket();
     if (!socket) return;
-    const handleProductsUpdate = async () => {
-      // Refetch product data from API
-      try {
-        const res = await fetch(`/user/api/products?id=${productId}`, { cache: 'no-store' });
-        const products = await res.json();
-        // If API returns an array, find the product by id
-        if (Array.isArray(products)) {
-          const updated = products.find((p: Product) => p.id == productId);
-          if (updated) setProduct(updated);
-        } else if (products && products.id) {
-          setProduct(products as Product);
-        }
-      } catch {
-        // Optionally handle error
-      }
+    if (socket.connected) socket.emit('join', 'products');
+    else socket.on('connect', () => socket.emit('join', 'products'));
+
+    const handleProductsUpdate = () => {
+      console.log('[DEBUG] Received products_updated event (detail), mutating SWR');
+      mutate();
     };
-    socket.on("products_updated", handleProductsUpdate);
+    socket.on('products_updated', handleProductsUpdate);
     return () => {
-      socket.off("products_updated", handleProductsUpdate);
+      socket.off('products_updated', handleProductsUpdate);
     };
-  }, [socket, productId]);
+  }, [mutate, productId]);
 
   if (!product) return <div>Product not found</div>;
   const originalPrice = product.price * 5;

@@ -1,85 +1,39 @@
 "use client";
 
-import useSWRInfinite from 'swr/infinite';
 import { useEffect } from 'react';
-import { useSocket } from '@/lib/socket/SocketContext';
+import useSWR from 'swr';
+import { getSocket } from '@/lib/socket/socket';
 import ProductGrid from '../ProductGrid/ProductGrid';
-import { Product } from '@prisma/client';
 
-const PAGE_SIZE = 10;
+const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(res => res.json());
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
-
-type ProductListProps = {
-  categorySlug?: string;
-};
-
-const ProductList = ({ categorySlug }: ProductListProps) => {
-  const { isConnected, socket } = useSocket();
-
-  const getKey = (pageIndex: number, previousPageData: Product[] | null) => {
-    if (previousPageData && previousPageData.length === 0) return null; // reached the end
-    const page = pageIndex + 1;
-    return categorySlug
-      ? `/user/api/products?category=${encodeURIComponent(categorySlug)}&limit=${PAGE_SIZE}&page=${page}`
-      : `/user/api/products?limit=${PAGE_SIZE}&page=${page}`;
-  };
-
-  const {
-    data,
-    error,
-    size,
-    setSize,
-    isValidating
-  } = useSWRInfinite(getKey, fetcher);
-
-  const allProducts: Product[] = data ? ([] as Product[]).concat(...data) : [];
-  const isLoading = !data && !error;
-  const isEnd = data && data[data.length - 1]?.length < PAGE_SIZE;
+export default function ProductList() {
+  const { data: products, mutate } = useSWR('/user/api/products', fetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: true,
+    dedupingInterval: 0,
+  });
 
   useEffect(() => {
+    const socket = getSocket();
     if (!socket) return;
+    if (socket.connected) socket.emit('join', 'products');
+    else socket.on('connect', () => socket.emit('join', 'products'));
+
     const handleProductsUpdate = () => {
-      setSize(1); // refetch first page
+      console.log('[DEBUG] Received products_updated event, mutating SWR');
+      mutate();
     };
     socket.on('products_updated', handleProductsUpdate);
     return () => {
       socket.off('products_updated', handleProductsUpdate);
-      return;
     };
-  }, [socket, setSize]);
+  }, [mutate]);
 
   useEffect(() => {
-    if (!socket || !isConnected) return;
-    socket.emit('join', 'products');
-    return () => {
-      socket.emit('leave', 'products');
-    };
-  }, [socket, isConnected]);
+    console.log('[DEBUG] Rendered ProductList with products:', products);
+  }, [products]);
 
-  const handleLoadMore = () => {
-    setSize(size + 1);
-  };
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error loading products.</div>;
-
-  return (
-    <>
-      <ProductGrid products={allProducts} />
-      {!isEnd && (
-        <div className="flex justify-center">
-          <button
-            onClick={handleLoadMore}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            disabled={isValidating}
-          >
-            {isValidating ? 'Loading...' : 'Load More'}
-          </button>
-        </div>
-      )}
-    </>
-  );
-};
-
-export default ProductList;
+  if (!products) return <div>Loading...</div>;
+  return <ProductGrid products={products} />;
+}

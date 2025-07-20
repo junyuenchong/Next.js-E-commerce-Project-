@@ -180,6 +180,13 @@ export async function getCategoryById(id: number) {
  UPDATE CATEGORY
 ------------------------- */
 export async function updateCategory(id: number, name: string) {
+  // Check if the category exists
+  const existing = await prisma.category.findUnique({ where: { id } });
+  if (!existing) {
+    console.log('[DEBUG] Tried to update non-existent category with id:', id);
+    return { message: 'Category not found or already deleted.' };
+  }
+
   // Validate name using categorySchema
   const parsed = categorySchema.parse({ name });
 
@@ -197,8 +204,11 @@ export async function updateCategory(id: number, name: string) {
     revalidatePath("/admin/categories");
     
     // Emit WebSocket event for real-time updates
-    const { emitCategoriesUpdate } = await import('../../ws-server.js');
+    const { emitCategoriesUpdate, emitProductsUpdate } = await import('../../ws-server.js');
+    console.log('[DEBUG] Calling emitCategoriesUpdate after update');
     emitCategoriesUpdate();
+    console.log('[DEBUG] Calling emitProductsUpdate after category update');
+    emitProductsUpdate();
 
     return updated;
   } catch (error: unknown) {
@@ -216,18 +226,30 @@ export async function updateCategory(id: number, name: string) {
  DELETE CATEGORY
 ------------------------- */
 export async function deleteCategory(id: number) {
-  // No validation needed for delete
-  const deleted = await prisma.category.delete({
-    where: { id },
-  });
+  try {
+    const deleted = await prisma.category.delete({
+      where: { id },
+    });
 
-  revalidatePath("/admin/categories");
-  
-  // Emit WebSocket event for real-time updates
-  const { emitCategoriesUpdate } = await import('../../ws-server.js');
-  emitCategoriesUpdate();
-  
-  return deleted;
+    revalidatePath("/admin/categories");
+
+    // Emit WebSocket event for real-time updates
+    const { emitCategoriesUpdate } = await import('../../ws-server.js');
+    console.log('[DEBUG] Calling emitCategoriesUpdate after delete');
+    emitCategoriesUpdate();
+
+    return deleted;
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      // Record not found
+      console.log('[DEBUG] Tried to delete non-existent category with id:', id);
+      return { message: 'Category not found or already deleted.' };
+    }
+    throw error;
+  }
 }
 
 /* ----------------------

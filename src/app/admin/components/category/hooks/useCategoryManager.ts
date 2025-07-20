@@ -50,16 +50,20 @@ export function useCategoryManager({
     socket.connect();
 
     socket.on("categories_updated", () => {
-      console.log("🔄 Categories updated via WebSocket, refreshing admin list...");
+      console.log("🔄 [DEBUG] Received categories_updated event via WebSocket");
       if (onRefreshRef.current) {
+        console.log("🔄 [DEBUG] Calling onRefresh from categories_updated event");
         onRefreshRef.current();
+      } else {
+        console.log("⚠️ [DEBUG] onRefreshRef.current is undefined");
       }
     });
 
     socket.on("connect", () => {
       console.log("✅ Connected to WebSocket for admin categories");
       setIsConnected(true);
-      socket.emit("join_categories");
+      console.log("[DEBUG] Emitting join 'categories' event");
+      socket.emit("join", "categories");
     });
 
     socket.on("disconnect", () => {
@@ -73,7 +77,7 @@ export function useCategoryManager({
     });
 
     socket.on("joined", (room) => {
-      console.log("✅ Joined room:", room);
+      console.log("✅ [DEBUG] Joined room:", room);
     });
 
     return () => {

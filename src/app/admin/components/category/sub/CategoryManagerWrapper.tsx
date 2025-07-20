@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import CategoryManager, { CategoryManagerProps } from "../main/CategoryManager";
+import { useEffect } from "react";
 
 // Omit 'categories' from props for the wrapper
 export type CategoryManagerWrapperProps = Omit<CategoryManagerProps, 'categories'>;
@@ -25,6 +26,10 @@ export default function CategoryManagerWrapper(props: CategoryManagerWrapperProp
       refreshInterval: 0, // Disable auto-refresh
     }
   );
+
+  useEffect(() => {
+    console.log('[DEBUG] Current categories in CategoryManagerWrapper:', categories);
+  }, [categories]);
 
   const handleRefresh = async () => {
     console.log('🔄 Refreshing admin categories...');

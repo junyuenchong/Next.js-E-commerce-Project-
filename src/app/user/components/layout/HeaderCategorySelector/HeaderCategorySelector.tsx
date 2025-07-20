@@ -21,8 +21,10 @@ const HeaderCategorySelector = () => {
   // Listen for real-time category updates
   useEffect(() => {
     if (!socket || !socket.connected) return;
+    console.log('[DEBUG] Emitting join "categories" event (user)');
     socket.emit('join', 'categories');
     const handleCategoriesUpdate = () => {
+      console.log('[DEBUG] Received categories_updated event (user), mutating SWR');
       globalMutate((key) => typeof key === 'string' && key.includes('/categories'));
     };
     socket.on('categories_updated', handleCategoriesUpdate);

@@ -6,20 +6,6 @@ import { productSchema, productSlugSchema } from "@/lib/validators/product";
 import prisma from "@/lib/prisma";
 
 /* ----------------------
- EMIT PRODUCTS UPDATE
-------------------------- */
-async function emitProductsUpdate() {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    console.log('🌐 Emitting products_updated via:', `${baseUrl}/api/emit-products-update`);
-    const res = await fetch(`${baseUrl}/api/emit-products-update`);
-    console.log('🌐 Emit response:', res.status);
-  } catch (e) {
-    console.error("WebSocket emit failed", e);
-  }
-}
-
-/* ----------------------
  CREATE PRODUCT
 ------------------------- */
 export async function createProduct(data: unknown) {
@@ -58,7 +44,7 @@ export async function createProduct(data: unknown) {
   revalidateTag("products");
 
   // Emit WebSocket event for real-time updates
-  await emitProductsUpdate();
+  await fetch('http://localhost:3001/emit-products-update', { method: 'POST' });
 
   return product;
 }
@@ -196,11 +182,11 @@ export async function updateProduct(id: number, data: unknown) {
     },
   });
 
-    revalidatePath("/admin/products");
-    revalidateTag("products");
+  revalidatePath("/admin/products");
+  revalidateTag("products");
 
   // Emit WebSocket event for real-time updates
-  await emitProductsUpdate();
+  await fetch('http://localhost:3001/emit-products-update', { method: 'POST' });
 
   return product;
 }
@@ -215,7 +201,7 @@ export async function deleteProduct(id: number) {
     revalidateTag("products");
 
     // Emit WebSocket event for real-time updates
-    await emitProductsUpdate();
+    await fetch('http://localhost:3001/emit-products-update', { method: 'POST' });
   } catch (error) {
     console.error("❌ Error deleting product:", error);
     throw error;
