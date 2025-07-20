@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import useSWR from 'swr';
 import { getSocket } from '@/lib/socket/socket';
 import AddToCartButton from "../AddToCartButton/AddToCartButton";

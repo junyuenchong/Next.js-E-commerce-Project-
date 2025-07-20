@@ -1,9 +1,11 @@
-import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getProductById } from "@/actions/product";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function GET(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const id = params.id;
   if (!id) {
     return NextResponse.json({ error: "Product ID required" }, { status: 400 });
   }
@@ -19,4 +21,4 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-} 
+}

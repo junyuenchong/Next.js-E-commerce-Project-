@@ -7,8 +7,11 @@ import ProductGrid from '../ProductGrid/ProductGrid';
 
 const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(res => res.json());
 
-export default function ProductList() {
-  const { data: products, mutate } = useSWR('/user/api/products', fetcher, {
+export default function ProductList({ categorySlug }: { categorySlug?: string }) {
+  const url = categorySlug
+    ? `/user/api/products?category=${encodeURIComponent(categorySlug)}`
+    : '/user/api/products';
+  const { data: products, mutate } = useSWR(url, fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: true,
     dedupingInterval: 0,

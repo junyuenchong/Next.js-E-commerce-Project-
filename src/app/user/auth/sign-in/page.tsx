@@ -14,11 +14,11 @@ const SignInSchema = zod.object({
 });
 
 type SignInPageProps = {
-  searchParams: Promise<{ returnUrl?: string }>;
+  searchParams: { returnUrl?: string };
 };
 
 const SignInPage = async ({ searchParams }: SignInPageProps) => {
-  const { returnUrl } = await searchParams;
+  const { returnUrl } = searchParams;
   
   // Check if user is already logged in
   const session = await getServerSession(authOptions);

@@ -142,11 +142,10 @@ export async function createCategory(name: string) {
     revalidatePath("/admin/categories");
     
     // Emit WebSocket event for real-time updates
-    const { emitCategoriesUpdate } = await import('../../ws-server.js');
-    emitCategoriesUpdate();
+    await fetch('http://localhost:3001/emit-categories-update', { method: 'POST' });
 
     return category;
-  } catch (error: unknown) {
+  } catch (error: unknown) {  
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
@@ -204,11 +203,8 @@ export async function updateCategory(id: number, name: string) {
     revalidatePath("/admin/categories");
     
     // Emit WebSocket event for real-time updates
-    const { emitCategoriesUpdate, emitProductsUpdate } = await import('../../ws-server.js');
-    console.log('[DEBUG] Calling emitCategoriesUpdate after update');
-    emitCategoriesUpdate();
-    console.log('[DEBUG] Calling emitProductsUpdate after category update');
-    emitProductsUpdate();
+    await fetch('http://localhost:3001/emit-categories-update', { method: 'POST' });
+    await fetch('http://localhost:3001/emit-products-update', { method: 'POST' });
 
     return updated;
   } catch (error: unknown) {
@@ -234,9 +230,7 @@ export async function deleteCategory(id: number) {
     revalidatePath("/admin/categories");
 
     // Emit WebSocket event for real-time updates
-    const { emitCategoriesUpdate } = await import('../../ws-server.js');
-    console.log('[DEBUG] Calling emitCategoriesUpdate after delete');
-    emitCategoriesUpdate();
+    await fetch('http://localhost:3001/emit-categories-update', { method: 'POST' });
 
     return deleted;
   } catch (error) {

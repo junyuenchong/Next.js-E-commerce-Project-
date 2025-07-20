@@ -57,11 +57,11 @@ async function SearchContentWithData({ query }: { query: string }) {
 }
 
 type SearchPageProps = {
-  searchParams: Promise<{ query: string }>;
+  searchParams: { query: string };
 };
 
 const SearchPage = async ({ searchParams }: SearchPageProps) => {
-  const { query } = await searchParams;
+  const { query } = searchParams;
 
   return (
     <div>

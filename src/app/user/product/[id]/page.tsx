@@ -2,10 +2,8 @@
 import ProductDetailClient from '@/app/user/components/Products/ProductList/ProductDetailClient';
 import { getProductById } from '@/actions/product';
 
-const ProductPage = async ({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ query?: string }> }) => {
-  const resolvedParams = await params;
-  const resolvedSearchParams = searchParams ? await searchParams : {};
-  const productId = resolvedParams.id ?? resolvedSearchParams.query;
+const ProductPage = async ({ params, searchParams }: { params: { id: string }; searchParams?: { query?: string } }) => {
+  const productId = params.id ?? searchParams?.query;
   if (typeof productId === 'undefined') {
     return <div>Product not found</div>;
   }

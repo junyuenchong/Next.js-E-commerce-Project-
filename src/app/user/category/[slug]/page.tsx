@@ -76,8 +76,8 @@ async function CategoryContentWithData({ slug }: { slug: string }) {
   );
 }
 
-const CategoryPage = async ({ params }: { params: Promise<{ slug: string }> }) => {
-  const { slug } = await params;
+const CategoryPage = async ({ params }: { params: { slug: string } }) => {
+  const slug = params.slug;
   
   return (
     <div>
