@@ -1,15 +1,17 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getSocket } from './socket';
 import type io from 'socket.io-client';
 
 interface SocketContextType {
   isConnected: boolean;
+  isConnecting: boolean;
   socket: ReturnType<typeof io> | null;
   joinRoom: (room: string) => void;
   leaveRoom: (room: string) => void;
   socketError: string | null;
+  reconnect: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -28,53 +30,56 @@ interface SocketProviderProps {
 
 export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [socketError, setSocketError] = useState<string | null>(null);
   const [socket, setSocket] = useState<ReturnType<typeof io> | null>(null);
 
-  useEffect(() => {
-    const socketInstance = getSocket();
-    if (!socketInstance) {
-      console.error('❌ Failed to get socket instance');
+  const initializeSocket = useCallback(() => {
+    setIsConnecting(true);
+    let socketInstance: ReturnType<typeof io> | null = null;
+    try {
+      socketInstance = getSocket(true);
+    } catch (err) {
+      setSocketError((err as Error).message);
+      setIsConnecting(false);
       return;
     }
-    
+    if (!socketInstance) {
+      setIsConnecting(false);
+      setSocketError('Socket instance could not be created.');
+      return;
+    }
     setSocket(socketInstance);
 
     // Check if already connected
     if (socketInstance.connected) {
-      console.log('✅ Socket already connected');
       setIsConnected(true);
+      setIsConnecting(false);
       setSocketError(null);
     } else {
-      // Connect to WebSocket
-      console.log('🔌 Connecting to WebSocket...');
       socketInstance.connect();
     }
 
-    // Listen for connection
     socketInstance.on('connect', () => {
-      console.log('✅ Connected to WebSocket server');
       setIsConnected(true);
+      setIsConnecting(false);
       setSocketError(null);
     });
 
-    // Listen for disconnection
     socketInstance.on('disconnect', () => {
-      console.log('❌ Disconnected from WebSocket server');
       setIsConnected(false);
+      setIsConnecting(false);
     });
 
-    // Listen for connection errors
     socketInstance.on('connect_error', (error: unknown) => {
       const err = error as { message?: string };
-      console.error('❌ WebSocket connection error:', error);
       setIsConnected(false);
+      setIsConnecting(false);
       setSocketError(err.message || 'Connection failed');
     });
 
-    // Listen for successful room join
     socketInstance.on('joined', (room: string) => {
-      console.log('✅ Joined room:', room);
+      // Room join event
     });
 
     return () => {
@@ -88,26 +93,41 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     };
   }, []);
 
+  useEffect(() => {
+    initializeSocket();
+    // Cleanup on unmount
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const joinRoom = (room: string) => {
     if (socket && isConnected) {
       (socket as { emit: (event: string, ...args: unknown[]) => void }).emit('join', room);
-      console.log(`🎯 Joining room: ${room}`);
     }
   };
 
   const leaveRoom = (room: string) => {
     if (socket && isConnected) {
       socket.emit('leave', room);
-      console.log(`🚪 Leaving room: ${room}`);
     }
+  };
+
+  const reconnect = () => {
+    initializeSocket();
   };
 
   const value: SocketContextType = {
     isConnected,
+    isConnecting,
     socket,
     joinRoom,
     leaveRoom,
     socketError,
+    reconnect,
   };
 
   return (

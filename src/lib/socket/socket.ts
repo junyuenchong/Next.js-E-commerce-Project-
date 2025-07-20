@@ -3,20 +3,22 @@ import io from "socket.io-client";
 let socket: ReturnType<typeof io> | null = null;
 let isInitializing = false;
 
-// Use environment variable for Railway domain in production
+// Get the correct WebSocket URL for the current environment
 const getSocketUrl = () => {
   if (typeof window === 'undefined') return undefined;
   if (process.env.NODE_ENV === 'production') {
     let url = process.env.NEXT_PUBLIC_RAILWAY_URL;
-    if (url) {
-      // Always use wss:// for production
-      if (!/^wss?:\/\//.test(url)) {
-        url = `wss://${url}`;
-      }
-      return url;
+    if (!url) {
+      console.error('[Socket] NEXT_PUBLIC_RAILWAY_URL is not set! Please set it in your Vercel project settings.');
+      return undefined;
     }
-    return window.location.origin.replace(/^http/, 'ws');
+    // Always use wss:// for production
+    if (!/^wss?:\/\//.test(url)) {
+      url = `wss://${url}`;
+    }
+    return url;
   }
+  // Development fallback
   return 'ws://localhost:3000';
 };
 
@@ -41,6 +43,11 @@ export function getSocket(forceNew = false) {
   }
 
   const url = getSocketUrl();
+  if (!url) {
+    isInitializing = false;
+    throw new Error('[Socket] WebSocket URL is not defined.');
+  }
+
   socket = io(url, {
     path: "/socket",
     autoConnect: false,
