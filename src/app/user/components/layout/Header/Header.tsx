@@ -11,6 +11,7 @@ import { mutate } from 'swr';
 import HeaderSearchBar from "../HeaderSearchBar/HeaderSearchBar";
 import MobileSidebar from '../Sidebar/MobileSidebar';
 import { menuItems } from '../menuItems';
+import { signOut } from "next-auth/react";
 
 type HeaderClientProps = {
   categorySelector: React.ReactNode;
@@ -90,6 +91,7 @@ const HeaderClient = ({ categorySelector }: HeaderClientProps) => {
                     onClick={async (e) => {
                       e.preventDefault();
                       await fetch("/user/api/logout", { method: "POST" });
+                      signOut({ callbackUrl: "/" }); // Ensure NextAuth session is cleared
                       mutate("/user/api/session");
                       mutate("/user/api/cart");
                       router.refresh();
