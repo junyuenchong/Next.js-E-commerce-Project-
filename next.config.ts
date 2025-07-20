@@ -20,7 +20,6 @@ const nextConfig: NextConfig = {
 
   // ✅ Optional: Enable strict React rendering rules (can be removed if not needed)
   reactStrictMode: true,
-  swcMinify: true, // faster builds with SWC
 
   // ✅ Optional: Set up i18n or trailingSlash if needed later
   // trailingSlash: true,
