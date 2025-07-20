@@ -13,12 +13,8 @@ const SignInSchema = zod.object({
   password: zod.string().min(5),
 });
 
-type SignInPageProps = {
-  searchParams: { returnUrl?: string };
-};
-
-const SignInPage = async ({ searchParams }: SignInPageProps) => {
-  const { returnUrl } = searchParams;
+const SignInPage = async ({ searchParams }: { searchParams?: { returnUrl?: string } }) => {
+  const returnUrl = searchParams?.returnUrl;
   
   // Check if user is already logged in
   const session = await getServerSession(authOptions);

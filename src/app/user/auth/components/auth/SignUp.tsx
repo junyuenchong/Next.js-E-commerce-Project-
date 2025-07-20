@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useActionState, useEffect } from 'react'
-import Form from 'next/form'
 import { Loader2 } from 'lucide-react'
 import { signIn } from "next-auth/react";
 
@@ -38,7 +37,7 @@ const SignUp = ({ action }: SignUpProps) => {
   }, [state]);
 
   return (
-    <Form
+    <form
       action={formAction}
       className='max-w-md mx-auto my-16 p-8 bg-white rounded-lg shadow-md'
     >
@@ -132,7 +131,7 @@ const SignUp = ({ action }: SignUpProps) => {
           Sign up with Facebook
         </button>
       </div>
-    </Form>
+    </form>
   )
 }
 

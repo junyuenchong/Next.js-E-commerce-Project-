@@ -76,8 +76,11 @@ async function CategoryContentWithData({ slug }: { slug: string }) {
   );
 }
 
-const CategoryPage = async ({ params }: { params: { slug: string } }) => {
-  const slug = params.slug;
+const CategoryPage = async ({ params }: { params?: { slug?: string } }) => {
+  const slug = params?.slug;
+  if (!slug) {
+    return <div>Category not found</div>;
+  }
   
   return (
     <div>

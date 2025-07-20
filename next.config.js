@@ -1,6 +1,4 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+const nextConfig = {
   // ✅ Enable standalone build for optimized Docker/Nixpacks deployment
   output: 'standalone',
 
@@ -29,4 +27,4 @@ const nextConfig: NextConfig = {
   // },
 };
 
-export default nextConfig;
+module.exports = nextConfig;

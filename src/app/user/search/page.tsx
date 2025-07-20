@@ -56,18 +56,14 @@ async function SearchContentWithData({ query }: { query: string }) {
   );
 }
 
-type SearchPageProps = {
-  searchParams: { query: string };
-};
-
-const SearchPage = async ({ searchParams }: SearchPageProps) => {
-  const { query } = searchParams;
+const SearchPage = async ({ searchParams }: { searchParams?: { query?: string } }) => {
+  const { query } = searchParams || {};
 
   return (
     <div>
       <SalesCampaignBanner />
       <Suspense fallback={<Loading />}>
-        <SearchContentWithData query={query} />
+        <SearchContentWithData query={query || ''} />
       </Suspense>
         </div>
     );
