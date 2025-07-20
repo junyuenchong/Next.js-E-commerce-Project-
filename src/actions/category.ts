@@ -5,8 +5,6 @@ import slugify from "slugify";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { categorySchema, categorySlugSchema } from "@/lib/validators/category";
-// Import the emitCategoriesUpdate function from ws-server.js
-const { emitCategoriesUpdate } = require('../../ws-server.js');
 
 /* ----------------------
  Generate Unique Slug
@@ -144,6 +142,7 @@ export async function createCategory(name: string) {
     revalidatePath("/admin/categories");
     
     // Emit WebSocket event for real-time updates
+    const { emitCategoriesUpdate } = await import('../../ws-server.js');
     emitCategoriesUpdate();
 
     return category;
@@ -198,6 +197,7 @@ export async function updateCategory(id: number, name: string) {
     revalidatePath("/admin/categories");
     
     // Emit WebSocket event for real-time updates
+    const { emitCategoriesUpdate } = await import('../../ws-server.js');
     emitCategoriesUpdate();
 
     return updated;
@@ -224,6 +224,7 @@ export async function deleteCategory(id: number) {
   revalidatePath("/admin/categories");
   
   // Emit WebSocket event for real-time updates
+  const { emitCategoriesUpdate } = await import('../../ws-server.js');
   emitCategoriesUpdate();
   
   return deleted;
