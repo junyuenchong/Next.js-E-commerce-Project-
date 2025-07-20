@@ -5,6 +5,8 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import prisma from "@/lib/prisma";
 import type { AuthOptions } from "next-auth";
 
+console.log("NEXTAUTH_SECRET at runtime:", process.env.NEXTAUTH_SECRET);
+
 type SessionUserWithId = {
   id: string;
   name?: string | null;
