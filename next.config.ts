@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // ✅ Enable standalone build for optimized Docker/Nixpacks deployment
+  output: 'standalone',
+
+  // ✅ Allow loading remote images from specific domains
   images: {
     remotePatterns: [
       {
@@ -14,6 +17,17 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
+  // ✅ Optional: Enable strict React rendering rules (can be removed if not needed)
+  reactStrictMode: true,
+  swcMinify: true, // faster builds with SWC
+
+  // ✅ Optional: Set up i18n or trailingSlash if needed later
+  // trailingSlash: true,
+  // i18n: {
+  //   locales: ['en'],
+  //   defaultLocale: 'en',
+  // },
 };
 
 export default nextConfig;
