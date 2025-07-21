@@ -1,23 +1,28 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const http = require('http');
-const WebSocket = require('ws');
+const { Server } = require('socket.io');
 
 const server = http.createServer((req, res) => {
   res.writeHead(200, {'Content-Type': 'text/plain'});
-  res.end('WebSocket server is running.\n');
+  res.end('Socket.IO server is running.\n');
 });
 
-const wss = new WebSocket.Server({ server });
+const io = new Server(server, {
+  cors: {
+    origin: '*', // Adjust for production!
+    methods: ['GET', 'POST']
+  }
+});
 
-wss.on('connection', (ws) => {
-  ws.send('WebSocket connected!');
-  // Place your custom WebSocket logic here
-  ws.on('message', (message) => {
-    // handle messages
+io.on('connection', (socket) => {
+  console.log('Client connected');
+  socket.emit('message', 'Hello from Socket.IO!');
+  socket.on('message', (msg) => {
+    socket.emit('message', `Echo: ${msg}`);
   });
 });
 
 const port = process.env.PORT || 3000;
 server.listen(port, () => {
-  console.log(`WebSocket server running on port ${port}`);
+  console.log(`Socket.IO server running on port ${port}`);
 }); 
