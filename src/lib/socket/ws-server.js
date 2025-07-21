@@ -8,6 +8,7 @@ const server = http.createServer((req, res) => {
 });
 
 const io = new Server(server, {
+  path: '/socket', // Set path to match frontend
   cors: {
     origin: '*', // Adjust for production!
     methods: ['GET', 'POST']
