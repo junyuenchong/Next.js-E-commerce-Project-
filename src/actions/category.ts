@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import slugify from "slugify";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
-import { categorySchema, categorySlugSchema } from "@/lib/validators/category";
+import { categorySchema, categorySlugSchema } from "@/lib/validators";
 
 /* ----------------------
  Generate Unique Slug
@@ -204,7 +204,7 @@ export async function updateCategory(id: number, name: string) {
     
     // Emit WebSocket event for real-time updates
     await fetch(`${getBaseUrl()}/emit-categories-update`, { method: 'POST' });
-    await fetch('http://localhost:3001/emit-products-update', { method: 'POST' });
+    await fetch(`${getBaseUrl()}/emit-products-update`, { method: 'POST' });
 
     return updated;
   } catch (error: unknown) {

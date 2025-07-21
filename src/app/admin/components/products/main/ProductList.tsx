@@ -13,6 +13,7 @@ import ProductGrid from "../sub/ProductGrid";
 import LoadMoreButton from "../sub/LoadMoreButton";
 import { Product, Category } from "@prisma/client";
 import { updateProduct, deleteProduct } from "@/actions/product";
+import { useRealtimeSWR } from '@/lib/hooks/useRealtimeSWR';
 
 interface ProductWithCategory extends Product {
   category?: Category;
@@ -46,12 +47,16 @@ const ProductListSkeleton = () => (
 );
 
 const ProductList = forwardRef(function ProductList(_, ref) {
-  const [products, setProducts] = useState<ProductWithCategory[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [isEnd, setIsEnd] = useState(false);
-
+  const { data: products, mutate } = useRealtimeSWR({
+    url: '/admin/api/products',
+    event: 'products_updated',
+    matchKey: (key) => typeof key === 'string' && key.includes('/products'),
+    swrOptions: {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      dedupingInterval: 0,
+    },
+  });
   // --- Editing state ---
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({
@@ -127,70 +132,15 @@ const ProductList = forwardRef(function ProductList(_, ref) {
     }
   };
 
-  const fetchProducts = useCallback(
-    async (resetPage = false) => {
-      setLoading(true);
-      try {
-        const fetchUrl = `/admin/api/products?limit=${PAGE_SIZE}&page=${
-          resetPage ? 1 : page
-        }&q=${encodeURIComponent(search)}&t=${Date.now()}`;
-        const res = await axios.get(fetchUrl);
-        const data = res.data;
-        if (Array.isArray(data)) {
-          if (resetPage) {
-            setProducts(data);
-            setPage(1);
-          } else {
-            setProducts((prev) => {
-              const ids = new Set(prev.map((p) => p.id));
-              return [...prev, ...data.filter((p) => !ids.has(p.id))];
-            });
-          }
-          setIsEnd(data.length < PAGE_SIZE);
-        } else {
-          alert("Invalid product data format");
-        }
-      } catch {
-        alert("Failed to fetch products");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [page, search]
-  );
-
-  useEffect(() => {
-    fetchProducts(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
-
-  const handleSearchChange = (value: string) => setSearch(value);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchProducts(true);
-  };
-
-  const handleLoadMore = () => {
-    if (!isEnd && !loading) {
-      setPage((p) => p + 1);
-    }
-  };
-
-  useEffect(() => {
-    if (page > 1) {
-      fetchProducts();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
-
-  const handleRefresh = () => fetchProducts(true);
+  // Remove all axios and manual fetch logic, use products from SWR
+  // Replace handleRefresh with mutate
+  const handleRefresh = () => mutate();
 
   useImperativeHandle(ref, () => ({
     handleRefresh,
   }));
 
-  if (loading && products.length === 0) {
+  if (!Array.isArray(products)) {
     return <ProductListSkeleton />;
   }
 
@@ -198,16 +148,11 @@ const ProductList = forwardRef(function ProductList(_, ref) {
     <div className="space-y-6">
       <button
         onClick={handleRefresh}
-        disabled={loading}
+        disabled={false}
         className="px-4 py-2 bg-blue-600 text-white rounded"
       >
-        {loading ? "Refreshing..." : "Refresh"}
+        Refresh
       </button>
-      <ProductSearch
-        search={search}
-        onSearchChange={handleSearchChange}
-        onSearchSubmit={handleSearch}
-      />
       <ProductGrid
         products={products}
         itemProps={{
@@ -225,12 +170,6 @@ const ProductList = forwardRef(function ProductList(_, ref) {
         onProductCreated={handleRefresh}
         onProductUpdated={handleRefresh}
         onProductDeleted={handleRefresh}
-      />
-      <LoadMoreButton
-        isLoading={loading}
-        isEnd={isEnd}
-        hasProducts={products.length > 0}
-        onLoadMore={handleLoadMore}
       />
     </div>
   );

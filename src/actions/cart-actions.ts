@@ -6,6 +6,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 // @ts-expect-error: uuid import compatibility for both ESM and CJS
 import { v4 as uuidv4 } from 'uuid';
+import { useRealtimeSWR } from '@/lib/hooks/useRealtimeSWR';
 
 interface SessionUser {
   id?: string;
@@ -270,4 +271,17 @@ export async function getCart() {
   }
 
   return null;
+}
+
+// Server action wrappers for direct import
+export async function addToCartServer(productId: number, quantity: number = 1) {
+  return addToCart(productId, quantity);
+}
+
+export async function removeFromCartServer(productId: number) {
+  return removeFromCart(productId);
+}
+
+export async function clearCartServer() {
+  return clearCart();
 }

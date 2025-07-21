@@ -18,6 +18,8 @@ export default function ProductList({ categorySlug }: { categorySlug?: string })
     },
   });
 
-  if (!Array.isArray(products)) return <div>Loading...</div>;
+  if (!products) return <div>Loading...</div>;
+  if (typeof products === 'object' && products !== null && 'error' in products) return <div>Products not found for this category.</div>;
+  if (!Array.isArray(products)) return <div>No products found.</div>;
   return <ProductGrid products={products} />;
 }

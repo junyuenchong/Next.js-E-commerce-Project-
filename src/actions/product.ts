@@ -2,7 +2,7 @@
 
 import slugify from "slugify";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { productSchema, productSlugSchema } from "@/lib/validators/product";
+import { productSchema, productSlugSchema } from "@/lib/validators";
 import prisma from "@/lib/prisma";
 
 /* ----------------------

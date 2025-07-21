@@ -15,7 +15,7 @@ export interface CategoryManagerProps {
   onRefresh?: () => void;
 }
 
-const CategoryManager: React.FC<CategoryManagerProps> = ({
+const CategoryManager: React.FC<Omit<CategoryManagerProps, 'categories'> & { categories: Category[] }> = ({
   categories,
   onSubmit,
   onDelete,

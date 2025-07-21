@@ -53,7 +53,6 @@ const HeaderCategorySelector = () => {
                     onClick={() => {
                       setOpen(false);
                       router.push(`/user/category/${category.slug}`);
-                      router.refresh();
                     }}
                   >
                     {category.name} <span className="text-xs text-gray-400">[{category.slug}]</span>

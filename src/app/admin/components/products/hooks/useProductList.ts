@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { deleteProduct, updateProduct } from "@/actions/product";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
-import { productSchema } from "@/lib/validators/product";
+import { productSchema } from "@/lib/validators";
 import { Product, Category } from "@prisma/client";
 import useSWR from "swr";
 import axios from "axios";
