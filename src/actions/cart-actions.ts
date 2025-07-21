@@ -6,7 +6,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 // @ts-expect-error: uuid import compatibility for both ESM and CJS
 import { v4 as uuidv4 } from 'uuid';
-import { useRealtimeSWR } from '@/lib/hooks/useRealtimeSWR';
 
 interface SessionUser {
   id?: string;

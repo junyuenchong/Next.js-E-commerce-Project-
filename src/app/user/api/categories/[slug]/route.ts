@@ -2,11 +2,12 @@ import { getCategoryBySlug } from '@/actions/category';
 import { NextResponse } from 'next/server';
 
 export async function GET(
-  req: Request,
-  { params }: { params: { slug: string } }
+  request: Request,
+  context: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const category = await getCategoryBySlug(params.slug);
+    const { slug } = await context.params;
+    const category = await getCategoryBySlug(slug);
     if (!category) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(category);
   } catch {

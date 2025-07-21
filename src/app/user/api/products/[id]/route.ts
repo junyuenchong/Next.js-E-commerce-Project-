@@ -1,22 +1,16 @@
-import { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
-import { getProductById } from "@/actions/product";
+import { getProductById } from '@/actions/product';
+import { NextResponse } from 'next/server';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
-  if (!id) {
-    return NextResponse.json({ error: "Product ID required" }, { status: 400 });
-  }
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await context.params;
     const product = await getProductById(id);
-    if (!product) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
-    }
-    return NextResponse.json(product, {
-      status: 200,
-      headers: { "Cache-Control": "no-store" }
-    });
+    if (!product) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json(product);
   } catch {
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 } 

@@ -56,8 +56,9 @@ async function SearchContentWithData({ query }: { query: string }) {
   );
 }
 
-const SearchPage = async ({ searchParams }: { searchParams?: { query?: string } }) => {
-  const { query } = searchParams || {};
+const SearchPage = async ({ searchParams }: { searchParams?: Promise<{ query?: string }> }) => {
+  const params = searchParams ? await searchParams : {};
+  const { query } = params;
 
   return (
     <div>

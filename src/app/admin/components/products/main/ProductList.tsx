@@ -1,25 +1,10 @@
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useImperativeHandle,
-  forwardRef,
-} from "react";
-import axios from "axios";
-import ProductSearch from "../sub/ProductSearch";
+import React, { useState, useImperativeHandle, forwardRef } from "react";
 import ProductGrid from "../sub/ProductGrid";
-import LoadMoreButton from "../sub/LoadMoreButton";
-import { Product, Category } from "@prisma/client";
 import { updateProduct, deleteProduct } from "@/actions/product";
 import { useRealtimeSWR } from '@/lib/hooks/useRealtimeSWR';
-
-interface ProductWithCategory extends Product {
-  category?: Category;
-}
-
-const PAGE_SIZE = 20;
+import type { ProductWithCategory } from "../types/ProductItem";
 
 const ProductListSkeleton = () => (
   <div className="space-y-6">
