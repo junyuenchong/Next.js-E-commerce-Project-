@@ -44,7 +44,7 @@ export async function createProduct(data: unknown) {
   revalidateTag("products");
 
   // Emit WebSocket event for real-time updates
-  await fetch('http://localhost:3001/emit-products-update', { method: 'POST' });
+  await fetch(`${getBaseUrl()}/emit-products-update`, { method: 'POST' });
 
   return product;
 }
@@ -186,7 +186,7 @@ export async function updateProduct(id: number, data: unknown) {
   revalidateTag("products");
 
   // Emit WebSocket event for real-time updates
-  await fetch('http://localhost:3001/emit-products-update', { method: 'POST' });
+  await fetch(`${getBaseUrl()}/emit-products-update`, { method: 'POST' });
 
   return product;
 }
@@ -201,7 +201,7 @@ export async function deleteProduct(id: number) {
     revalidateTag("products");
 
     // Emit WebSocket event for real-time updates
-    await fetch('http://localhost:3001/emit-products-update', { method: 'POST' });
+    await fetch(`${getBaseUrl()}/emit-products-update`, { method: 'POST' });
   } catch (error) {
     console.error("❌ Error deleting product:", error);
     throw error;
@@ -251,4 +251,11 @@ export async function searchProducts(query: string) {
     orderBy: { updatedAt: "desc" }, // Consistent ordering
     take: 50, // Limit search results for better performance
   });
+}
+
+// Helper to get the correct base URL for event emission
+function getBaseUrl() {
+  return process.env.NEXT_PUBLIC_RAILWAY_URL
+    ? `https://${process.env.NEXT_PUBLIC_RAILWAY_URL}`
+    : 'https://nextjs-e-commerce-project-production.up.railway.app';
 }

@@ -18,7 +18,7 @@ const getSocketUrl = () => {
     }
     return url;
   }
-  // Development fallback
+  // Development fallback: try localhost:3000 first, then 3001
   return 'ws://localhost:3001';
 };
 

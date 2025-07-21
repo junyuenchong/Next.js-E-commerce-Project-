@@ -1,14 +1,11 @@
 "use client";
-import { useEffect } from "react";
-import useSWR from 'swr';
-import { getSocket } from '@/lib/socket/socket';
 import AddToCartButton from "../AddToCartButton/AddToCartButton";
-
 import Image from "next/image";
 import Link from "next/link";
 import { Home, ChevronRight } from "lucide-react";
 import SalesCampaignBanner from "../../SalesCampaignBanner/SalesCampaignBanner";
 import { Product } from '@prisma/client';
+import { useRealtimeSWR } from '@/lib/hooks/useRealtimeSWR';
 
 // Helper function to format price in RM
 const formatPriceRM = (price: number): string => {
@@ -16,29 +13,17 @@ const formatPriceRM = (price: number): string => {
 };
 
 export default function ProductDetailClient({ productId, initialProduct }: { productId: string | number, initialProduct: Product }) {
-  const fetcher = (url: string) => fetch(url).then(res => res.json());
-  const { data: product, mutate } = useSWR(`/user/api/products/${productId}`, fetcher, {
-    fallbackData: initialProduct,
-    revalidateOnFocus: false,
-    revalidateOnReconnect: true,
-    dedupingInterval: 0,
+  const { data: product } = useRealtimeSWR<Product>({
+    url: `/user/api/products/${productId}`,
+    event: "products_updated",
+    matchKey: (key) => typeof key === "string" && key.startsWith("/user/api/products"),
+    swrOptions: {
+      fallbackData: initialProduct,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      dedupingInterval: 0,
+    },
   });
-
-  useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
-    if (socket.connected) socket.emit('join', 'products');
-    else socket.on('connect', () => socket.emit('join', 'products'));
-
-    const handleProductsUpdate = () => {
-      console.log('[DEBUG] Received products_updated event (detail), mutating SWR');
-      mutate();
-    };
-    socket.on('products_updated', handleProductsUpdate);
-    return () => {
-      socket.off('products_updated', handleProductsUpdate);
-    };
-  }, [mutate, productId]);
 
   if (!product) return <div>Product not found</div>;
   const originalPrice = product.price * 5;

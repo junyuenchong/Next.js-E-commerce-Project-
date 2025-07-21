@@ -9,6 +9,19 @@ const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
   const server = createServer((req, res) => {
+    // Custom HTTP handlers for real-time updates
+    if (req.method === 'POST' && req.url === '/emit-products-update') {
+      io.emit('products_updated');
+      res.writeHead(200);
+      res.end('ok');
+      return;
+    }
+    if (req.method === 'POST' && req.url === '/emit-categories-update') {
+      io.emit('categories_updated');
+      res.writeHead(200);
+      res.end('ok');
+      return;
+    }
     const parsedUrl = parse(req.url, true);
     handle(req, res, parsedUrl);
   });
@@ -29,7 +42,7 @@ app.prepare().then(() => {
     });
   });
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 3001;
   server.listen(port, () => {
     console.log(`Next.js and Socket.IO server running on port ${port}`);
   });

@@ -1,56 +1,20 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import useSWR, { mutate as globalMutate } from 'swr';
-import { useSocket } from '@/lib/socket/SocketContext';
+import React, { useRef, useState } from 'react';
+import { useRealtimeSWR } from '@/lib/hooks/useRealtimeSWR';
 import { useRouter } from 'next/navigation';
 
-// Add fetcher for SWR
-const fetcher = (url: string) => fetch(url).then(res => res.json());
-
 const HeaderCategorySelector = () => {
-  const { isConnected, socket, socketError } = useSocket();
-  
-  const { data: categories } = useSWR('/user/api/categories', fetcher);
+  const { data: categories } = useRealtimeSWR({
+    url: '/user/api/categories',
+    event: 'categories_updated',
+    matchKey: (key) => typeof key === 'string' && key.includes('/categories'),
+  });
 
   // Dropdown open state
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-
-  // Listen for real-time category updates
-  useEffect(() => {
-    if (!socket || !socket.connected) return;
-    console.log('[DEBUG] Emitting join "categories" event (user)');
-    socket.emit('join', 'categories');
-    const handleCategoriesUpdate = () => {
-      console.log('[DEBUG] Received categories_updated event (user), mutating SWR');
-      globalMutate((key) => typeof key === 'string' && key.includes('/categories'));
-    };
-    socket.on('categories_updated', handleCategoriesUpdate);
-    return () => {
-      socket.off('categories_updated', handleCategoriesUpdate);
-    };
-  }, [socket, socket?.connected]);
-
-  // Log categories for debugging
-  useEffect(() => {
-    if (categories && categories.length > 0) {
-      console.log('HeaderCategorySelector categories:', categories);
-    }
-  }, [categories]);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
 
   return (
     <div className='relative inline-block' ref={dropdownRef}>
@@ -79,7 +43,7 @@ const HeaderCategorySelector = () => {
         <div className='absolute top-full left-0 pt-2 z-50'>
           <div className='w-64 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden'>
             <div className='py-2'>
-              {categories.length === 0 ? (
+              {!Array.isArray(categories) || categories.length === 0 ? (
                 <div className='px-4 py-3 text-sm text-gray-500'>No categories available</div>
               ) : (
                 categories.map((category: { id: number; slug: string; name: string }) => (
@@ -95,11 +59,6 @@ const HeaderCategorySelector = () => {
                     {category.name} <span className="text-xs text-gray-400">[{category.slug}]</span>
                   </button>
                 ))
-              )}
-              {!isConnected && (
-                <div className='px-4 py-2 text-xs text-yellow-600 border-t border-gray-100'>
-                  {socketError ? `Connection error: ${socketError}` : 'Real-time updates disabled'}
-                </div>
               )}
             </div>
           </div>

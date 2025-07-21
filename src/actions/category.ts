@@ -142,7 +142,7 @@ export async function createCategory(name: string) {
     revalidatePath("/admin/categories");
     
     // Emit WebSocket event for real-time updates
-    await fetch('http://localhost:3001/emit-categories-update', { method: 'POST' });
+    await fetch(`${getBaseUrl()}/emit-categories-update`, { method: 'POST' });
 
     return category;
   } catch (error: unknown) {  
@@ -203,7 +203,7 @@ export async function updateCategory(id: number, name: string) {
     revalidatePath("/admin/categories");
     
     // Emit WebSocket event for real-time updates
-    await fetch('http://localhost:3001/emit-categories-update', { method: 'POST' });
+    await fetch(`${getBaseUrl()}/emit-categories-update`, { method: 'POST' });
     await fetch('http://localhost:3001/emit-products-update', { method: 'POST' });
 
     return updated;
@@ -230,7 +230,7 @@ export async function deleteCategory(id: number) {
     revalidatePath("/admin/categories");
 
     // Emit WebSocket event for real-time updates
-    await fetch('http://localhost:3001/emit-categories-update', { method: 'POST' });
+    await fetch(`${getBaseUrl()}/emit-categories-update`, { method: 'POST' });
 
     return deleted;
   } catch (error) {
@@ -262,4 +262,11 @@ export async function searchCategories(query: string) {
     },
     orderBy: { name: "asc" },
   });
+}
+
+// Helper to get the correct base URL for event emission
+function getBaseUrl() {
+  return process.env.NEXT_PUBLIC_RAILWAY_URL
+    ? `https://${process.env.NEXT_PUBLIC_RAILWAY_URL}`
+    : 'https://nextjs-e-commerce-project-production.up.railway.app';
 }

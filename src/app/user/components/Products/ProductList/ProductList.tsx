@@ -1,42 +1,23 @@
 "use client";
-
-import { useEffect } from 'react';
-import useSWR from 'swr';
-import { getSocket } from '@/lib/socket/socket';
 import ProductGrid from '../ProductGrid/ProductGrid';
-
-const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(res => res.json());
+import { useRealtimeSWR } from '@/lib/hooks/useRealtimeSWR';
 
 export default function ProductList({ categorySlug }: { categorySlug?: string }) {
   const url = categorySlug
     ? `/user/api/products?category=${encodeURIComponent(categorySlug)}`
     : '/user/api/products';
-  const { data: products, mutate } = useSWR(url, fetcher, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: true,
-    dedupingInterval: 0,
+
+  const { data: products } = useRealtimeSWR({
+    url,
+    event: "products_updated",
+    matchKey: (key) => typeof key === "string" && key.startsWith("/user/api/products"),
+    swrOptions: {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      dedupingInterval: 0,
+    },
   });
 
-  useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
-    if (socket.connected) socket.emit('join', 'products');
-    else socket.on('connect', () => socket.emit('join', 'products'));
-
-    const handleProductsUpdate = () => {
-      console.log('[DEBUG] Received products_updated event, mutating SWR');
-      mutate();
-    };
-    socket.on('products_updated', handleProductsUpdate);
-    return () => {
-      socket.off('products_updated', handleProductsUpdate);
-    };
-  }, [mutate]);
-
-  useEffect(() => {
-    console.log('[DEBUG] Rendered ProductList with products:', products);
-  }, [products]);
-
-  if (!products) return <div>Loading...</div>;
+  if (!Array.isArray(products)) return <div>Loading...</div>;
   return <ProductGrid products={products} />;
 }
