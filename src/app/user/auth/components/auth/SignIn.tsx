@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useActionState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 
@@ -18,10 +18,17 @@ type SignInProps = {
 };
 
 const SignIn = ({ action }: SignInProps) => {
-  const [state, formAction, isPending] = useActionState<FormState, FormData>(
-    action,
-    undefined
-  );
+  const [state, setState] = useState<FormState>(undefined);
+  const [isPending, setIsPending] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsPending(true);
+    const formData = new FormData(event.currentTarget);
+    const result = await action(state, formData);
+    setState(result);
+    setIsPending(false);
+  };
 
   // Show alert on result message
   useEffect(() => {
@@ -38,7 +45,7 @@ const SignIn = ({ action }: SignInProps) => {
 
   return (
     <form
-      action={formAction}
+      onSubmit={handleSubmit}
       className="max-w-md mx-auto my-16 p-8 bg-white rounded-lg shadow-md"
     >
       {/* Headings */}
