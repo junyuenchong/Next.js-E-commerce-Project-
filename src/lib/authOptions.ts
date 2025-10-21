@@ -18,7 +18,6 @@ export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   pages: {
     signIn: '/user/auth/sign-in',
-    signUp: '/user/auth/sign-up',
   },
   providers: [
     GoogleProvider({
