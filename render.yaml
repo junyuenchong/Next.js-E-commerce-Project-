@@ -12,4 +12,4 @@ services:
         fromDatabase:
           name: your-db-name
           property: connectionString
-    healthCheckPath: /
+    healthCheckPath: /healthz

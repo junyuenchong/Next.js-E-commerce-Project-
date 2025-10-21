@@ -11,6 +11,11 @@ const handle = app.getRequestHandler();
 app.prepare().then(() => {
   const server = createServer((req, res) => {
     // Custom HTTP handlers for real-time updates
+    if (req.method === 'GET' && req.url === '/healthz') {
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end('ok');
+      return;
+    }
     if (req.method === 'POST' && req.url === '/emit-products-update') {
       io.emit('products_updated');
       res.writeHead(200);
