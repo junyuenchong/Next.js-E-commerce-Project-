@@ -258,7 +258,5 @@ function getBaseUrl() {
   if (process.env.NODE_ENV !== 'production') {
     return 'http://localhost:3000';
   }
-  return process.env.NEXT_PUBLIC_RAILWAY_URL
-    ? `https://${process.env.NEXT_PUBLIC_RAILWAY_URL}`
-    : 'https://nextjs-e-commerce-project-production.up.railway.app';
+  return 'https://next-js-e-commerce-project.onrender.com';
 }

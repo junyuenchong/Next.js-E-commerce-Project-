@@ -9,7 +9,22 @@ const app = next({ dev });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
-  const server = createServer((req, res) => {
+  // Initialize Socket.IO first
+  const server = createServer();
+  
+  const io = new Server(server, {
+    path: '/socket', // Set path to match frontend
+    cors: {
+      origin: ['https://next-js-e-commerce-project.onrender.com', 'http://localhost:3000'],
+      methods: ['GET', 'POST'],
+      credentials: true
+    },
+    transports: ['websocket', 'polling'],
+    allowEIO3: true
+  });
+
+  // Now set up HTTP handlers with access to io
+  server.on('request', (req, res) => {
     // Custom HTTP handlers for real-time updates
     if (req.method === 'GET' && req.url === '/healthz') {
       res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -32,25 +47,31 @@ app.prepare().then(() => {
     handle(req, res, parsedUrl);
   });
 
-  const io = new Server(server, {
-    path: '/socket', // Set path to match frontend
-    cors: {
-      origin: ['https://next-js-e-commerce-project.onrender.com', 'http://localhost:3000'],
-      methods: ['GET', 'POST'],
-      credentials: true
-    }
-  });
-
   io.on('connection', (socket) => {
-    console.log('Client connected');
+    console.log('✅ Client connected:', socket.id);
     socket.emit('message', 'Hello from Socket.IO!');
+    
     socket.on('message', (msg) => {
       socket.emit('message', `Echo: ${msg}`);
     });
+    
+    socket.on('disconnect', (reason) => {
+      console.log('❌ Client disconnected:', socket.id, 'Reason:', reason);
+    });
+    
+    socket.on('error', (error) => {
+      console.error('❌ Socket error:', error);
+    });
+  });
+  
+  io.on('connect_error', (error) => {
+    console.error('❌ Socket.IO connection error:', error);
   });
 
   const port = process.env.PORT || 3001;
   server.listen(port, () => {
-    console.log(`Next.js and Socket.IO server running on port ${port}`);
+    console.log(`🚀 Next.js and Socket.IO server running on port ${port}`);
+    console.log(`🔗 WebSocket endpoint: ws://localhost:${port}/socket`);
+    console.log(`🌐 Production WebSocket: wss://next-js-e-commerce-project.onrender.com/socket`);
   });
 });

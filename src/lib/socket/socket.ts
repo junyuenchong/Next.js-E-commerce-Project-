@@ -47,14 +47,36 @@ export function getSocket(forceNew = false) {
   socket = io(url, {
     path: getSocketPath(),
     autoConnect: false,
-    transports: ["websocket"],
+    transports: ["websocket", "polling"],
     timeout: 45000,
     reconnection: true,
-    reconnectionAttempts: 5,
+    reconnectionAttempts: 10,
     reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
+    reconnectionDelayMax: 10000,
     upgrade: true,
-    rememberUpgrade: true,
+    rememberUpgrade: false,
+    forceNew: true,
+  });
+
+  // Add debugging event listeners
+  socket.on('connect', () => {
+    console.log('✅ Socket.IO connected successfully');
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.log('❌ Socket.IO disconnected:', reason);
+  });
+
+  socket.on('connect_error', (error) => {
+    console.error('❌ Socket.IO connection error:', error);
+  });
+
+  socket.on('reconnect', (attemptNumber) => {
+    console.log('🔄 Socket.IO reconnected after', attemptNumber, 'attempts');
+  });
+
+  socket.on('reconnect_error', (error) => {
+    console.error('❌ Socket.IO reconnection error:', error);
   });
 
   // Ensure the API socket route is initialized in development
