@@ -4,6 +4,7 @@ const nextConfig = {
 
   // ✅ Allow loading remote images from specific domains
   images: {
+    unoptimized: true,
     domains: [
       'lh3.googleusercontent.com',
       'platform-lookaside.fbsbx.com',
