@@ -13,7 +13,7 @@ const ProductList = forwardRef(function ProductList(_, ref) {
   const [products, setProducts] = useState<ProductWithCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [, setIsRefreshing] = useState(false);
   // --- Editing state ---
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({

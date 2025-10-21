@@ -1,22 +1,22 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import ProductGrid from '../ProductGrid/ProductGrid';
+import { Product } from '@prisma/client';
 import { useRealtimeSWR } from '@/lib/hooks/useRealtimeSWR';
 
 const PAGE_SIZE = 10;
 
 export default function ProductList({ categorySlug }: { categorySlug?: string }) {
   const [page, setPage] = useState(1);
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const url = categorySlug
     ? `/user/api/products?category=${encodeURIComponent(categorySlug)}&limit=${PAGE_SIZE}&page=${page}`
     : `/user/api/products?limit=${PAGE_SIZE}&page=${page}`;
 
-  const { data, mutate } = useRealtimeSWR({
+  const { data } = useRealtimeSWR({
     url,
     event: "products_updated",
     matchKey: (key) => typeof key === "string" && key.startsWith("/user/api/products"),
@@ -37,13 +37,6 @@ export default function ProductList({ categorySlug }: { categorySlug?: string })
     setHasMore(Array.isArray(data) && data.length === PAGE_SIZE);
     setIsLoading(false);
   }, [data, page]);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    setPage(1);
-    await mutate();
-    setIsRefreshing(false);
-  };
 
   const handleLoadMore = () => {
     setIsLoading(true);
