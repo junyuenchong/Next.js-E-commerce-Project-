@@ -16,16 +16,16 @@ app.prepare().then(() => {
       res.end('ok');
       return;
     }
-    if (req.method === 'POST' && req.url === '/emit-products-update') {
+    if (req.method === 'POST' && req.url === '/api/emit-products-update') {
       io.emit('products_updated');
-      res.writeHead(200);
-      res.end('ok');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
       return;
     }
-    if (req.method === 'POST' && req.url === '/emit-categories-update') {
+    if (req.method === 'POST' && req.url === '/api/emit-categories-update') {
       io.emit('categories_updated');
-      res.writeHead(200);
-      res.end('ok');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
       return;
     }
     const parsedUrl = parse(req.url, true);
@@ -35,8 +35,9 @@ app.prepare().then(() => {
   const io = new Server(server, {
     path: '/socket', // Set path to match frontend
     cors: {
-      origin: '*', // Adjust for production!
-      methods: ['GET', 'POST']
+      origin: ['https://next-js-e-commerce-project.onrender.com', 'http://localhost:3000'],
+      methods: ['GET', 'POST'],
+      credentials: true
     }
   });
 
@@ -52,4 +53,4 @@ app.prepare().then(() => {
   server.listen(port, () => {
     console.log(`Next.js and Socket.IO server running on port ${port}`);
   });
-}); 
+});
