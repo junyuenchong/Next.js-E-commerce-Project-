@@ -16,6 +16,10 @@ type SessionUserWithId = {
 
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
+  pages: {
+    signIn: '/user/auth/sign-in',
+    signUp: '/user/auth/sign-up',
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -59,6 +63,7 @@ export const authOptions: AuthOptions = {
     updateAge: 24 * 60 * 60,
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
   callbacks: {
     async session({ session, user, token }) {
       console.log('Session callback called:', { session, user, token });
@@ -78,7 +83,11 @@ export const authOptions: AuthOptions = {
       console.log('Session returned to client:', session);
       return session;
     },
-    async redirect({ baseUrl }) {
+    async redirect({ url, baseUrl }) {
+      // Allows relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url;
       return `${baseUrl}/user`;
     },
   },
