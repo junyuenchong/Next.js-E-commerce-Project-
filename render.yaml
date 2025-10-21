@@ -12,4 +12,6 @@ services:
         fromDatabase:
           name: your-db-name
           property: connectionString
+      - key: NEXT_PUBLIC_RENDER_URL
+        value: https://next-js-e-commerce-project.onrender.com
     healthCheckPath: /healthz

@@ -7,14 +7,8 @@ let isInitializing = false;
 const getSocketUrl = () => {
   if (typeof window === 'undefined') return undefined;
   if (process.env.NODE_ENV === 'production') {
-    let url = process.env.NEXT_PUBLIC_RAILWAY_URL;
-    if (!url) {
-      console.error('[Socket] NEXT_PUBLIC_RAILWAY_URL is not set!');
-      return undefined;
-    }
-    if (!/^wss?:\/\//.test(url)) {
-      url = `wss://${url}`;
-    }
+    // Use current origin in production (works for Render)
+    const url = window.location.origin;
     return url;
   }
   // In development, use current origin (Next dev server on :3000)
