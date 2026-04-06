@@ -5,8 +5,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import prisma from "@/lib/prisma";
 import type { AuthOptions } from "next-auth";
 
-console.log("NEXTAUTH_SECRET at runtime:", process.env.NEXTAUTH_SECRET);
-
 type SessionUserWithId = {
   id: string;
   name?: string | null;
@@ -17,7 +15,7 @@ type SessionUserWithId = {
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   pages: {
-    signIn: '/user/auth/sign-in',
+    signIn: "/user/auth/sign-in",
   },
   providers: [
     GoogleProvider({
@@ -32,29 +30,38 @@ export const authOptions: AuthOptions = {
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        console.log('CredentialsProvider authorize called with:', credentials);
+        console.log("CredentialsProvider authorize called with:", credentials);
         if (!credentials?.email || !credentials?.password) {
-          console.log('Missing credentials');
+          console.log("Missing credentials");
           return null;
         }
-        const user = await prisma.user.findUnique({ where: { email: credentials.email } });
-        console.log('User found:', user);
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
+        console.log("User found:", user);
         if (user && user.passwordHash) {
-          const bcrypt = await import('bcryptjs');
-          const valid = await bcrypt.compare(credentials.password, user.passwordHash);
-          console.log('Password valid:', valid);
+          const bcrypt = await import("bcryptjs");
+          const valid = await bcrypt.compare(
+            credentials.password,
+            user.passwordHash,
+          );
+          console.log("Password valid:", valid);
           if (valid) {
-            console.log('Returning user for session:', { id: String(user.id), email: user.email, name: user.name });
+            console.log("Returning user for session:", {
+              id: String(user.id),
+              email: user.email,
+              name: user.name,
+            });
             return { id: String(user.id), email: user.email, name: user.name };
           }
         }
-        console.log('Invalid credentials');
+        console.log("Invalid credentials");
         return null;
-      }
-    })
+      },
+    }),
   ],
   session: {
     strategy: "database",
@@ -62,10 +69,10 @@ export const authOptions: AuthOptions = {
     updateAge: 24 * 60 * 60,
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === 'development',
+  debug: process.env.NODE_ENV === "development",
   callbacks: {
     async session({ session, user, token }) {
-      console.log('Session callback called:', { session, user, token });
+      console.log("Session callback called:", { session, user, token });
       // For database sessions, user is available; for JWT, use token.sub
       if (session.user) {
         if (user?.id) {
@@ -79,7 +86,7 @@ export const authOptions: AuthOptions = {
           session.user.email = token.email;
         }
       }
-      console.log('Session returned to client:', session);
+      console.log("Session returned to client:", session);
       return session;
     },
     async redirect({ url, baseUrl }) {
@@ -90,4 +97,4 @@ export const authOptions: AuthOptions = {
       return `${baseUrl}/user`;
     },
   },
-}; 
+};
