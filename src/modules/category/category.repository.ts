@@ -23,9 +23,49 @@ export async function findProductsByCategorySlug(params: {
     where: {
       category: { slug: params.slug },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { id: "desc" },
     take: params.take,
     skip: params.skip,
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      price: true,
+      imageUrl: true,
+      categoryId: true,
+      slug: true,
+      createdAt: true,
+      updatedAt: true,
+      stock: true,
+      isActive: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+    },
+  });
+}
+
+export async function findProductsByCategorySlugCursor(params: {
+  slug: string;
+  take?: number;
+  cursorId?: number;
+}) {
+  return prisma.product.findMany({
+    where: {
+      category: { slug: params.slug },
+    },
+    orderBy: { id: "desc" },
+    take: params.take,
+    ...(params.cursorId
+      ? {
+          cursor: { id: params.cursorId },
+          skip: 1,
+        }
+      : {}),
     select: {
       id: true,
       title: true,

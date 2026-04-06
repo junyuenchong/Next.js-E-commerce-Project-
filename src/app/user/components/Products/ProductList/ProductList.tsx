@@ -15,9 +15,12 @@ export default function ProductList({
   /** First page from the server for SSR + SEO (HTML includes product grid). */
   initialProducts?: Product[];
 }) {
-  const [page, setPage] = useState(1);
   const [products, setProducts] = useState<Product[]>(initialProducts ?? []);
   const [isLoading, setIsLoading] = useState(false);
+  const [cursor, setCursor] = useState<number | null>(() => {
+    const list = initialProducts ?? [];
+    return list.length > 0 ? list[list.length - 1].id : null;
+  });
   const [hasMore, setHasMore] = useState(() =>
     initialProducts != null && initialProducts.length > 0
       ? initialProducts.length === PAGE_SIZE
@@ -25,20 +28,28 @@ export default function ProductList({
   );
 
   const url = useMemo(() => {
+    const cursorPart =
+      cursor != null ? `&cursor=${encodeURIComponent(String(cursor))}` : "";
     return categorySlug
-      ? `/user/api/products?category=${encodeURIComponent(categorySlug)}&limit=${PAGE_SIZE}&page=${page}`
-      : `/user/api/products?limit=${PAGE_SIZE}&page=${page}`;
-  }, [categorySlug, page]);
+      ? `/user/api/products?category=${encodeURIComponent(
+          categorySlug,
+        )}&limit=${PAGE_SIZE}${cursorPart}`
+      : `/user/api/products?limit=${PAGE_SIZE}${cursorPart}`;
+  }, [categorySlug, cursor]);
 
   const { data } = useRealtimeQuery(
-    qk.user.productsList(categorySlug ?? null, page),
+    qk.user.productsList(categorySlug ?? null, cursor),
     async () => {
       const res = await fetch(url);
       return res.json();
     },
     {
       channels: "products",
-      initialData: page === 1 ? initialProducts : undefined,
+      initialData:
+        (initialProducts ?? []).length > 0 &&
+        cursor === (initialProducts ?? []).slice(-1)[0]?.id
+          ? { items: initialProducts, nextCursor: cursor }
+          : undefined,
       // Render fallback when SSE is unstable/unavailable.
       refetchInterval: 5000,
       refetchIntervalInBackground: true,
@@ -47,18 +58,26 @@ export default function ProductList({
 
   useEffect(() => {
     if (!data) return;
-    if (page === 1) {
-      setProducts(Array.isArray(data) ? data : []);
-    } else if (Array.isArray(data)) {
-      setProducts((prev) => [...prev, ...data]);
+    const items = Array.isArray(data)
+      ? data
+      : (data as { items?: Product[] })?.items;
+    const nextCursor =
+      !Array.isArray(data) && data && typeof data === "object"
+        ? ((data as { nextCursor?: number | null }).nextCursor ?? null)
+        : null;
+
+    if (Array.isArray(items)) {
+      setProducts((prev) => (cursor == null ? items : [...prev, ...items]));
+      setHasMore(items.length === PAGE_SIZE);
+      setCursor(
+        nextCursor ?? (items.length > 0 ? items[items.length - 1].id : null),
+      );
     }
-    setHasMore(Array.isArray(data) && data.length === PAGE_SIZE);
     setIsLoading(false);
-  }, [data, page]);
+  }, [data, cursor]);
 
   const handleLoadMore = useCallback(() => {
     setIsLoading(true);
-    setPage((p) => p + 1);
   }, []);
 
   if (!products.length && isLoading)

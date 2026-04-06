@@ -7,6 +7,7 @@ import {
   findCategoryById,
   findCategoryBySlug,
   findProductsByCategorySlug,
+  findProductsByCategorySlugCursor,
   listCategories,
   searchCategoriesByName,
   updateCategoryRecord,
@@ -57,6 +58,20 @@ export async function getProductsByCategorySlugService(
     slug: parsed.slug,
     take,
     skip,
+  });
+}
+
+export async function getProductsByCategorySlugCursorService(
+  slug: string,
+  limit?: number,
+  cursorId?: number,
+) {
+  const parsed = categorySlugSchema.parse({ slug });
+  const take = limit && limit > 0 ? limit : 20;
+  return findProductsByCategorySlugCursor({
+    slug: parsed.slug,
+    take,
+    cursorId,
   });
 }
 

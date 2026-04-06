@@ -43,9 +43,26 @@ export async function findProductById(id: number) {
 export async function findProducts(params: { take: number; skip: number }) {
   return prisma.product.findMany({
     select: productListSelect,
-    orderBy: { updatedAt: "desc" },
+    orderBy: { id: "desc" },
     take: params.take,
     skip: params.skip,
+  });
+}
+
+export async function findProductsCursor(params: {
+  take: number;
+  cursorId?: number;
+}) {
+  return prisma.product.findMany({
+    select: productListSelect,
+    orderBy: { id: "desc" },
+    take: params.take,
+    ...(params.cursorId
+      ? {
+          cursor: { id: params.cursorId },
+          skip: 1,
+        }
+      : {}),
   });
 }
 
@@ -60,7 +77,7 @@ export async function searchProductsQuery(query: string) {
       ],
     },
     select: productListSelect,
-    orderBy: { updatedAt: "desc" },
+    orderBy: { id: "desc" },
     take: 50,
   });
 }

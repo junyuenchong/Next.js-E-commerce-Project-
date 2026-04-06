@@ -6,6 +6,7 @@ import {
   findProductById,
   findProductBySlug,
   findProducts,
+  findProductsCursor,
   searchProductsQuery,
   slugExists,
   updateProductRecord,
@@ -83,6 +84,14 @@ export async function getProductByIdService(id: string) {
 export async function listProductsService(limit?: number, page?: number) {
   const { take, skip } = normalizePagination(limit, page);
   return findProducts({ take, skip });
+}
+
+export async function listProductsCursorService(
+  limit?: number,
+  cursorId?: number,
+) {
+  const take = limit && limit > 0 ? limit : 20;
+  return findProductsCursor({ take, cursorId });
 }
 
 export async function searchProductsService(query: string) {

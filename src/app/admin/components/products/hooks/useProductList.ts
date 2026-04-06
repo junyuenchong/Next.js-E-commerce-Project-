@@ -45,7 +45,7 @@ export function useProductList() {
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  const [cursor, setCursor] = useState<number | null>(null);
   const [allProducts, setAllProducts] = useState<ProductWithCategory[]>([]);
   const [isEnd, setIsEnd] = useState(false);
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
@@ -60,26 +60,30 @@ export function useProductList() {
   useEffect(() => {
     setAllProducts([]);
     setIsEnd(false);
-    setPage(1);
+    setCursor(null);
     setSearch(effectiveSearch);
     setOptimisticUpdates(new Map());
   }, [effectiveSearch, urlSearch, search]);
 
   const fetchUrl = useMemo(
     () =>
-      `/admin/api/products?limit=${PAGE_SIZE}&page=${page}&q=${encodeURIComponent(
+      `/admin/api/products?limit=${PAGE_SIZE}&q=${encodeURIComponent(
         effectiveSearch,
-      )}`,
-    [effectiveSearch, page],
+      )}${cursor != null ? `&cursor=${encodeURIComponent(String(cursor))}` : ""}`,
+    [effectiveSearch, cursor],
   );
 
-  const query = useQuery<ProductWithCategory[]>({
+  const query = useQuery<{
+    items: ProductWithCategory[];
+    nextCursor: number | null;
+  }>({
     queryKey: qk.admin.productsList(fetchUrl),
     queryFn: () => fetcher(fetchUrl),
     staleTime: 1000,
   });
 
-  const productsPage = query.data;
+  const productsPage = query.data?.items;
+  const nextCursor = query.data?.nextCursor ?? null;
   const isLoading = query.isLoading;
   const error = query.error;
 
@@ -121,24 +125,19 @@ export function useProductList() {
     if (productsPage) {
       const productsWithUpdates = applyOptimisticUpdates(productsPage);
       if (productsWithUpdates.length > 0) {
-        if (page === 1) {
-          setAllProducts(productsWithUpdates);
-        } else {
-          setAllProducts((prev) => {
-            const ids = new Set(prev.map((p) => p.id));
-            const newProducts = productsWithUpdates.filter(
-              (p) => !ids.has(p.id),
-            );
-            return [...prev, ...newProducts];
-          });
-        }
+        setAllProducts((prev) => {
+          if (prev.length === 0) return productsWithUpdates;
+          const ids = new Set(prev.map((p) => p.id));
+          const newProducts = productsWithUpdates.filter((p) => !ids.has(p.id));
+          return [...prev, ...newProducts];
+        });
         if (productsWithUpdates.length < PAGE_SIZE) setIsEnd(true);
       } else {
-        if (page === 1) setAllProducts([]);
+        if (allProducts.length === 0) setAllProducts([]);
         setIsEnd(true);
       }
     }
-  }, [productsPage, page, applyOptimisticUpdates]);
+  }, [productsPage, applyOptimisticUpdates, allProducts.length]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -279,7 +278,8 @@ export function useProductList() {
 
   // Pagination control for infinite "load more" behavior.
   const handleLoadMore = () => {
-    if (!isEnd && !isLoading) setPage((p) => p + 1);
+    if (isEnd || isLoading) return;
+    if (nextCursor != null) setCursor(nextCursor);
   };
 
   return {

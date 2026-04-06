@@ -2,10 +2,13 @@ import type { QueryKey } from "@tanstack/react-query";
 
 export const qk = {
   user: {
-    productsList: (categorySlug: string | null, page: number): QueryKey => [
+    productsList: (
+      categorySlug: string | null,
+      cursor: number | null,
+    ): QueryKey => [
       "products",
       "list",
-      { scope: "user", categorySlug, page },
+      { scope: "user", categorySlug, cursor },
     ],
     productDetail: (id: string): QueryKey => [
       "products",

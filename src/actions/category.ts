@@ -12,6 +12,7 @@ import {
   getAllCategoriesService,
   getCategoryByIdService,
   getCategoryBySlugService,
+  getProductsByCategorySlugCursorService,
   getProductsByCategorySlugService,
   searchCategoriesService,
   updateCategoryService,
@@ -67,6 +68,15 @@ export async function getProductsByCategorySlug(
   );
 
   return products;
+}
+
+// Cursor variant: fast load-more pagination by product id.
+export async function getProductsByCategorySlugCursor(
+  slug: string,
+  limit?: number,
+  cursorId?: number,
+) {
+  return getProductsByCategorySlugCursorService(slug, limit, cursorId);
 }
 
 /* ----------------------

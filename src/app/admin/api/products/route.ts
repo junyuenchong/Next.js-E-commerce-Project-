@@ -1,5 +1,6 @@
 import {
   getAllProducts,
+  getAllProductsCursor,
   searchProducts,
   updateProduct,
 } from "@/actions/product";
@@ -12,29 +13,45 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const limitParam = searchParams.get("limit");
   const pageParam = searchParams.get("page");
+  const cursorParam = searchParams.get("cursor");
   const q = searchParams.get("q") || "";
 
   const limit = limitParam ? parseInt(limitParam, 10) : 20;
   const page = pageParam ? parseInt(pageParam, 10) : 1;
+  const cursorId = cursorParam ? parseInt(cursorParam, 10) : undefined;
 
   try {
     let products: unknown[] = [];
     if (q.trim()) {
       products = await searchProducts(q);
     } else {
-      products = await getAllProducts(limit, page);
+      products =
+        cursorId != null && Number.isFinite(cursorId)
+          ? await getAllProductsCursor(limit, cursorId)
+          : await getAllProducts(limit, page);
     }
+    const list = Array.isArray(products) ? products : [];
+    const nextCursor =
+      list.length > 0 ? (list[list.length - 1] as { id?: number }).id : null;
     const headers = {
       "Cache-Control": "no-store",
       "x-nextjs-cache-tags": "products",
       "Content-Type": "application/json",
       "x-response-time": Date.now().toString(),
-      "x-products-count": products.length.toString(),
+      "x-products-count": list.length.toString(),
+      "x-next-cursor": nextCursor != null ? String(nextCursor) : "",
     };
-    return NextResponse.json(products, {
-      status: 200,
-      headers,
-    });
+
+    // Cursor pagination response shape: `{ items, nextCursor }`
+    if (cursorParam != null) {
+      return NextResponse.json(
+        { items: list, nextCursor },
+        { status: 200, headers },
+      );
+    }
+
+    // Backward-compatible response: array for legacy page-based callers
+    return NextResponse.json(list, { status: 200, headers });
   } catch {
     return NextResponse.json(
       { error: "Internal Server Error" },

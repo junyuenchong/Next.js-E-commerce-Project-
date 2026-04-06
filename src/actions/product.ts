@@ -10,6 +10,7 @@ import {
   deleteProductService,
   getProductByIdService,
   getProductBySlugService,
+  listProductsCursorService,
   listProductsService,
   searchProductsService,
   updateProductService,
@@ -85,6 +86,11 @@ export async function getAllProducts(limit?: number, page?: number) {
   await setCachedJson(cacheKey, products);
 
   return products;
+}
+
+// Cursor variant: fast, stable load-more pagination by product id.
+export async function getAllProductsCursor(limit?: number, cursorId?: number) {
+  return listProductsCursorService(limit, cursorId);
 }
 
 /* ----------------------

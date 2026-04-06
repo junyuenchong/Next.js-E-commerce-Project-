@@ -7,10 +7,16 @@ import React from "react";
 // Preload data immediately
 const preloadData = () => {
   // Preload the first page of products
-  fetch("/admin/api/products?limit=20&page=1")
+  fetch("/admin/api/products?limit=20")
     .then((response) => response.json())
     .then((data) => {
-      console.log("🚀 Preloaded products:", data.length);
+      const list = Array.isArray(data)
+        ? data
+        : (data as { items?: unknown[] })?.items;
+      console.log(
+        "🚀 Preloaded products:",
+        Array.isArray(list) ? list.length : 0,
+      );
     })
     .catch((error) => {
       console.error("❌ Preload failed:", error);

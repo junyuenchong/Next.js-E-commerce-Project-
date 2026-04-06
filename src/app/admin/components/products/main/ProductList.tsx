@@ -19,10 +19,10 @@ type AdminCategory = { id: number; name: string };
 const PAGE_SIZE = 10;
 
 const ProductList = forwardRef(function ProductList(_, ref) {
-  const [page, setPage] = useState(1);
   const [products, setProducts] = useState<ProductWithCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [cursor, setCursor] = useState<number | null>(null);
   const [, setIsRefreshing] = useState(false);
   // --- Editing state ---
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -37,11 +37,14 @@ const ProductList = forwardRef(function ProductList(_, ref) {
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
   const url = useMemo(
-    () => `/admin/api/products?limit=${PAGE_SIZE}&page=${page}`,
-    [page],
+    () =>
+      `/admin/api/products?limit=${PAGE_SIZE}${
+        cursor != null ? `&cursor=${encodeURIComponent(String(cursor))}` : ""
+      }`,
+    [cursor],
   );
   const { data, refetch } = useRealtimeQuery(
-    ["admin-products", page],
+    ["admin-products", cursor],
     async () => {
       const res = await fetch(url);
       return res.json();
@@ -64,23 +67,31 @@ const ProductList = forwardRef(function ProductList(_, ref) {
   // Merge each fetched page into local list state.
   useEffect(() => {
     if (!data) return;
-    if (page === 1) {
-      setProducts(Array.isArray(data) ? data : []);
-    } else if (Array.isArray(data)) {
-      setProducts((prev) => [...prev, ...data]);
+    const items = Array.isArray(data)
+      ? data
+      : (data as { items?: ProductWithCategory[] })?.items;
+    const nextCursor =
+      !Array.isArray(data) && data && typeof data === "object"
+        ? ((data as { nextCursor?: number | null }).nextCursor ?? null)
+        : null;
+
+    if (Array.isArray(items)) {
+      setProducts((prev) => (cursor == null ? items : [...prev, ...items]));
+      setHasMore(items.length === PAGE_SIZE);
+      setCursor(
+        nextCursor ?? (items.length > 0 ? items[items.length - 1].id : null),
+      );
     }
-    setHasMore(Array.isArray(data) && data.length === PAGE_SIZE);
     setIsLoading(false);
-  }, [data, page]);
+  }, [data, cursor]);
 
   const handleLoadMore = useCallback(() => {
     setIsLoading(true);
-    setPage((p) => p + 1);
   }, []);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    setPage(1);
+    setCursor(null);
     await refetch();
     setIsRefreshing(false);
   }, [refetch]);
