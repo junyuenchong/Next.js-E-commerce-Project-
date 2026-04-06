@@ -42,6 +42,9 @@ const ProductDetailClient = memo(function ProductDetailClient({
     {
       channels: "products",
       initialData: initialProduct,
+      // Render can be unreliable for long-lived SSE; keep detail fresh via polling too.
+      refetchInterval: 5000,
+      refetchIntervalInBackground: true,
     },
   );
 

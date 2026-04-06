@@ -32,8 +32,14 @@ export function useAdminResourceSSE(
 
     const onMessage = (ev: MessageEvent) => {
       try {
-        const data = JSON.parse(String(ev.data)) as { type?: string };
-        if (data.type === "status") return;
+        const data = JSON.parse(String(ev.data)) as {
+          type?: string;
+          realtime?: boolean;
+        };
+        if (data.type === "status") {
+          if (data.realtime === false) startPolling();
+          return;
+        }
         onInvalidateRef.current();
       } catch {
         /* ignore non-JSON payloads */

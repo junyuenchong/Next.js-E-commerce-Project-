@@ -69,22 +69,48 @@ export function useRealtimeQuery<TQueryFnData>(
     };
 
     let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let noEventTimer: ReturnType<typeof setTimeout> | null = null;
     const startPolling = () => {
       if (pollTimer) return;
       pollTimer = setInterval(invalidate, fallbackIntervalMs);
+    };
+    const resetNoEventTimer = () => {
+      if (noEventTimer) clearTimeout(noEventTimer);
+      noEventTimer = setTimeout(startPolling, fallbackIntervalMs);
     };
 
     const es = new EventSource(
       `/user/api/events?channels=${encodeURIComponent(normalized.join(","))}`,
     );
+    // If connection is established but no useful events arrive, fallback to polling.
+    resetNoEventTimer();
 
-    es.onmessage = invalidate;
+    es.onmessage = (ev) => {
+      // If server reports realtime disabled (e.g. Redis not configured), enable polling.
+      try {
+        const data = JSON.parse(String(ev.data)) as {
+          type?: string;
+          realtime?: boolean;
+        };
+        if (data?.type === "status" && data.realtime === false) {
+          startPolling();
+          return;
+        }
+        if (data?.type !== "status") {
+          resetNoEventTimer();
+        }
+      } catch {
+        // ignore JSON parse errors; still treat as an invalidation signal
+      }
+      invalidate();
+    };
     // If SSE drops/unsupported, keep data fresh via polling.
     es.onerror = () => startPolling();
 
     return () => {
       es.close();
       if (pollTimer) clearInterval(pollTimer);
+      if (noEventTimer) clearTimeout(noEventTimer);
     };
   }, [channels, fallbackIntervalMs, matchKey, queryClient, queryKey]);
 

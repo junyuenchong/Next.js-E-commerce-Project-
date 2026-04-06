@@ -38,6 +38,9 @@ export default function ProductList({
     {
       channels: "products",
       initialData: page === 1 ? initialProducts : undefined,
+      // Render fallback when SSE is unstable/unavailable.
+      refetchInterval: 5000,
+      refetchIntervalInBackground: true,
     },
   );
 
