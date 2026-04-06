@@ -23,6 +23,9 @@ const CategoryInfoClient = memo(function CategoryInfoClient({
     {
       channels: "categories",
       initialData: initialCategory,
+      // Fallback for hosts where SSE is unstable/unavailable.
+      refetchInterval: 5000,
+      refetchIntervalInBackground: true,
     },
   );
 
