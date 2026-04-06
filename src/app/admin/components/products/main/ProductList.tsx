@@ -61,6 +61,7 @@ const ProductList = forwardRef(function ProductList(_, ref) {
     retry: 1,
   });
 
+  // Merge each fetched page into local list state.
   useEffect(() => {
     if (!data) return;
     if (page === 1) {

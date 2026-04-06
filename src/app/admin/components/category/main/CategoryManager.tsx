@@ -32,6 +32,7 @@ const CategoryManager = memo(function CategoryManager({
   onSearch,
   onRefresh,
 }: CategoryManagerComponentProps) {
+  // Centralized category UI state and actions come from one hook.
   const {
     // State
     name,

@@ -4,6 +4,7 @@ import type { Category, Product } from "@prisma/client";
 import SalesCampaignBanner from "../../components/SalesCampaignBanner/SalesCampaignBanner";
 import ProductList from "@/app/user/components/Products/ProductList/ProductList";
 import { useRealtimeQuery } from "@/lib/hooks/useRealtimeQuery";
+import { qk } from "@/lib/query-keys";
 
 const CategoryInfoClient = memo(function CategoryInfoClient({
   slug,
@@ -15,7 +16,7 @@ const CategoryInfoClient = memo(function CategoryInfoClient({
   initialProducts?: Product[];
 }) {
   const { data: category } = useRealtimeQuery(
-    ["user-category", slug],
+    qk.user.categoryDetail(slug),
     async () => {
       const res = await fetch(`/user/api/categories/${slug}`);
       return res.json();

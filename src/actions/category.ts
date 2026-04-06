@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { getCachedJson, setCachedJson, deleteCacheKeys } from "@/lib/redis";
 import { publishAdminCategoryEvent } from "@/lib/admin-events";
+import { cacheKeys } from "@/lib/cache-keys";
 import { listProductsService } from "@/modules/product/product.service";
 import {
   createCategoryService,
@@ -20,7 +21,7 @@ import {
  GET CATEGORY BY SLUG
 ------------------------- */
 export async function getCategoryBySlug(slug: string) {
-  const cacheKey = `category:slug:${slug}`;
+  const cacheKey = cacheKeys.categoryBySlug(slug);
   const cached = await getCachedJson<unknown>(cacheKey);
   if (cached) return cached;
 
@@ -56,8 +57,14 @@ export async function getProductsByCategorySlug(
   page?: number,
 ) {
   const products = await getProductsByCategorySlugService(slug, limit, page);
-  const cacheKey = `products:by-category:${slug}:${limit || "all"}:${page || 1}`;
-  await setCachedJson(cacheKey, products);
+  await setCachedJson(
+    cacheKeys.productsByCategory(
+      slug,
+      (limit ?? "all") as number | "all",
+      page || 1,
+    ),
+    products,
+  );
 
   return products;
 }
@@ -72,7 +79,7 @@ export async function createCategory(name: string) {
     revalidatePath("/admin/categories");
 
     // Invalidate category-related caches
-    await deleteCacheKeys(["categories:all"]);
+    await deleteCacheKeys([cacheKeys.categoriesAll()]);
 
     await publishAdminCategoryEvent({ kind: "created", id: category.id });
 
@@ -112,7 +119,10 @@ export async function updateCategory(id: number, name: string) {
 
     revalidatePath("/admin/categories");
 
-    await deleteCacheKeys(["categories:all", `category:slug:${updated.slug}`]);
+    await deleteCacheKeys([
+      cacheKeys.categoriesAll(),
+      cacheKeys.categoryBySlug(updated.slug),
+    ]);
 
     await publishAdminCategoryEvent({ kind: "updated", id: updated.id });
 
@@ -137,7 +147,7 @@ export async function deleteCategory(id: number) {
 
     revalidatePath("/admin/categories");
 
-    await deleteCacheKeys(["categories:all"]);
+    await deleteCacheKeys([cacheKeys.categoriesAll()]);
 
     await publishAdminCategoryEvent({ kind: "deleted", id: deleted.id });
 

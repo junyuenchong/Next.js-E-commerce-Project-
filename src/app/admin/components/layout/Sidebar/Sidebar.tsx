@@ -7,7 +7,11 @@ import { LayoutDashboard, Tag, Package, LogOut, Menu } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const links = [
-  { name: "Dashboard", href: "/admin/dashboard", icon: <LayoutDashboard size={18} /> },
+  {
+    name: "Dashboard",
+    href: "/admin/dashboard",
+    icon: <LayoutDashboard size={18} />,
+  },
   { name: "Categories", href: "/admin/categories", icon: <Tag size={18} /> },
   { name: "Products", href: "/admin/products", icon: <Package size={18} /> },
 ];
@@ -60,14 +64,14 @@ export default function Sidebar() {
         <div
           className={clsx(
             "fixed inset-0 z-50 transition-all duration-300",
-            sidebarOpen ? "visible" : "pointer-events-none"
+            sidebarOpen ? "visible" : "pointer-events-none",
           )}
         >
           {/* Overlay */}
           <div
             className={clsx(
               "absolute inset-0 bg-transparent bg-opacity-40 transition-opacity duration-300",
-              sidebarOpen ? "opacity-100" : "opacity-0"
+              sidebarOpen ? "opacity-100" : "opacity-0",
             )}
             onClick={() => setSidebarOpen(false)}
           />
@@ -75,28 +79,51 @@ export default function Sidebar() {
           <aside
             className={clsx(
               "absolute top-0 left-0 h-full w-64 bg-gray-950 text-white flex flex-col justify-between shadow-lg transition-transform duration-300",
-              sidebarOpen ? "translate-x-0" : "-translate-x-full"
+              sidebarOpen ? "translate-x-0" : "-translate-x-full",
             )}
           >
             <div>
               {/* Logo / Brand */}
               <div className="p-6 border-b border-gray-800 flex items-center justify-between">
-                <h1 className="text-xl font-bold tracking-wide text-white">Admin Panel</h1>
+                <h1 className="text-xl font-bold tracking-wide text-white">
+                  Admin Panel
+                </h1>
                 <button
                   aria-label="Close sidebar"
                   onClick={() => setSidebarOpen(false)}
                   className="ml-2 p-1 rounded hover:bg-gray-800 transition"
                 >
-                  <svg width="20" height="20" viewBox="0 0 20 20" className="text-gray-400">
-                    <line x1="5" y1="5" x2="15" y2="15" stroke="currentColor" strokeWidth="2" />
-                    <line x1="15" y1="5" x2="5" y2="15" stroke="currentColor" strokeWidth="2" />
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    className="text-gray-400"
+                  >
+                    <line
+                      x1="5"
+                      y1="5"
+                      x2="15"
+                      y2="15"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <line
+                      x1="15"
+                      y1="5"
+                      x2="5"
+                      y2="15"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
                   </svg>
                 </button>
               </div>
 
               {/* Nav links */}
               <nav className="p-4 space-y-1">
-                <h3 className="text-sm text-gray-400 uppercase mb-2 px-2">Main</h3>
+                <h3 className="text-sm text-gray-400 uppercase mb-2 px-2">
+                  Main
+                </h3>
                 {links.map((link) => {
                   const isActive = pathname === link.href;
                   return (
@@ -107,7 +134,7 @@ export default function Sidebar() {
                         "flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium transition",
                         isActive
                           ? "bg-gray-800 text-white"
-                          : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                          : "text-gray-400 hover:bg-gray-800 hover:text-white",
                       )}
                       onClick={() => setSidebarOpen(false)}
                     >
@@ -140,7 +167,9 @@ export default function Sidebar() {
       <div>
         {/* Logo / Brand */}
         <div className="p-6 border-b border-gray-800">
-          <h1 className="text-xl font-bold tracking-wide text-white">Admin Panel</h1>
+          <h1 className="text-xl font-bold tracking-wide text-white">
+            Admin Panel
+          </h1>
         </div>
 
         {/* Nav links */}
@@ -156,7 +185,7 @@ export default function Sidebar() {
                   "flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium transition",
                   isActive
                     ? "bg-gray-800 text-white"
-                    : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                    : "text-gray-400 hover:bg-gray-800 hover:text-white",
                 )}
               >
                 {link.icon}

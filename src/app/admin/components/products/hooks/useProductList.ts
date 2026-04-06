@@ -7,9 +7,11 @@ import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { productSchema } from "@/lib/validators";
 import { Product, Category } from "@prisma/client";
 import axios from "axios";
-import { useAdminResourceSSE } from "@/app/admin/hooks/useAdminResourceSSE";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRealtimeInvalidate } from "@/lib/hooks/useRealtimeQuery";
+import { qk } from "@/lib/query-keys";
 
+// Admin product hook: handles product list fetch, search, edit, and realtime refresh.
 // Types
 interface ProductWithCategory extends Product {
   category?: Category;
@@ -54,6 +56,7 @@ export function useProductList() {
   const urlSearch = searchParams?.get("q") ?? "";
   const effectiveSearch = urlSearch || search || "";
 
+  // Reset paging and merged state when search input/source changes.
   useEffect(() => {
     setAllProducts([]);
     setIsEnd(false);
@@ -71,7 +74,7 @@ export function useProductList() {
   );
 
   const query = useQuery<ProductWithCategory[]>({
-    queryKey: ["admin-products", fetchUrl],
+    queryKey: qk.admin.productsList(fetchUrl),
     queryFn: () => fetcher(fetchUrl),
     staleTime: 1000,
   });
@@ -80,10 +83,28 @@ export function useProductList() {
   const isLoading = query.isLoading;
   const error = query.error;
 
-  useAdminResourceSSE("/admin/api/events/products", () => {
-    queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+  useRealtimeInvalidate(qk.admin.productsList("all"), {
+    eventsUrl: "/admin/api/events/products",
+    matchKey: (key) =>
+      Array.isArray(key) &&
+      key[0] === "products" &&
+      key[1] === "list" &&
+      (key[2] as { scope?: string } | undefined)?.scope === "admin",
   });
 
+  // Shared invalidation for any admin product list query variant.
+  const invalidateAdminProducts = useCallback(() => {
+    queryClient.invalidateQueries({
+      predicate: (keyedQuery) =>
+        Array.isArray(keyedQuery.queryKey) &&
+        keyedQuery.queryKey[0] === "products" &&
+        keyedQuery.queryKey[1] === "list" &&
+        (keyedQuery.queryKey[2] as { scope?: string } | undefined)?.scope ===
+          "admin",
+    });
+  }, [queryClient]);
+
+  // Apply optimistic product patches before rendering the current page result.
   const applyOptimisticUpdates = useCallback(
     (products: ProductWithCategory[]) => {
       if (optimisticUpdates.size === 0) return products;
@@ -95,6 +116,7 @@ export function useProductList() {
     [optimisticUpdates],
   );
 
+  // Merge current page into accumulated list and mark end of results.
   useEffect(() => {
     if (productsPage) {
       const productsWithUpdates = applyOptimisticUpdates(productsPage);
@@ -125,6 +147,7 @@ export function useProductList() {
 
   const handleSearchChange = (value: string) => setSearch(value);
 
+  // Seed edit form state from the selected product card.
   const handleEditClick = (product: ProductWithCategory) => {
     setEditingId(product.id);
     setEditForm({
@@ -139,6 +162,7 @@ export function useProductList() {
     setEditErrors({});
   };
 
+  // Keep edit form in sync with user input and clear field-level errors.
   const handleEditChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -151,6 +175,7 @@ export function useProductList() {
     }
   };
 
+  // Capture a local image preview before upload.
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -159,6 +184,7 @@ export function useProductList() {
     }
   };
 
+  // Validate product payload before attempting server update.
   const validateEditForm = () => {
     const payload = {
       title: editForm.title,
@@ -181,6 +207,7 @@ export function useProductList() {
     return true;
   };
 
+  // Persist edits with optimistic UI and rollback on failure.
   const handleUpdate = async (id: number) => {
     if (!validateEditForm()) return;
 
@@ -216,7 +243,7 @@ export function useProductList() {
 
       alert("✅ Product updated!");
       setEditingId(null);
-      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+      invalidateAdminProducts();
       router.refresh();
     } catch (error) {
       setOptimisticUpdates((prev) => {
@@ -232,15 +259,16 @@ export function useProductList() {
     }
   };
 
+  // Delete product with optimistic removal and refetch if request fails.
   const handleDelete = async (id: number) => {
     if (confirm("Delete this product?")) {
       setAllProducts((prev) => prev.filter((p) => p.id !== id));
       try {
         await deleteProduct(id);
-        queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+        invalidateAdminProducts();
         router.refresh();
       } catch (error) {
-        queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+        invalidateAdminProducts();
         alert(
           "❌ Delete failed: " +
             (error instanceof Error ? error.message : "Unknown error"),
@@ -249,6 +277,7 @@ export function useProductList() {
     }
   };
 
+  // Pagination control for infinite "load more" behavior.
   const handleLoadMore = () => {
     if (!isEnd && !isLoading) setPage((p) => p + 1);
   };

@@ -1,6 +1,6 @@
 /**
  * Admin Product Components - Main Export File
- * 
+ *
  * This file provides a centralized export for all admin product management components.
  * Components are organized by their purpose and can be imported individually or as a group.
  */
@@ -36,7 +36,10 @@ export { useProductList } from "./hooks/useProductList";
 // TYPE EXPORTS
 // ============================================================================
 // TypeScript type definitions for external use
-export type { ProductWithCategory, ProductItemProps } from "./types/ProductItem";
+export type {
+  ProductWithCategory,
+  ProductItemProps,
+} from "./types/ProductItem";
 
 // ============================================================================
 // CONVENIENCE EXPORTS
@@ -61,4 +64,4 @@ export const ProductComponents = {
 
 export const ProductHooks = {
   useProductList,
-} as const; 
+} as const;

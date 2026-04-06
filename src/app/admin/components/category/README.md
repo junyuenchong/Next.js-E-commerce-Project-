@@ -23,6 +23,7 @@ src/app/admin/components/category/
 ## 🚀 Quick Start
 
 ### Basic Usage
+
 ```tsx
 import { CategoryManager } from "@/app/admin/components/category";
 
@@ -39,12 +40,13 @@ function AdminCategoriesPage() {
 ```
 
 ### Advanced Usage with Individual Components
+
 ```tsx
-import { 
-  CategoryForm, 
-  CategorySearch, 
+import {
+  CategoryForm,
+  CategorySearch,
   CategoryList,
-  useCategoryManager 
+  useCategoryManager,
 } from "@/app/admin/components/category";
 
 function CustomCategoryPage() {
@@ -66,7 +68,7 @@ function CustomCategoryPage() {
     onDelete,
     onSearch,
   });
-  
+
   return (
     <div>
       <CategoryForm
@@ -92,8 +94,12 @@ function CustomCategoryPage() {
 ```
 
 ### Convenience Exports
+
 ```tsx
-import { CategoryComponents, CategoryHooks } from "@/app/admin/components/category";
+import {
+  CategoryComponents,
+  CategoryHooks,
+} from "@/app/admin/components/category";
 
 // Access all components
 const { CategoryManager, CategoryForm, CategoryItem } = CategoryComponents;
@@ -107,6 +113,7 @@ const { useCategoryManager } = CategoryHooks;
 ### Main Components (`/main/`)
 
 #### CategoryManager.tsx
+
 - **Purpose**: Main container component that orchestrates all category management functionality
 - **Size**: 67 lines (56% reduction from original 151 lines)
 - **Features**:
@@ -118,6 +125,7 @@ const { useCategoryManager } = CategoryHooks;
 ### Sub-Components (`/sub/`)
 
 #### CategoryForm.tsx
+
 - **Purpose**: Category creation and editing form
 - **Features**:
   - Form validation
@@ -126,6 +134,7 @@ const { useCategoryManager } = CategoryHooks;
   - Responsive design with focus states
 
 #### CategorySearch.tsx
+
 - **Purpose**: Search input and form handling
 - **Features**:
   - Search input with focus states
@@ -134,6 +143,7 @@ const { useCategoryManager } = CategoryHooks;
   - Clean UI with hover effects
 
 #### CategoryList.tsx
+
 - **Purpose**: List display for categories
 - **Features**:
   - Empty state handling
@@ -144,6 +154,7 @@ const { useCategoryManager } = CategoryHooks;
 ### Type Components (`/types/`)
 
 #### CategoryItem.tsx
+
 - **Purpose**: Individual category item with edit/delete functionality
 - **Features**:
   - Displays category information (name)
@@ -154,6 +165,7 @@ const { useCategoryManager } = CategoryHooks;
 ### Custom Hooks (`/hooks/`)
 
 #### useCategoryManager.ts
+
 - **Purpose**: Custom hook for all category management state and logic
 - **Features**:
   - Search functionality
@@ -165,6 +177,7 @@ const { useCategoryManager } = CategoryHooks;
 ## 🔧 API Reference
 
 ### CategoryManager Props
+
 ```tsx
 interface CategoryManagerProps {
   categories: Category[];
@@ -175,6 +188,7 @@ interface CategoryManagerProps {
 ```
 
 ### CategoryForm Props
+
 ```tsx
 interface CategoryFormProps {
   name: string;
@@ -186,6 +200,7 @@ interface CategoryFormProps {
 ```
 
 ### CategoryItem Props
+
 ```tsx
 interface CategoryItemProps {
   category: Category;
@@ -195,6 +210,7 @@ interface CategoryItemProps {
 ```
 
 ### Category Type
+
 ```tsx
 interface Category {
   id: number;
@@ -219,6 +235,7 @@ interface Category {
 ## 🔄 State Management
 
 The `useCategoryManager` hook centralizes all state management:
+
 - **Form State**: Category name and edit mode
 - **Search State**: Search query and filtered results
 - **Loading State**: Form submission loading
@@ -238,11 +255,18 @@ This approach eliminates prop drilling and makes the component tree cleaner.
 Each component can be tested independently:
 
 ```tsx
-import { render, screen } from '@testing-library/react';
-import { CategoryManager } from '@/app/admin/components/category';
+import { render, screen } from "@testing-library/react";
+import { CategoryManager } from "@/app/admin/components/category";
 
-test('renders category manager', () => {
-  render(<CategoryManager categories={[]} onSubmit={mockSubmit} onDelete={mockDelete} onSearch={mockSearch} />);
+test("renders category manager", () => {
+  render(
+    <CategoryManager
+      categories={[]}
+      onSubmit={mockSubmit}
+      onDelete={mockDelete}
+      onSearch={mockSearch}
+    />,
+  );
   expect(screen.getByText(/Manage Categories/i)).toBeInTheDocument();
 });
 ```
@@ -273,4 +297,4 @@ When adding new components or modifying existing ones:
 
 ## 📄 License
 
-This component library is part of the e-commerce project and follows the project's licensing terms. 
+This component library is part of the e-commerce project and follows the project's licensing terms.

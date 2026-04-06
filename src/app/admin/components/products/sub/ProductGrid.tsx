@@ -1,7 +1,10 @@
 "use client";
 
 import React from "react";
-import ProductItem, { ProductWithCategory, ProductItemProps } from "../types/ProductItem";
+import ProductItem, {
+  ProductWithCategory,
+  ProductItemProps,
+} from "../types/ProductItem";
 
 interface ProductGridProps {
   products: ProductWithCategory[];
@@ -11,13 +14,21 @@ interface ProductGridProps {
   onProductDeleted?: () => void;
 }
 
-const ProductGrid: React.FC<ProductGridProps> = ({ products, itemProps = {}, onProductCreated, onProductUpdated, onProductDeleted }) => {
+const ProductGrid: React.FC<ProductGridProps> = ({
+  products,
+  itemProps = {},
+  onProductCreated,
+  onProductUpdated,
+  onProductDeleted,
+}) => {
   return (
     <div className="w-full">
       {products.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-gray-500 text-lg">No products found</div>
-          <div className="text-gray-400 text-sm mt-2">Create your first product to get started</div>
+          <div className="text-gray-400 text-sm mt-2">
+            Create your first product to get started
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
@@ -48,4 +59,4 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products, itemProps = {}, onP
   );
 };
 
-export default ProductGrid; 
+export default ProductGrid;

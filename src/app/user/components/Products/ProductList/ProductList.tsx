@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ProductGrid from "../ProductGrid/ProductGrid";
 import { Product } from "@prisma/client";
 import { useRealtimeQuery } from "@/lib/hooks/useRealtimeQuery";
+import { qk } from "@/lib/query-keys";
 
 const PAGE_SIZE = 10;
 
@@ -30,7 +31,7 @@ export default function ProductList({
   }, [categorySlug, page]);
 
   const { data } = useRealtimeQuery(
-    ["user-products", { categorySlug: categorySlug ?? null, page }],
+    qk.user.productsList(categorySlug ?? null, page),
     async () => {
       const res = await fetch(url);
       return res.json();

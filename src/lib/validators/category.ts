@@ -6,4 +6,4 @@ export const categorySchema = z.object({
 
 export const categorySlugSchema = z.object({
   slug: z.string().min(1),
-}); 
+});

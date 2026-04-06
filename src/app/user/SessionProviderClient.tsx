@@ -8,6 +8,9 @@ interface SessionProviderClientProps {
   session: Session | null;
 }
 
-export default function SessionProviderClient({ children, session }: SessionProviderClientProps) {
+export default function SessionProviderClient({
+  children,
+  session,
+}: SessionProviderClientProps) {
   return <SessionProvider session={session}>{children}</SessionProvider>;
-} 
+}

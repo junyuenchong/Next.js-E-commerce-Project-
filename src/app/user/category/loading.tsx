@@ -53,7 +53,10 @@ export default function CategoryLoading() {
         {/* Product grid skeleton */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div
+              key={i}
+              className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+            >
               <div className="aspect-square bg-gray-200 animate-pulse"></div>
               <div className="p-4 space-y-3">
                 <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
@@ -67,4 +70,4 @@ export default function CategoryLoading() {
       </section>
     </div>
   );
-} 
+}

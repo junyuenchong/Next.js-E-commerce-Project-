@@ -16,6 +16,7 @@ import {
 } from "./auth.repository";
 import { mergeGuestCartToUserService } from "@/modules/cart/cart.service";
 
+// Auth service: manages session lifecycle, login/signup, and cookie helpers.
 export type SessionValidationResult =
   | { session: Session; user: Omit<User, "passwordHash"> }
   | { session: null; user: null };

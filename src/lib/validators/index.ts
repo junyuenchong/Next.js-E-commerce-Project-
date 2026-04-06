@@ -1,6 +1,6 @@
 /**
  * Validators - Main Export File
- * 
+ *
  * This file provides centralized exports for all Zod validators used in the application.
  */
 
@@ -17,4 +17,4 @@ export * from "./category";
 // ============================================================================
 // CART VALIDATORS
 // ============================================================================
-export * from "./cart"; 
+export * from "./cart";

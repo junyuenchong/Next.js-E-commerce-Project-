@@ -1,23 +1,23 @@
 const nextConfig = {
   // ✅ Enable standalone build for optimized Docker/Nixpacks deployment
-  output: 'standalone',
+  output: "standalone",
 
   // ✅ Allow loading remote images from specific domains
   images: {
     unoptimized: true,
     domains: [
-      'lh3.googleusercontent.com',
-      'platform-lookaside.fbsbx.com',
+      "lh3.googleusercontent.com",
+      "platform-lookaside.fbsbx.com",
       // add other domains as needed
     ],
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
+        protocol: "https",
+        hostname: "images.unsplash.com",
       },
       {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
+        protocol: "https",
+        hostname: "res.cloudinary.com",
       },
     ],
   },

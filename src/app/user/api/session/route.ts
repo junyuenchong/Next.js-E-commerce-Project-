@@ -14,4 +14,4 @@ export async function GET() {
     return NextResponse.json({ user: nextAuthSession.user });
   }
   return NextResponse.json({ user: null });
-} 
+}

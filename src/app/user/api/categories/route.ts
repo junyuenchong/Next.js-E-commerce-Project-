@@ -1,5 +1,5 @@
-import { getAllCategories } from '@/actions/category';
-import { NextResponse } from 'next/server';
+import { getAllCategories } from "@/actions/category";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
@@ -7,10 +7,13 @@ export async function GET() {
     return NextResponse.json(categories, {
       status: 200,
       headers: {
-        'Cache-Control': 'no-store',
+        "Cache-Control": "no-store",
       },
     });
   } catch {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
-} 
+}

@@ -10,7 +10,7 @@
     "build": "next build --no-lint",
     "start": "next start",
     "lint": "next lint",
-    "lint:fix": "eslint . --fix",
+    "lint:fix": "eslint src --fix",
     "format": "prettier --write .",
     "postinstall": "prisma generate",
     "prepare": "husky"

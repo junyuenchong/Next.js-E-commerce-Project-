@@ -2,9 +2,10 @@
 
 import { useCallback, useMemo } from "react";
 import CategoryManager, { CategoryManagerProps } from "../main/CategoryManager";
-import { useAdminResourceSSE } from "@/app/admin/hooks/useAdminResourceSSE";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Category } from "../types/CategoryItem";
+import { useRealtimeInvalidate } from "@/lib/hooks/useRealtimeQuery";
+import { qk } from "@/lib/query-keys";
 
 // Omit 'categories' from props for the wrapper
 export type CategoryManagerWrapperProps = Omit<
@@ -23,7 +24,7 @@ export default function CategoryManagerWrapper(
 ) {
   const queryClient = useQueryClient();
   const query = useQuery<Category[]>({
-    queryKey: ["admin-categories"],
+    queryKey: qk.admin.categories(),
     queryFn: fetcher,
     staleTime: 2000,
   });
@@ -31,14 +32,18 @@ export default function CategoryManagerWrapper(
   const error = query.error;
   const isLoading = query.isLoading;
 
-  const handleSSEEvent = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
-  }, [queryClient]);
-  useAdminResourceSSE("/admin/api/events/categories", handleSSEEvent);
+  useRealtimeInvalidate(qk.admin.categories(), {
+    eventsUrl: "/admin/api/events/categories",
+    matchKey: (key) =>
+      Array.isArray(key) &&
+      key[0] === "categories" &&
+      key[1] === "list" &&
+      (key[2] as { scope?: string } | undefined)?.scope === "admin",
+  });
 
   const handleRefresh = useCallback(async () => {
     try {
-      await queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
+      await queryClient.invalidateQueries({ queryKey: qk.admin.categories() });
     } catch (error) {
       console.error("Failed to refresh admin categories:", error);
     }

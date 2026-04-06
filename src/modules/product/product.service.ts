@@ -11,6 +11,7 @@ import {
   updateProductRecord,
 } from "./product.repository";
 
+// Product service: validates product input and coordinates repository operations.
 function normalizePagination(limit?: number, page?: number) {
   const take = limit && limit > 0 ? limit : 20;
   const skip = take && page && page > 1 ? (page - 1) * take : 0;

@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { useRealtimeInvalidate } from "@/lib/hooks/useRealtimeQuery";
 
+// Admin realtime wrapper: subscribes to admin event streams and triggers refresh callbacks.
 type AdminSSEPath =
   | "/admin/api/events/products"
   | "/admin/api/events/categories";
@@ -18,41 +20,10 @@ export function useAdminResourceSSE(
   const onInvalidateRef = useRef(onInvalidate);
   onInvalidateRef.current = onInvalidate;
 
-  useEffect(() => {
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-    const startPolling = () => {
-      if (pollTimer) return;
-      pollTimer = setInterval(
-        () => onInvalidateRef.current(),
-        fallbackIntervalMs,
-      );
-    };
-
-    const es = new EventSource(path);
-
-    const onMessage = (ev: MessageEvent) => {
-      try {
-        const data = JSON.parse(String(ev.data)) as {
-          type?: string;
-          realtime?: boolean;
-        };
-        if (data.type === "status") {
-          if (data.realtime === false) startPolling();
-          return;
-        }
-        onInvalidateRef.current();
-      } catch {
-        /* ignore non-JSON payloads */
-      }
-    };
-
-    es.onmessage = onMessage;
-    // Fallback for hosts where SSE is flaky/unavailable.
-    es.onerror = () => startPolling();
-
-    return () => {
-      es.close();
-      if (pollTimer) clearInterval(pollTimer);
-    };
-  }, [fallbackIntervalMs, path]);
+  useRealtimeInvalidate(["__admin-sse__"], {
+    eventsUrl: path,
+    fallbackIntervalMs,
+    matchKey: () => false,
+    onEvent: () => onInvalidateRef.current(),
+  });
 }

@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Category } from "../types/CategoryItem";
 
+// Admin category hook: manages category form, search, and CRUD UI interactions.
 export interface ActionResponse {
   message?: string;
   results?: Category[];
@@ -29,6 +30,7 @@ export function useCategoryManager({
   const [filtered, setFiltered] = useState(categories ?? []);
   const [loading, setLoading] = useState(false);
 
+  // Keep filtered list in sync when search is cleared or source categories change.
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFiltered(categories ?? []);
@@ -38,11 +40,13 @@ export function useCategoryManager({
   // Store a stable reference to onRefresh
   const onRefreshRef = useRef(onRefresh);
 
+  // Enter edit mode and prefill category form.
   const handleEdit = useCallback((id: number, name: string) => {
     setEditId(id);
     setName(name);
   }, []);
 
+  // Execute server-side category search and update filtered list.
   const handleSearch = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -60,6 +64,7 @@ export function useCategoryManager({
     [searchQuery, onSearch],
   );
 
+  // Create/update category, then trigger wrapper refresh callback.
   const handleSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -96,6 +101,7 @@ export function useCategoryManager({
     [name, editId, onSubmit],
   );
 
+  // Delete category by id and refresh list on success.
   const handleDelete = useCallback(
     async (id: number) => {
       if (!confirm("Are you sure you want to delete this category?")) return;
@@ -116,6 +122,7 @@ export function useCategoryManager({
     [onDelete],
   );
 
+  // Local input handlers for controlled form/search fields.
   const handleNameChange = useCallback((newName: string) => {
     setName(newName);
   }, []);

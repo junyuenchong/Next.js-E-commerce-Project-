@@ -18,6 +18,7 @@ import {
   updateCartLineItemQuantity,
 } from "./cart.repository";
 
+// Cart service: resolves user/guest cart context and applies cart business rules.
 type SessionUser = {
   id?: string;
   sub?: string;

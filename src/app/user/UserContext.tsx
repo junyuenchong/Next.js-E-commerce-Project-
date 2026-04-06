@@ -133,7 +133,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       wasLoggedIn.current = false;
       router.push("/"); // Redirect to homepage only once after logout
     }
-  }, [data?.user, isLoading, dispatch, router]);
+  }, [data?.user, isLoading, dispatch, queryClient, router]);
   return (
     <UserContext.Provider
       value={{ user: data?.user ? (data.user as User) : null, isLoading }}

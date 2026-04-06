@@ -7,6 +7,7 @@ import { Home, ChevronRight } from "lucide-react";
 import SalesCampaignBanner from "../../SalesCampaignBanner/SalesCampaignBanner";
 import { Product } from "@prisma/client";
 import { useRealtimeQuery } from "@/lib/hooks/useRealtimeQuery";
+import { qk } from "@/lib/query-keys";
 
 // Helper function to format price in RM
 const formatPriceRM = (price: number): string => {
@@ -34,7 +35,7 @@ const ProductDetailClient = memo(function ProductDetailClient({
   initialProduct: Product;
 }) {
   const { data: product } = useRealtimeQuery<Product>(
-    ["user-product", String(productId)],
+    qk.user.productDetail(String(productId)),
     async () => {
       const res = await fetch(`/user/api/products/${productId}`);
       return res.json();

@@ -1,10 +1,10 @@
-import { registerUser } from '@/actions/auth';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
-import { redirect } from 'next/navigation';
-import React from 'react';
-import zod from 'zod';
-import SignUp from '../components/auth/SignUp';
+import { registerUser } from "@/actions/auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
+import { redirect } from "next/navigation";
+import React from "react";
+import zod from "zod";
+import SignUp from "../components/auth/SignUp";
 
 const SignUpSchema = zod.object({
   email: zod.string().email(),
@@ -36,7 +36,9 @@ const SignUpPage = async () => {
       return { message: error };
     } else if (user) {
       // Redirect to sign-in page with pre-filled credentials
-      return redirect(`/user/auth/sign-in?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
+      return redirect(
+        `/user/auth/sign-in?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,
+      );
     }
   };
 

@@ -24,6 +24,7 @@ src/app/admin/components/products/
 ## 🚀 Quick Start
 
 ### Basic Usage
+
 ```tsx
 import { ProductList, ProductForm } from "@/app/admin/components/products";
 
@@ -42,12 +43,13 @@ function AdminProductsPage() {
 ```
 
 ### Advanced Usage with Individual Components
+
 ```tsx
-import { 
-  ProductSearch, 
-  ProductGrid, 
+import {
+  ProductSearch,
+  ProductGrid,
   LoadMoreButton,
-  useProductList 
+  useProductList,
 } from "@/app/admin/components/products";
 
 function CustomProductPage() {
@@ -59,7 +61,7 @@ function CustomProductPage() {
     handleLoadMore,
     // ... other state and handlers
   } = useProductList(products, categories);
-  
+
   return (
     <div>
       <ProductSearch
@@ -80,8 +82,12 @@ function CustomProductPage() {
 ```
 
 ### Convenience Exports
+
 ```tsx
-import { ProductComponents, ProductHooks } from "@/app/admin/components/products";
+import {
+  ProductComponents,
+  ProductHooks,
+} from "@/app/admin/components/products";
 
 // Access all components
 const { ProductList, ProductForm, ProductItem } = ProductComponents;
@@ -95,6 +101,7 @@ const { useProductList } = ProductHooks;
 ### Main Components (`/main/`)
 
 #### ProductList.tsx
+
 - **Purpose**: Main container component that orchestrates all product list functionality
 - **Size**: 86 lines (82% reduction from original 478 lines)
 - **Features**:
@@ -104,6 +111,7 @@ const { useProductList } = ProductHooks;
   - Optimized with React.memo and useCallback
 
 #### ProductForm.tsx
+
 - **Purpose**: Product creation and editing form
 - **Features**:
   - Form validation with Zod
@@ -114,6 +122,7 @@ const { useProductList } = ProductHooks;
 ### Sub-Components (`/sub/`)
 
 #### ProductSearch.tsx
+
 - **Purpose**: Search input and form handling
 - **Features**:
   - Debounced search input
@@ -122,6 +131,7 @@ const { useProductList } = ProductHooks;
   - URL synchronization
 
 #### ProductGrid.tsx
+
 - **Purpose**: Grid layout for displaying products
 - **Features**:
   - Responsive grid (1-4 columns based on screen size)
@@ -130,6 +140,7 @@ const { useProductList } = ProductHooks;
   - Optimized re-renders
 
 #### LoadMoreButton.tsx
+
 - **Purpose**: Pagination and loading states
 - **Features**:
   - Loading spinner animation
@@ -140,6 +151,7 @@ const { useProductList } = ProductHooks;
 ### Type Components (`/types/`)
 
 #### ProductItem.tsx
+
 - **Purpose**: Individual product card with edit/delete functionality
 - **Features**:
   - Displays product information (image, title, description, price, category)
@@ -152,6 +164,7 @@ const { useProductList } = ProductHooks;
 ### Custom Hooks (`/hooks/`)
 
 #### useProductList.ts
+
 - **Purpose**: Custom hook for all product list state and logic
 - **Features**:
   - Search functionality with URL sync
@@ -164,6 +177,7 @@ const { useProductList } = ProductHooks;
 ## 🔧 API Reference
 
 ### ProductList Props
+
 ```tsx
 interface ProductListProps {
   products: ProductWithCategory[];
@@ -173,6 +187,7 @@ interface ProductListProps {
 ```
 
 ### ProductForm Props
+
 ```tsx
 interface ProductFormProps {
   categories: Category[];
@@ -180,6 +195,7 @@ interface ProductFormProps {
 ```
 
 ### ProductItem Props
+
 ```tsx
 interface ProductItemProps {
   product: ProductWithCategory;
@@ -187,7 +203,9 @@ interface ProductItemProps {
   editForm: EditForm;
   previewUrl: string | null;
   categories: Category[];
-  handleEditChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+  handleEditChange: (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+  ) => void;
   handleImageChange: (e: ChangeEvent<HTMLInputElement>) => void;
   handleUpdate: (id: number) => void;
   setEditingId: (id: number | null) => void;
@@ -212,6 +230,7 @@ interface ProductItemProps {
 ## 🔄 State Management
 
 The `useProductList` hook centralizes all state management:
+
 - **Search State**: With URL synchronization
 - **Pagination State**: Page tracking and loading states
 - **Edit Form State**: Form data and validation
@@ -234,10 +253,10 @@ This approach eliminates prop drilling and makes the component tree cleaner.
 Each component can be tested independently:
 
 ```tsx
-import { render, screen } from '@testing-library/react';
-import { ProductList } from '@/app/admin/components/products';
+import { render, screen } from "@testing-library/react";
+import { ProductList } from "@/app/admin/components/products";
 
-test('renders product list', () => {
+test("renders product list", () => {
   render(<ProductList products={[]} categories={[]} />);
   expect(screen.getByText(/Product Management/i)).toBeInTheDocument();
 });
@@ -267,4 +286,4 @@ When adding new components or modifying existing ones:
 
 ## 📄 License
 
-This component library is part of the e-commerce project and follows the project's licensing terms. 
+This component library is part of the e-commerce project and follows the project's licensing terms.

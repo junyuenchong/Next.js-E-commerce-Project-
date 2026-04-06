@@ -17,9 +17,7 @@ const LoadMoreButton: React.FC<LoadMoreButtonProps> = ({
 }) => {
   if (isEnd && !hasProducts) {
     return (
-      <div className="text-center py-4 text-gray-500">
-        No products found.
-      </div>
+      <div className="text-center py-4 text-gray-500">No products found.</div>
     );
   }
 
@@ -33,9 +31,7 @@ const LoadMoreButton: React.FC<LoadMoreButtonProps> = ({
         onClick={onLoadMore}
         disabled={isLoading}
         className={`px-6 py-2 rounded bg-blue-600 text-white text-sm font-semibold flex items-center gap-2 transition-colors ${
-          isLoading 
-            ? "opacity-60 cursor-not-allowed" 
-            : "hover:bg-blue-700"
+          isLoading ? "opacity-60 cursor-not-allowed" : "hover:bg-blue-700"
         }`}
       >
         {isLoading ? (
@@ -70,4 +66,4 @@ const LoadMoreButton: React.FC<LoadMoreButtonProps> = ({
   );
 };
 
-export default LoadMoreButton; 
+export default LoadMoreButton;

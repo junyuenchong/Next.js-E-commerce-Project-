@@ -43,4 +43,4 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
   );
 };
 
-export default ProductSearch; 
+export default ProductSearch;

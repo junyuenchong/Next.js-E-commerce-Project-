@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Image from "next/image";
 import { createProduct } from "@/actions/product";
 import { productSchema } from "@/lib/validators/product";
@@ -23,7 +23,10 @@ export default function ProductForm({
     queryFn: () => fetcher("/admin/api/categories"),
     staleTime: 60000,
   });
-  const categories = categoriesQuery.data ?? [];
+  const categories = useMemo(
+    () => categoriesQuery.data ?? [],
+    [categoriesQuery.data],
+  );
   const categoriesLoading = categoriesQuery.isLoading;
 
   const [formData, setFormData] = useState({
@@ -99,6 +102,7 @@ export default function ProductForm({
     return true;
   }, [formData]);
 
+  // Submit flow: validate -> optional upload -> create product -> refresh lists.
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 

@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { getCachedJson, setCachedJson, deleteCacheKeys } from "@/lib/redis";
 import { publishBusinessEvent } from "@/lib/rabbitmq";
 import { publishAdminProductEvent } from "@/lib/admin-events";
+import { cacheKeys } from "@/lib/cache-keys";
 import {
   createProductService,
   deleteProductService,
@@ -42,7 +43,7 @@ export async function createProduct(data: unknown) {
  GET PRODUCT BY SLUG
 ------------------------- */
 export async function getProductBySlug(slug: string) {
-  const cacheKey = `product:slug:${slug}`;
+  const cacheKey = cacheKeys.productBySlug(slug);
   const cached = await getCachedJson<unknown>(cacheKey);
   if (cached) return cached;
 
@@ -58,7 +59,7 @@ export async function getProductBySlug(slug: string) {
  */
 export const getProductById = async (id: string) => {
   const productId = Number(id);
-  const cacheKey = `product:id:${productId}`;
+  const cacheKey = cacheKeys.productById(productId);
   const cached = await getCachedJson<unknown>(cacheKey as string);
   if (cached) return cached;
 
@@ -75,7 +76,7 @@ export const getProductById = async (id: string) => {
 export async function getAllProducts(limit?: number, page?: number) {
   const take = limit && limit > 0 ? limit : 20;
 
-  const cacheKey = `products:list:${take}:${page || 1}`;
+  const cacheKey = cacheKeys.productsList(take, page || 1);
   const cached = await getCachedJson<unknown[]>(cacheKey);
   if (cached) return cached;
 
@@ -96,9 +97,9 @@ export async function updateProduct(id: number, data: unknown) {
   revalidateTag("products");
 
   await deleteCacheKeys([
-    `product:id:${id}`,
-    `product:slug:${product.slug}`,
-    "products:list:20:1",
+    cacheKeys.productById(id),
+    cacheKeys.productBySlug(product.slug),
+    cacheKeys.productsList(20, 1),
   ]);
 
   await publishBusinessEvent("product.updated", {

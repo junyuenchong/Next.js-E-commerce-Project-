@@ -12,6 +12,7 @@ import {
   updateCategoryRecord,
 } from "./category.repository";
 
+// Category service: handles category validation, slug rules, and repository calls.
 function normalizePagination(limit?: number, page?: number) {
   const take = limit && limit > 0 ? limit : undefined;
   const skip = take && page && page > 1 ? (page - 1) * take : undefined;

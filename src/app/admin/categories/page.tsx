@@ -20,9 +20,9 @@ const CategoryPage = async () => {
     // Validate category name
     const validation = categorySchema.safeParse({ name });
     if (!validation.success) {
-      return { 
-        message: "Invalid category name", 
-        errors: validation.error.errors.map(e => e.message) 
+      return {
+        message: "Invalid category name",
+        errors: validation.error.errors.map((e) => e.message),
       };
     }
 
@@ -78,9 +78,9 @@ const CategoryPage = async () => {
 
     const validation = categorySchema.safeParse({ name: query.trim() });
     if (!validation.success) {
-      return { 
-        message: "Invalid search query", 
-        results: [] 
+      return {
+        message: "Invalid search query",
+        results: [],
       };
     }
 
