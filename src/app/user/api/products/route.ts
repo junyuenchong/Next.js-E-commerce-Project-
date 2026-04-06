@@ -1,11 +1,11 @@
 // Product API route: handles fetching and adding products
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 export const revalidate = 30; // Cache for 30 seconds
 
 import { getAllProducts, searchProducts } from "@/actions/product";
 import { getProductsByCategorySlug } from "@/actions/category";
-import { addToCart } from "@/actions/cart-actions";
+import { addToCart } from "@/actions/cart";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
@@ -14,10 +14,10 @@ export async function GET(req: Request) {
   const pageParam = searchParams.get("page");
   const q = searchParams.get("q") || "";
   const categorySlug = searchParams.get("category");
-  
+
   const limit = limitParam ? parseInt(limitParam, 10) : 20; // Increased default limit
   const page = pageParam ? parseInt(pageParam, 10) : 1;
-  
+
   let products;
   try {
     if (q.trim()) {
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     } else {
       products = await getAllProducts(limit, page);
     }
-    
+
     // Add performance headers
     const headers = {
       "Cache-Control": "no-store", // Always fetch fresh data
@@ -36,15 +36,15 @@ export async function GET(req: Request) {
       "x-response-time": Date.now().toString(), // For debugging
       "x-products-count": products.length.toString(),
     };
-    
-    return NextResponse.json(products, { 
-      status: 200, 
-      headers
+
+    return NextResponse.json(products, {
+      status: 200,
+      headers,
     });
   } catch {
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -52,7 +52,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const { productId, quantity } = await req.json();
-    console.log('Received productId:', productId, 'Type:', typeof productId);
+    console.log("Received productId:", productId, "Type:", typeof productId);
     const parsedProductId = Number(productId);
     if (!parsedProductId || isNaN(parsedProductId)) {
       return NextResponse.json({ error: "Invalid productId" }, { status: 400 });
@@ -60,6 +60,9 @@ export async function POST(req: Request) {
     const result = await addToCart(parsedProductId, Number(quantity) || 1);
     return NextResponse.json({ success: true, cart: result }, { status: 200 });
   } catch {
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }

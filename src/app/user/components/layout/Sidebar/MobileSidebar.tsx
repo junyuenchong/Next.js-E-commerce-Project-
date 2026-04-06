@@ -1,13 +1,33 @@
 "use client";
-import React from "react";
+import React, { memo, useCallback } from "react";
 import { useUser } from "@/app/user/UserContext";
 import { useRouter } from "next/navigation";
-import { menuItems } from '../menuItems';
+import { menuItems } from "../menuItems";
 import Image from "next/image";
 
-export default function MobileSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+const MobileSidebar = memo(function MobileSidebar({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   const { user } = useUser();
   const router = useRouter();
+
+  const handleNav = useCallback(
+    (href: string) => {
+      router.push(href);
+      onClose();
+    },
+    [router, onClose],
+  );
+
+  const handleSignOut = useCallback(async () => {
+    await fetch("/api/logout", { method: "POST" });
+    router.refresh();
+    onClose();
+  }, [router, onClose]);
 
   return (
     <>
@@ -27,7 +47,13 @@ export default function MobileSidebar({ open, onClose }: { open: boolean; onClos
           <div className="flex flex-col items-center py-8 border-b">
             <div className="w-20 h-20 rounded-full bg-gray-200 mb-2 overflow-hidden flex items-center justify-center">
               {user?.image ? (
-                <Image src={user.image} alt="avatar" width={80} height={80} className="w-full h-full object-cover" />
+                <Image
+                  src={user.image}
+                  alt="avatar"
+                  width={80}
+                  height={80}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gray-300 text-gray-600 text-3xl font-bold">
                   {user?.name ? user.name[0].toUpperCase() : "U"}
@@ -39,11 +65,11 @@ export default function MobileSidebar({ open, onClose }: { open: boolean; onClos
           </div>
           {/* Menu */}
           <nav className="flex-1 px-6 py-4">
-            {menuItems.map(item => (
+            {menuItems.map((item) => (
               <button
                 key={item.label}
                 className="flex items-center w-full py-3 px-2 rounded-lg hover:bg-gray-100 text-left text-base font-medium gap-3"
-                onClick={() => { router.push(item.href); onClose(); }}
+                onClick={() => handleNav(item.href)}
               >
                 <span className="text-xl">{item.icon}</span>
                 {item.label}
@@ -54,11 +80,7 @@ export default function MobileSidebar({ open, onClose }: { open: boolean; onClos
           <div className="p-6 border-t">
             <button
               className="w-full py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold"
-              onClick={async () => {
-                await fetch("/api/logout", { method: "POST" });
-                router.refresh();
-                onClose();
-              }}
+              onClick={handleSignOut}
             >
               Sign out
             </button>
@@ -67,4 +89,6 @@ export default function MobileSidebar({ open, onClose }: { open: boolean; onClos
       </aside>
     </>
   );
-} 
+});
+
+export default MobileSidebar;

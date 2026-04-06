@@ -3,16 +3,18 @@
 import React, { memo, Suspense } from "react";
 import { Product, Category } from "@prisma/client";
 import dynamic from "next/dynamic";
-import useSWR from "swr";
-import axios from "axios";
 
 // Dynamic import for next/image to avoid SSR issues
 const Image = dynamic(() => import("next/image"), { ssr: false });
+
+const IMAGE_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
 
 // Types
 interface ProductWithCategory extends Product {
   category?: Category;
 }
+
+type AdminCategory = { id: number; name: string };
 
 interface ProductItemProps {
   product: ProductWithCategory;
@@ -27,7 +29,9 @@ interface ProductItemProps {
   previewUrl?: string | null;
   editErrors?: Record<string, string>;
   handleEditChange?: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => void;
   handleImageChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleUpdate?: (id: number) => void;
@@ -38,9 +42,9 @@ interface ProductItemProps {
   onProductUpdated?: () => void;
   onProductDeleted?: () => void;
   priority?: boolean;
+  categories?: AdminCategory[];
+  categoriesLoading?: boolean;
 }
-
-const fetcher = (url: string) => axios.get(url).then((res) => res.data);
 
 const ProductItem = memo(function ProductItem({
   product,
@@ -55,76 +59,79 @@ const ProductItem = memo(function ProductItem({
   handleEditClick,
   handleDelete,
   priority,
+  categories = [],
+  categoriesLoading = false,
 }: ProductItemProps) {
   const isEditing = editingId === product.id;
-
-  // Fetch categories
-  const { data: categories = [], isLoading: categoriesLoading } = useSWR(
-    "/admin/api/categories",
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      dedupingInterval: 300000, // Cache for 5 minutes (increased from 1 minute)
-      errorRetryCount: 1, // Limit retries for categories
-    }
-  );
-
-  // Use a reasonable default for sizes for a card/grid layout
-  // 100vw for mobile, 50vw for tablet, 33vw for desktop
-  const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
 
   return (
     <div className="border rounded-xl p-3 sm:p-4 shadow-sm bg-white flex flex-col h-auto min-h-[380px] w-full max-w-sm mx-auto">
       {isEditing ? (
         <div className="space-y-3 flex-1">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Title
+            </label>
             <input
               name="title"
               value={editForm?.title}
               onChange={handleEditChange}
               className={`border px-3 py-2 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                editErrors.title ? 'border-red-500' : 'border-gray-300'
+                editErrors.title ? "border-red-500" : "border-gray-300"
               }`}
               placeholder="Product title"
             />
-            {editErrors.title && <p className="text-red-500 text-xs mt-1">{editErrors.title}</p>}
+            {editErrors.title && (
+              <p className="text-red-500 text-xs mt-1">{editErrors.title}</p>
+            )}
           </div>
-          
+
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Description
+            </label>
             <textarea
               name="description"
               value={editForm?.description}
               onChange={handleEditChange}
               className={`border px-3 py-2 rounded-lg w-full text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                editErrors.description ? 'border-red-500' : 'border-gray-300'
+                editErrors.description ? "border-red-500" : "border-gray-300"
               }`}
               rows={3}
               placeholder="Product description"
             />
-            {editErrors.description && <p className="text-red-500 text-xs mt-1">{editErrors.description}</p>}
+            {editErrors.description && (
+              <p className="text-red-500 text-xs mt-1">
+                {editErrors.description}
+              </p>
+            )}
           </div>
-          
+
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Price</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Price
+            </label>
             <input
               name="price"
               type="number"
               value={editForm?.price}
               onChange={handleEditChange}
               className={`border px-3 py-2 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                editErrors.price ? 'border-red-500' : 'border-gray-300'
+                editErrors.price ? "border-red-500" : "border-gray-300"
               }`}
               placeholder="0.00"
               step="0.01"
               min="0"
             />
-            {editErrors.price && <p className="text-red-500 text-xs mt-1">{editErrors.price}</p>}
+            {editErrors.price && (
+              <p className="text-red-500 text-xs mt-1">{editErrors.price}</p>
+            )}
           </div>
-          
+
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Image</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Image
+            </label>
             <input
               type="file"
               accept="image/*"
@@ -132,47 +139,57 @@ const ProductItem = memo(function ProductItem({
               className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
             />
           </div>
-          
+
           {previewUrl && (
             <div className="w-full aspect-[4/3] relative rounded-lg overflow-hidden border">
-              <Suspense fallback={<div className="bg-gray-100 w-full h-full animate-pulse" />}>
+              <Suspense
+                fallback={
+                  <div className="bg-gray-100 w-full h-full animate-pulse" />
+                }
+              >
                 <Image
                   src={previewUrl}
                   alt="Preview"
                   fill
-                  sizes={imageSizes}
+                  sizes={IMAGE_SIZES}
                   className="object-cover"
                 />
               </Suspense>
             </div>
           )}
-          
+
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Category
+            </label>
             {categoriesLoading ? (
               <div className="border px-3 py-2 rounded-lg w-full text-sm bg-gray-50 text-gray-500">
                 Loading categories...
               </div>
             ) : (
-            <select
-              name="categoryId"
-              value={editForm?.categoryId}
-              onChange={handleEditChange}
-              className={`border px-3 py-2 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                editErrors.categoryId ? 'border-red-500' : 'border-gray-300'
-              }`}
-            >
-              <option value="">Select Category</option>
+              <select
+                name="categoryId"
+                value={editForm?.categoryId}
+                onChange={handleEditChange}
+                className={`border px-3 py-2 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  editErrors.categoryId ? "border-red-500" : "border-gray-300"
+                }`}
+              >
+                <option value="">Select Category</option>
                 {categories.map((cat: { id: number; name: string }) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
             )}
-            {editErrors.categoryId && <p className="text-red-500 text-xs mt-1">{editErrors.categoryId}</p>}
+            {editErrors.categoryId && (
+              <p className="text-red-500 text-xs mt-1">
+                {editErrors.categoryId}
+              </p>
+            )}
           </div>
-          
+
           <div className="flex gap-2 pt-2">
             <button
               onClick={() => handleUpdate?.(product.id)}
@@ -191,12 +208,16 @@ const ProductItem = memo(function ProductItem({
       ) : (
         <div className="flex flex-col h-full">
           <div className="w-full aspect-[4/3] relative rounded-lg overflow-hidden mb-4 shadow-sm">
-            <Suspense fallback={<div className="bg-gray-100 w-full h-full animate-pulse" />}>
+            <Suspense
+              fallback={
+                <div className="bg-gray-100 w-full h-full animate-pulse" />
+              }
+            >
               <Image
                 src={product.imageUrl || "/placeholder.png"}
                 alt={product.title}
                 fill
-                sizes={imageSizes}
+                sizes={IMAGE_SIZES}
                 className="object-cover"
                 {...(priority ? { priority: true } : { loading: "lazy" })}
                 placeholder="blur"
@@ -204,26 +225,29 @@ const ProductItem = memo(function ProductItem({
               />
             </Suspense>
           </div>
-          
+
           <div className="flex-1 space-y-2">
             <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 leading-tight">
               {product.title}
             </h3>
-            
+
             <p className="text-xs text-gray-600 line-clamp-3 leading-relaxed">
               {product.description}
             </p>
-            
+
             <div className="flex items-center justify-between">
               <div className="text-lg font-bold text-green-600">
-                ${typeof product.price === "number" && !isNaN(product.price) ? product.price.toFixed(2) : "0.00"}
+                $
+                {typeof product.price === "number" && !isNaN(product.price)
+                  ? product.price.toFixed(2)
+                  : "0.00"}
               </div>
               <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                 {product.category?.name || "N/A"}
               </div>
             </div>
           </div>
-          
+
           <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
             <button
               onClick={() => handleEditClick?.(product)}
@@ -247,4 +271,4 @@ const ProductItem = memo(function ProductItem({
 ProductItem.displayName = "ProductItem";
 
 export default ProductItem;
-export type { ProductWithCategory, ProductItemProps }; 
+export type { ProductWithCategory, ProductItemProps };

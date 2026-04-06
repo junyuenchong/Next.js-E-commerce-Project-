@@ -1,84 +1,54 @@
 "use server";
 
-import slugify from "slugify";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { productSchema, productSlugSchema } from "@/lib/validators";
-import prisma from "@/lib/prisma";
+import { getCachedJson, setCachedJson, deleteCacheKeys } from "@/lib/redis";
+import { publishBusinessEvent } from "@/lib/rabbitmq";
+import { publishAdminProductEvent } from "@/lib/admin-events";
+import {
+  createProductService,
+  deleteProductService,
+  getProductByIdService,
+  getProductBySlugService,
+  listProductsService,
+  searchProductsService,
+  updateProductService,
+} from "@/modules/product/product.service";
 
 /* ----------------------
  CREATE PRODUCT
 ------------------------- */
 export async function createProduct(data: unknown) {
-  if (typeof data !== "object" || data === null) {
-    throw new Error("Invalid input data");
-  }
-
-  const raw = data as Record<string, unknown>;
-
-  const parsed = {
-    ...raw,
-    price: Number(raw.price),
-    categoryId: Number(raw.categoryId),
-  };
-
-  const validated = productSchema.safeParse(parsed);
-  if (!validated.success) {
-    console.error("❌ Validation error:", validated.error.format());
-    throw new Error("Invalid product data");
-  }
-
-  const { title, description, price, imageUrl, categoryId } = validated.data;
-
-  const product = await prisma.product.create({
-    data: {
-      title,
-      slug: await generateUniqueSlug(title),
-      description,
-      price,
-      imageUrl,
-      categoryId,
-    },
-  });
+  const product = await createProductService(data);
 
   revalidatePath("/admin/products");
   revalidateTag("products");
 
-  // Emit WebSocket event for real-time updates
-  await fetch(`${getBaseUrl()}/api/emit-products-update`, { method: 'POST' });
+  // Invalidate product-related caches
+  await deleteCacheKeys(["products:all:20:1"]);
+
+  // Publish business event (fire-and-forget)
+  await publishBusinessEvent("product.created", {
+    id: product.id,
+    categoryId: product.categoryId,
+    price: product.price,
+  });
+
+  await publishAdminProductEvent({ kind: "created", id: product.id });
 
   return product;
-}
-
-/* ----------------------
- GENERATE UNIQUE SLUG
-------------------------- */
-async function generateUniqueSlug(name: string): Promise<string> {
-  const baseSlug = slugify(name, { lower: true, strict: true });
-  let slug = baseSlug;
-  let counter = 1;
-
-  while (await prisma.product.findUnique({ where: { slug } })) {
-    slug = `${baseSlug}-${counter++}`;
-  }
-
-  return slug;
 }
 
 /* ----------------------
  GET PRODUCT BY SLUG
 ------------------------- */
 export async function getProductBySlug(slug: string) {
-  // Validate slug using productSlugSchema
-  const parsed = productSlugSchema.parse({ slug });
+  const cacheKey = `product:slug:${slug}`;
+  const cached = await getCachedJson<unknown>(cacheKey);
+  if (cached) return cached;
 
-  const product = await prisma.product.findUnique({
-    where: { slug: parsed.slug },
-    include: { category: true },
-  });
+  const product = await getProductBySlugService(slug);
 
-  if (!product) {
-    throw new Error("Product not found");
-  }
+  await setCachedJson(cacheKey, product);
 
   return product;
 }
@@ -87,106 +57,57 @@ export async function getProductBySlug(slug: string) {
  * Get product by ID
  */
 export const getProductById = async (id: string) => {
-  // Try to parse id as number, fallback to string if not a valid number
-  let productId: number | string = id;
-  if (!isNaN(Number(id))) {
-    productId = Number(id);
-  }
+  const productId = Number(id);
+  const cacheKey = `product:id:${productId}`;
+  const cached = await getCachedJson<unknown>(cacheKey as string);
+  if (cached) return cached;
 
-  // Try to find by numeric id, fallback to string id if needed
-  const product = await prisma.product.findUnique({
-    where: typeof productId === "number"
-      ? { id: productId }
-      : { id: Number(productId) },
-    include: { category: true },
-  });
+  const product = await getProductByIdService(id);
 
-  if (!product) {
-    throw new Error("Product not found");
-  }
+  await setCachedJson(cacheKey as string, product);
 
   return product;
-}
+};
 
 /* ----------------------
  READ ALL PRODUCTS
 ------------------------- */
 export async function getAllProducts(limit?: number, page?: number) {
-  const take = limit && limit > 0 ? limit : 20; // Increased default limit
-  const skip = take && page && page > 1 ? (page - 1) * take : 0;
-  
-  return prisma.product.findMany({
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      price: true,
-      imageUrl: true,
-      slug: true,
-      categoryId: true,
-      createdAt: true,
-      updatedAt: true,
-      stock: true, // Added
-      isActive: true, // Added
-      category: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        }
-      }
-    },
-    orderBy: { updatedAt: "desc" },
-    take,
-    skip,
-    // Add query optimization hints
-    ...(process.env.NODE_ENV === 'production' && {
-      // Only add these in production to avoid development issues
-    })
-  });
+  const take = limit && limit > 0 ? limit : 20;
+
+  const cacheKey = `products:list:${take}:${page || 1}`;
+  const cached = await getCachedJson<unknown[]>(cacheKey);
+  if (cached) return cached;
+
+  const products = await listProductsService(limit, page);
+
+  await setCachedJson(cacheKey, products);
+
+  return products;
 }
 
 /* ----------------------
  UPDATE PRODUCT
 ------------------------- */
 export async function updateProduct(id: number, data: unknown) {
-  if (typeof data !== "object" || data === null) {
-    throw new Error("Invalid input data");
-  }
-
-  const raw = data as Record<string, unknown>;
-
-  const parsed = {
-    ...raw,
-    price: Number(raw.price),
-    categoryId: Number(raw.categoryId),
-  };
-
-  const validated = productSchema.safeParse(parsed);
-  if (!validated.success) {
-    console.error("❌ Validation error:", validated.error.format());
-    throw new Error("Invalid product data");
-  }
-
-  const { title, description, price, imageUrl, categoryId } = validated.data;
-
-  const product = await prisma.product.update({
-    where: { id },
-    data: {
-      title,
-      slug: await generateUniqueSlug(title),
-      description,
-      price,
-      imageUrl,
-      categoryId,
-    },
-  });
+  const product = await updateProductService(id, data);
 
   revalidatePath("/admin/products");
   revalidateTag("products");
 
-  // Emit WebSocket event for real-time updates
-  await fetch(`${getBaseUrl()}/api/emit-products-update`, { method: 'POST' });
+  await deleteCacheKeys([
+    `product:id:${id}`,
+    `product:slug:${product.slug}`,
+    "products:list:20:1",
+  ]);
+
+  await publishBusinessEvent("product.updated", {
+    id: product.id,
+    categoryId: product.categoryId,
+    price: product.price,
+  });
+
+  await publishAdminProductEvent({ kind: "updated", id: product.id });
 
   return product;
 }
@@ -196,12 +117,22 @@ export async function updateProduct(id: number, data: unknown) {
 ------------------------- */
 export async function deleteProduct(id: number) {
   try {
-    await prisma.product.delete({ where: { id } });
+    const deleted = await deleteProductService(id);
     revalidatePath("/admin/products");
     revalidateTag("products");
 
-    // Emit WebSocket event for real-time updates
-    await fetch(`${getBaseUrl()}/api/emit-products-update`, { method: 'POST' });
+    await deleteCacheKeys([
+      `product:id:${id}`,
+      `product:slug:${deleted.slug}`,
+      "products:list:20:1",
+    ]);
+
+    await publishBusinessEvent("product.deleted", {
+      id: deleted.id,
+      categoryId: deleted.categoryId,
+    });
+
+    await publishAdminProductEvent({ kind: "deleted", id: deleted.id });
   } catch (error) {
     console.error("❌ Error deleting product:", error);
     throw error;
@@ -212,51 +143,11 @@ export async function deleteProduct(id: number) {
  SEARCH PRODUCTS
 ------------------------- */
 export async function searchProducts(query: string) {
-  if (!query.trim()) {
-    // Return all products if query is empty
-    return getAllProducts();
+  try {
+    return await searchProductsService(query);
+  } catch (error) {
+    console.error("[searchProducts] Error:", error);
+    // Return empty array on error instead of throwing
+    return [];
   }
-
-  const searchTerm = query.trim();
-  
-  return prisma.product.findMany({
-    where: {
-      OR: [
-        { title: { contains: searchTerm, mode: "insensitive" } },
-        { description: { contains: searchTerm, mode: "insensitive" } },
-        { category: { name: { contains: searchTerm, mode: "insensitive" } } },
-        { category: { slug: { contains: searchTerm, mode: "insensitive" } } },
-      ],
-    },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      price: true,
-      imageUrl: true,
-      slug: true,
-      categoryId: true,
-      createdAt: true,
-      updatedAt: true,
-      stock: true, // <-- Added
-      isActive: true, // <-- Added
-      category: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        }
-      }
-    },
-    orderBy: { updatedAt: "desc" }, // Consistent ordering
-    take: 50, // Limit search results for better performance
-  });
-}
-
-// Helper to get the correct base URL for event emission
-function getBaseUrl() {
-  if (process.env.NODE_ENV !== 'production') {
-    return 'http://localhost:3000';
-  }
-  return 'https://next-js-e-commerce-project.onrender.com';
 }

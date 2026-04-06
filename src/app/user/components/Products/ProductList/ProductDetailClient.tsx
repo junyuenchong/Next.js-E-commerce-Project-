@@ -1,32 +1,55 @@
 "use client";
+import React, { memo, useMemo } from "react";
 import AddToCartButton from "../AddToCartButton/AddToCartButton";
 import Image from "next/image";
 import Link from "next/link";
 import { Home, ChevronRight } from "lucide-react";
 import SalesCampaignBanner from "../../SalesCampaignBanner/SalesCampaignBanner";
-import { Product } from '@prisma/client';
-import { useRealtimeSWR } from '@/lib/hooks/useRealtimeSWR';
+import { Product } from "@prisma/client";
+import { useRealtimeQuery } from "@/lib/hooks/useRealtimeQuery";
 
 // Helper function to format price in RM
 const formatPriceRM = (price: number): string => {
   return `RM ${price.toFixed(2)}`;
 };
 
-export default function ProductDetailClient({ productId, initialProduct }: { productId: string | number, initialProduct: Product }) {
-  const { data: product } = useRealtimeSWR<Product>({
-    url: `/user/api/products/${productId}`,
-    event: "products_updated",
-    matchKey: (key) => typeof key === "string" && key.startsWith("/user/api/products"),
-    swrOptions: {
-      fallbackData: initialProduct,
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 0,
-    },
-  });
+/** Deterministic “pseudo-random” values from id so SSR and client HTML match. */
+function pseudoFromId(id: string | number, mod: number): number {
+  const n = Number(id);
+  if (!Number.isFinite(n)) return 1;
+  return Math.abs(n % mod) + 1;
+}
 
+function buyersThisHour(id: string | number): number {
+  const n = Number(id);
+  if (!Number.isFinite(n)) return 42;
+  return 20 + Math.abs((n * 17) % 50);
+}
+
+const ProductDetailClient = memo(function ProductDetailClient({
+  productId,
+  initialProduct,
+}: {
+  productId: string | number;
+  initialProduct: Product;
+}) {
+  const { data: product } = useRealtimeQuery<Product>(
+    ["user-product", String(productId)],
+    async () => {
+      const res = await fetch(`/user/api/products/${productId}`);
+      return res.json();
+    },
+    {
+      channels: "products",
+      initialData: initialProduct,
+    },
+  );
+
+  const originalPrice = useMemo(
+    () => (product?.price ?? 0) * 5,
+    [product?.price],
+  );
   if (!product) return <div>Product not found</div>;
-  const originalPrice = product.price * 5;
 
   return (
     <div className="bg-gray-50">
@@ -55,7 +78,7 @@ export default function ProductDetailClient({ productId, initialProduct }: { pro
           </h1>
           <div className="flex flex-col items-center gap-2">
             <p className="text-center text-red-500 text-sm md:text-base font-semibold animate-pulse">
-              ⚡️ Only {Math.floor(Math.random() * 10) + 1} items left at this price!
+              ⚡️ Only {pseudoFromId(product.id, 10)} items left at this price!
             </p>
             <div className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-sm">
               ⏰ Offer ends soon!
@@ -93,7 +116,7 @@ export default function ProductDetailClient({ productId, initialProduct }: { pro
                   fill
                   priority
                   className="object-cover hover:scale-105 transition-transform duration-300"
-                  alt={product.title ?? 'Product Image'}
+                  alt={product.title ?? "Product Image"}
                   src={product.imageUrl}
                 />
               </div>
@@ -111,7 +134,7 @@ export default function ProductDetailClient({ productId, initialProduct }: { pro
                 <div className="flex items-baseline gap-1">
                   <span className="text-xs font-bold text-red-600">MY</span>
                   <span className="text-5xl font-black text-red-600 tracking-tight">
-                    {formatPriceRM(product.price).replace('RM ', '')}
+                    {formatPriceRM(product.price).replace("RM ", "")}
                   </span>
                 </div>
                 <div className="flex flex-col">
@@ -137,7 +160,7 @@ export default function ProductDetailClient({ productId, initialProduct }: { pro
               <div className="flex items-center gap-2 text-xs text-gray-600">
                 <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                 <span>
-                  {Math.floor(Math.random() * 50) + 20} people bought in the last hour
+                  {buyersThisHour(product.id)} people bought in the last hour
                 </span>
               </div>
             </div>
@@ -154,7 +177,9 @@ export default function ProductDetailClient({ productId, initialProduct }: { pro
             <div className="flex flex-col gap-3 mt-6 text-sm bg-white p-4 rounded-xl shadow-sm border border-gray-100">
               <div className="flex items-center gap-3 text-gray-700">
                 <span className="bg-green-100 p-2 rounded-full">✅</span>
-                <span className="font-medium">In stock - Ships within 24 hours</span>
+                <span className="font-medium">
+                  In stock - Ships within 24 hours
+                </span>
               </div>
               <div className="flex items-center gap-3 text-gray-700">
                 <span className="bg-green-100 p-2 rounded-full">🔄</span>
@@ -170,4 +195,6 @@ export default function ProductDetailClient({ productId, initialProduct }: { pro
       </div>
     </div>
   );
-} 
+});
+
+export default ProductDetailClient;

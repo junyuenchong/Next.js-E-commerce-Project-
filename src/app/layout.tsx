@@ -1,14 +1,43 @@
 // app/layout.tsx
 
 import "./globals.css"; // <-- Import TailwindCSS (or your global styles)
+import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import ReduxProvider from './ReduxProvider';
+import ReduxProvider from "./ReduxProvider";
+import { getSiteUrl } from "@/lib/site-url";
+import QueryProvider from "./QueryProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata = {
-  title: "E-Commerce",
-  description: "Simple white layout with Next.js App Router",
+const siteUrl = getSiteUrl();
+
+export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
+  icons: {
+    icon: "/favicon.ico",
+  },
+  title: {
+    default: "E-Commerce",
+    template: "%s | E-Commerce",
+  },
+  description:
+    "Shop online with Next.js App Router — fast delivery and secure checkout.",
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: "website",
+    locale: "en",
+    url: siteUrl,
+    siteName: "E-Commerce",
+    title: "E-Commerce",
+    description:
+      "Shop online with Next.js App Router — fast delivery and secure checkout.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "E-Commerce",
+    description:
+      "Shop online with Next.js App Router — fast delivery and secure checkout.",
+  },
 };
 
 export default function RootLayout({
@@ -18,10 +47,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-white text-black min-h-screen antialiased`}>
-        <ReduxProvider>
-        {children}
-        </ReduxProvider>
+      <body
+        className={`${inter.className} bg-white text-black min-h-screen antialiased`}
+        suppressHydrationWarning
+      >
+        <QueryProvider>
+          <ReduxProvider>{children}</ReduxProvider>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -15,11 +15,69 @@
 - **NextAuth.js** (+ Prisma Adapter)
 - **Redux Toolkit** + **redux-persist**
 - **SWR** for data fetching
-- **Socket.IO** for realtime updates
+- **Redis** for caching hot data
+- **RabbitMQ** (via `amqplib`) for async business events
 - **Tailwind CSS v4** (via `@tailwindcss/postcss` + PostCSS)
 - **Zod** for validation
 - **Cloudinary** for media uploads
 - **Node.js 20** runtime
+
+### Project Structure (Frontend & Backend)
+
+#### App / UI (`src/app`)
+
+- `src/app/layout.tsx` – root HTML shell + global providers (Redux, Tailwind).
+- `src/app/page.tsx` – redirects `/` → `/user`.
+- `src/app/api/**/route.ts` – App Router API routes (e.g. `upload`).
+- `src/app/user/**`
+  - `layout.tsx`, `page.tsx`, `loading.tsx` – user storefront shell and entry.
+  - `api/**/route.ts` – user-facing APIs (cart, products, categories, session, logout).
+  - `components/**` – all user UI (header, product list, product card, cart sidebar, etc.).
+  - `hooks/**` – user UI hooks (e.g. `useCart`, `useUser`).
+- `src/app/admin/**`
+  - `layout.tsx`, `page.tsx`, `loading.tsx` – admin shell and entry.
+  - `api/**/route.ts` – admin APIs (products, categories, batch delete, SSE events).
+  - `components/**` – admin UI (sidebar, product & category management).
+  - `hooks/**` – admin UI hooks (product list, category manager, SSE hook).
+
+#### Backend (Controllers & Domain Logic)
+
+- `src/actions/**`
+  - Thin **controllers / server actions** that:
+    - validate input using Zod schemas,
+    - call domain services in `src/modules/**`,
+    - handle cache invalidation (`revalidatePath`, Redis keys),
+    - publish domain events (RabbitMQ, Redis pub/sub).
+  - Examples:
+    - `actions/product.ts` – product CRUD/search.
+    - `actions/category.ts` – category CRUD/search.
+    - `actions/cart.ts` – cart operations + merge logic entrypoint.
+    - `actions/auth.ts` – custom session, login, logout, register.
+
+- `src/modules/**`
+  - **Domain services + repositories**, one folder per domain:
+    - `modules/product/*` – product service + Prisma repository.
+    - `modules/category/*` – category service + Prisma repository.
+    - `modules/cart/*` – cart service + Prisma repository (user + guest carts, merge).
+    - `modules/auth/*` – auth/session service + Prisma repository.
+  - Services contain **business rules**; repositories contain **Prisma-only DB code**.
+  - UI and API routes never import repositories directly; they always go through `actions/*`.
+
+#### Shared Utilities
+
+- `src/lib/prisma.ts` – Prisma client.
+- `src/lib/redis.ts` – Redis client + JSON helpers.
+- `src/lib/rabbitmq.ts` – RabbitMQ connection + event publisher.
+- `src/lib/hooks/useRealtimeSWR.ts` – SWR + SSE integration for realtime updates.
+- `src/lib/validators/**` – Zod schemas (product, category, cart).
+- `src/lib/utils/utils.tsx` – small shared helpers.
+
+#### Middleware
+
+- `src/middleware.ts`
+  - Renews custom session cookie on GET.
+  - Performs basic CSRF protection (Origin vs Host check).
+  - Applied globally via Next.js middleware matcher.
 
 ### Prerequisites
 
@@ -45,8 +103,11 @@ GOOGLE_CLIENT_SECRET="your-google-client-secret"
 FACEBOOK_CLIENT_ID="your-facebook-client-id"
 FACEBOOK_CLIENT_SECRET="your-facebook-client-secret"
 
-# WebSocket (Production)
-NEXT_PUBLIC_RENDER_URL="https://next-js-e-commerce-project.onrender.com"
+# Redis (Optional but recommended)
+REDIS_URL="redis://default:<PASSWORD>@localhost:6379/0"
+
+# RabbitMQ (Optional, for async business events)
+RABBITMQ_URL="amqp://guest:guest@localhost:5672/"
 
 # Cloudinary (Optional)
 CLOUDINARY_CLOUD_NAME="your-cloud-name"
@@ -81,7 +142,7 @@ node scripts/seed-db.js
 # Dev (Next.js)
 npm run dev
 
-# Prod (custom Next.js + Socket.IO server)
+# Prod (Next.js)
 npm start
 ```
 
@@ -89,7 +150,7 @@ Scripts available:
 
 - `npm run dev` → Next.js dev server
 - `npm run build` → Next.js build
-- `npm start` → starts custom server at `src/lib/socket/server.js` (with Socket.IO)
+- `npm start` → Next.js production server
 - `npm run lint` → ESLint
 
 Utilities:
@@ -109,7 +170,7 @@ Utilities:
 **Build Commands:**
 
 - **Build**: `npm install && npx prisma generate && npm run build`
-- **Start**: `npm start`
+- **Start**: `npm start` (Next.js production server)
 
 ### Development Notes
 
@@ -119,7 +180,6 @@ Utilities:
   ```
 - Ensure Neon uses SSL (`sslmode=require`)
 - For pooled connections, use `-pooler` host with `pgbouncer=true`
-- WebSocket connections use custom server on port 3002 (development)
 
 ### OAuth Setup
 

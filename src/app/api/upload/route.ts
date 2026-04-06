@@ -1,15 +1,13 @@
-import type { NextApiRequest, NextApiResponse } from "next";
 import * as cloudinary from "cloudinary";
 import formidable from "formidable";
+import type { File } from "formidable";
 import fs from "fs/promises";
 import sharp from "sharp";
 import { Readable } from "stream";
 
-export const config = {
-  api: {
-    bodyParser: false, // 关闭默认body解析，方便处理文件上传
-  },
-};
+// Route-level config equivalent: disable body parsing in pages router.
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 cloudinary.v2.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
@@ -17,17 +15,15 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET!,
 });
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
-
+export async function POST(req: Request) {
+  // Next.js App Router streams the body; we need a Node-style request for formidable.
   const form = formidable({ keepExtensions: true });
 
-  // 用 Promise 包装 formidable 解析
+  const nodeReq = req as unknown as import("http").IncomingMessage;
+
   const parseForm = () =>
     new Promise<{ filepath: string }>((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
+      form.parse(nodeReq, (err, _fields, files) => {
         if (err) {
           console.error("Formidable parse error:", err);
           reject(err);
@@ -38,23 +34,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           reject(new Error("No file uploaded"));
           return;
         }
-        resolve(file);
+        resolve({ filepath: (file as File).filepath });
       });
     });
 
   try {
     const file = await parseForm();
-
-    // 读取文件缓冲区
     const buffer = await fs.readFile(file.filepath);
 
-    // 用 sharp 压缩，调整宽度为800px，质量70%
     const compressedBuffer = await sharp(buffer)
       .resize({ width: 800 })
       .jpeg({ quality: 70 })
       .toBuffer();
 
-    // 上传到 Cloudinary，使用 upload_stream 方式
     const uploadToCloudinary = () =>
       new Promise<string>((resolve, reject) => {
         const uploadStream = cloudinary.v2.uploader.upload_stream(
@@ -66,16 +58,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               return;
             }
             resolve(result.secure_url);
-          }
+          },
         );
         Readable.from(compressedBuffer).pipe(uploadStream);
       });
 
     const secureUrl = await uploadToCloudinary();
 
-    return res.status(200).json({ secure_url: secureUrl });
+    return new Response(JSON.stringify({ secure_url: secureUrl }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Upload handler error:", error);
-    return res.status(500).json({ message: "Upload failed", error: String(error) });
+    return new Response(
+      JSON.stringify({ message: "Upload failed", error: String(error) }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }

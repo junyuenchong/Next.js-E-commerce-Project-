@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { deleteProduct, updateProduct } from "@/actions/product";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { productSchema } from "@/lib/validators";
 import { Product, Category } from "@prisma/client";
-import useSWR from "swr";
 import axios from "axios";
-import { getSocket } from '@/lib/socket/socket';
+import { useAdminResourceSSE } from "@/app/admin/hooks/useAdminResourceSSE";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // Types
 interface ProductWithCategory extends Product {
@@ -30,6 +30,7 @@ const fetcher = (url: string) => axios.get(url).then((res) => res.data);
 export function useProductList() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -61,45 +62,27 @@ export function useProductList() {
     setOptimisticUpdates(new Map());
   }, [effectiveSearch, urlSearch, search]);
 
-  const fetchUrl = `/admin/api/products?limit=${PAGE_SIZE}&page=${page}&q=${encodeURIComponent(
-    effectiveSearch
-  )}`;
-
-  const { data: swrProducts, isLoading, mutate, error } = useSWR<ProductWithCategory[]>(
-    fetchUrl,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 1000,
-      refreshInterval: 0,
-      keepPreviousData: true,
-      errorRetryCount: 3,
-      errorRetryInterval: 500,
-      focusThrottleInterval: 1000,
-      loadingTimeout: 5000,
-    }
+  const fetchUrl = useMemo(
+    () =>
+      `/admin/api/products?limit=${PAGE_SIZE}&page=${page}&q=${encodeURIComponent(
+        effectiveSearch,
+      )}`,
+    [effectiveSearch, page],
   );
 
-  // WebSocket for real-time product updates
-  useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
-    socket.connect();
-    socket.on('connect', () => {
-      console.log('[DEBUG] Connected to WebSocket for admin products');
-      socket.emit('join', 'products');
-    });
-    socket.on('products_updated', () => {
-      console.log('[DEBUG] Received products_updated event, mutating SWR');
-      mutate();
-    });
-    return () => {
-      socket.off('products_updated');
-      socket.off('connect');
-      socket.disconnect();
-    };
-  }, [mutate]);
+  const query = useQuery<ProductWithCategory[]>({
+    queryKey: ["admin-products", fetchUrl],
+    queryFn: () => fetcher(fetchUrl),
+    staleTime: 1000,
+  });
+
+  const productsPage = query.data;
+  const isLoading = query.isLoading;
+  const error = query.error;
+
+  useAdminResourceSSE("/admin/api/events/products", () => {
+    queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+  });
 
   const applyOptimisticUpdates = useCallback(
     (products: ProductWithCategory[]) => {
@@ -109,19 +92,21 @@ export function useProductList() {
         return optimisticUpdate ? { ...product, ...optimisticUpdate } : product;
       });
     },
-    [optimisticUpdates]
+    [optimisticUpdates],
   );
 
   useEffect(() => {
-    if (swrProducts) {
-      const productsWithUpdates = applyOptimisticUpdates(swrProducts);
+    if (productsPage) {
+      const productsWithUpdates = applyOptimisticUpdates(productsPage);
       if (productsWithUpdates.length > 0) {
         if (page === 1) {
           setAllProducts(productsWithUpdates);
         } else {
           setAllProducts((prev) => {
             const ids = new Set(prev.map((p) => p.id));
-            const newProducts = productsWithUpdates.filter((p) => !ids.has(p.id));
+            const newProducts = productsWithUpdates.filter(
+              (p) => !ids.has(p.id),
+            );
             return [...prev, ...newProducts];
           });
         }
@@ -131,7 +116,7 @@ export function useProductList() {
         setIsEnd(true);
       }
     }
-  }, [swrProducts, page, applyOptimisticUpdates]);
+  }, [productsPage, page, applyOptimisticUpdates]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,7 +140,9 @@ export function useProductList() {
   };
 
   const handleEditChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => {
     const { name, value } = e.target;
     setEditForm((prev) => ({ ...prev, [name]: value }));
@@ -229,7 +216,7 @@ export function useProductList() {
 
       alert("✅ Product updated!");
       setEditingId(null);
-      mutate();
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
       router.refresh();
     } catch (error) {
       setOptimisticUpdates((prev) => {
@@ -238,7 +225,10 @@ export function useProductList() {
         return newMap;
       });
 
-      alert("❌ Update failed: " + (error instanceof Error ? error.message : "Unknown error"));
+      alert(
+        "❌ Update failed: " +
+          (error instanceof Error ? error.message : "Unknown error"),
+      );
     }
   };
 
@@ -247,11 +237,14 @@ export function useProductList() {
       setAllProducts((prev) => prev.filter((p) => p.id !== id));
       try {
         await deleteProduct(id);
-        mutate();
+        queryClient.invalidateQueries({ queryKey: ["admin-products"] });
         router.refresh();
       } catch (error) {
-        mutate();
-        alert("❌ Delete failed: " + (error instanceof Error ? error.message : "Unknown error"));
+        queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+        alert(
+          "❌ Delete failed: " +
+            (error instanceof Error ? error.message : "Unknown error"),
+        );
       }
     }
   };

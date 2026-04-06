@@ -1,10 +1,19 @@
-import useSWR from 'swr';
+import { useQuery } from "@tanstack/react-query";
 
-// Hook for fetching cart data
 export function useCart() {
-  const fetcher = (url: string) => fetch(url).then(res => res.json());
-  const { data, error, mutate } = useSWR('/user/api/cart', fetcher, {
-    revalidateOnFocus: true,
+  const query = useQuery({
+    queryKey: ["user-cart"],
+    queryFn: async () => {
+      const res = await fetch("/user/api/cart");
+      return res.json();
+    },
+    refetchOnWindowFocus: true,
   });
-  return { cart: data, isLoading: !error && !data, error, mutate };
-} 
+
+  return {
+    cart: query.data,
+    isLoading: query.isLoading,
+    error: query.error,
+    mutate: query.refetch,
+  };
+}

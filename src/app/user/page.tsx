@@ -1,23 +1,39 @@
-"use client";
+import type { Metadata } from "next";
+import type { Product } from "@prisma/client";
+import { Suspense } from "react";
+import ProductList from "@/app/user/components/Products/ProductList/ProductList";
+import SalesCampaignBanner from "./components/SalesCampaignBanner/SalesCampaignBanner";
+import Loading from "./loading";
+import { getAllProducts } from "@/actions/product";
 
-import { Suspense } from 'react';
-import ProductList from '@/app/user/components/Products/ProductList/ProductList';
-import React from 'react';
-import SalesCampaignBanner from './components/SalesCampaignBanner/SalesCampaignBanner';
-import Loading from './loading';
-import { useSocketStatus } from '@/lib/socket/useSocketStatus';
+export const metadata: Metadata = {
+  title: "Shop",
+  description:
+    "Browse products with flash deals, free shipping on qualifying orders, and fast delivery at CJY E-Commerce.",
+  openGraph: {
+    title: "Shop | CJY E-Commerce",
+    description:
+      "Browse products with flash deals and fast delivery at CJY E-Commerce.",
+  },
+};
+
+async function HomeProducts() {
+  const initialProducts = await getAllProducts(10, 1);
+  const list = (
+    Array.isArray(initialProducts) ? initialProducts : []
+  ) as Product[];
+  return <ProductList initialProducts={list} />;
+}
 
 const Home = () => {
-  const socketStatus = useSocketStatus();
   return (
     <div>
-      <div className="mb-2 text-sm text-gray-600 text-center">
-        WebSocket status: <span style={{ color: socketStatus === 'connected' ? 'green' : socketStatus === 'error' ? 'red' : 'gray' }}>{socketStatus}</span>
-      </div>
-      <h2 className="text-2xl font-bold mb-4 mt-4 sm:mt-6 sm:mb-6 text-center">Products</h2>
+      <h2 className="text-2xl font-bold mb-4 mt-4 sm:mt-6 sm:mb-6 text-center">
+        Products
+      </h2>
       <SalesCampaignBanner />
       <Suspense fallback={<Loading />}>
-        <ProductList />
+        <HomeProducts />
       </Suspense>
     </div>
   );

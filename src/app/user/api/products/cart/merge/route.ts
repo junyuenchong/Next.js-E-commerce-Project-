@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { mergeGuestCartToUser } from "@/actions/cart-actions";
+import { mergeGuestCartToUser } from "@/actions/cart";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 
@@ -23,7 +23,11 @@ export async function POST() {
 
   // If no user, return error
   if (!userId) {
-    return NextResponse.json({ success: false, cart: null, error: "No user in session" });
+    return NextResponse.json({
+      success: false,
+      cart: null,
+      error: "No user in session",
+    });
   }
 
   // Merge guest cart to user cart

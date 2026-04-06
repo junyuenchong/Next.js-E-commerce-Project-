@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo, useCallback } from "react";
 
 // Types
 export interface Category {
@@ -17,23 +17,31 @@ export interface CategoryItemProps {
   onDelete: (id: number) => void;
 }
 
-const CategoryItem: React.FC<CategoryItemProps> = ({
+const CategoryItem = memo(function CategoryItem({
   category,
   onEdit,
   onDelete,
-}) => {
+}: CategoryItemProps) {
+  const handleEditClick = useCallback(() => {
+    onEdit(category.id, category.name);
+  }, [category.id, category.name, onEdit]);
+
+  const handleDeleteClick = useCallback(() => {
+    onDelete(category.id);
+  }, [category.id, onDelete]);
+
   return (
     <div className="flex justify-between items-center border p-3 rounded bg-white shadow-sm hover:shadow-md transition-shadow">
       <span className="font-medium text-gray-800">{category.name}</span>
       <div className="flex gap-2">
         <button
-          onClick={() => onEdit(category.id, category.name)}
+          onClick={handleEditClick}
           className="text-blue-600 hover:text-blue-800 font-medium text-sm px-3 py-1 rounded hover:bg-blue-50 transition-colors"
         >
           Edit
         </button>
         <button
-          onClick={() => onDelete(category.id)}
+          onClick={handleDeleteClick}
           className="text-red-600 hover:text-red-800 font-medium text-sm px-3 py-1 rounded hover:bg-red-50 transition-colors"
         >
           Delete
@@ -41,6 +49,6 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
       </div>
     </div>
   );
-};
+});
 
-export default CategoryItem; 
+export default CategoryItem;

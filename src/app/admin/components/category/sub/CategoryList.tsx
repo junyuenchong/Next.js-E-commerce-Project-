@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import CategoryItem, { Category } from "../types/CategoryItem";
 
 export interface CategoryListProps {
@@ -9,11 +9,11 @@ export interface CategoryListProps {
   onDelete: (id: number) => void;
 }
 
-const CategoryList: React.FC<CategoryListProps> = ({
+const CategoryList = memo(function CategoryList({
   categories,
   onEdit,
   onDelete,
-}) => {
+}: CategoryListProps) {
   if (categories.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
@@ -34,6 +34,6 @@ const CategoryList: React.FC<CategoryListProps> = ({
       ))}
     </div>
   );
-};
+});
 
-export default CategoryList; 
+export default CategoryList;

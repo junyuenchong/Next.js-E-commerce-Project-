@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Category } from "../types/CategoryItem";
-import { getSocket } from "@/lib/socket/socket";
 
 export interface ActionResponse {
   message?: string;
@@ -29,66 +28,15 @@ export function useCategoryManager({
   const [searchQuery, setSearchQuery] = useState("");
   const [filtered, setFiltered] = useState(categories ?? []);
   const [loading, setLoading] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFiltered(categories ?? []);
+    }
+  }, [categories, searchQuery]);
 
   // Store a stable reference to onRefresh
   const onRefreshRef = useRef(onRefresh);
-
-  useEffect(() => {
-    onRefreshRef.current = onRefresh;
-  }, [onRefresh]);
-
-  // WebSocket connection for real-time updates
-  useEffect(() => {
-    const socket = getSocket();
-
-    if (!socket) {
-      console.error("❌ Failed to get socket instance for admin categories");
-      return;
-    }
-
-    socket.connect();
-
-    socket.on("categories_updated", () => {
-      console.log("🔄 [DEBUG] Received categories_updated event via WebSocket");
-      if (onRefreshRef.current) {
-        console.log("🔄 [DEBUG] Calling onRefresh from categories_updated event");
-        onRefreshRef.current();
-      } else {
-        console.log("⚠️ [DEBUG] onRefreshRef.current is undefined");
-      }
-    });
-
-    socket.on("connect", () => {
-      console.log("✅ Connected to WebSocket for admin categories");
-      setIsConnected(true);
-      console.log("[DEBUG] Emitting join 'categories' event");
-      socket.emit("join", "categories");
-    });
-
-    socket.on("disconnect", () => {
-      console.log("❌ Disconnected from WebSocket for admin categories");
-      setIsConnected(false);
-    });
-
-    socket.on("connect_error", (error) => {
-      console.error("❌ WebSocket connection error:", error);
-      setIsConnected(false);
-    });
-
-    socket.on("joined", (room) => {
-      console.log("✅ [DEBUG] Joined room:", room);
-    });
-
-    return () => {
-      socket.off("categories_updated");
-      socket.off("connect");
-      socket.off("disconnect");
-      socket.off("connect_error");
-      socket.off("joined");
-      socket.disconnect();
-    };
-  }, []);
 
   const handleEdit = useCallback((id: number, name: string) => {
     setEditId(id);
@@ -109,7 +57,7 @@ export function useCategoryManager({
         alert("No results found.");
       }
     },
-    [searchQuery, onSearch]
+    [searchQuery, onSearch],
   );
 
   const handleSubmit = useCallback(
@@ -131,7 +79,11 @@ export function useCategoryManager({
       setLoading(false);
 
       if (res?.message === "Success") {
-        alert(editId ? "Category updated successfully!" : "Category created successfully!");
+        alert(
+          editId
+            ? "Category updated successfully!"
+            : "Category created successfully!",
+        );
         setName("");
         setEditId(null);
         if (onRefreshRef.current) {
@@ -141,7 +93,7 @@ export function useCategoryManager({
         alert(res?.message || "Something went wrong.");
       }
     },
-    [name, editId, onSubmit]
+    [name, editId, onSubmit],
   );
 
   const handleDelete = useCallback(
@@ -161,7 +113,7 @@ export function useCategoryManager({
         alert(res?.message || "Failed to delete.");
       }
     },
-    [onDelete]
+    [onDelete],
   );
 
   const handleNameChange = useCallback((newName: string) => {
@@ -179,7 +131,6 @@ export function useCategoryManager({
     searchQuery,
     filtered,
     loading,
-    isConnected,
 
     // Handlers
     handleEdit,

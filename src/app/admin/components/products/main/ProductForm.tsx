@@ -1,24 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image"; 
+import { useCallback, useState } from "react";
+import Image from "next/image";
 import { createProduct } from "@/actions/product";
 import { productSchema } from "@/lib/validators/product";
-import useSWR, { mutate } from "swr";
 import axios from "axios";
 import React from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const fetcher = (url: string) => axios.get(url).then((res) => res.data);
 
-export default function ProductForm({ onProductCreated }: { onProductCreated?: () => void }) {
-  const { data: categories = [], isLoading: categoriesLoading } = useSWR(
-    "/admin/api/categories",
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      dedupingInterval: 60000, // Cache for 1 minute
-    }
-  );
+type AdminCategory = { id: number; name: string };
+
+export default function ProductForm({
+  onProductCreated,
+}: {
+  onProductCreated?: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const categoriesQuery = useQuery<AdminCategory[]>({
+    queryKey: ["admin-categories"],
+    queryFn: () => fetcher("/admin/api/categories"),
+    staleTime: 60000,
+  });
+  const categories = categoriesQuery.data ?? [];
+  const categoriesLoading = categoriesQuery.isLoading;
 
   const [formData, setFormData] = useState({
     title: "",
@@ -36,30 +42,39 @@ export default function ProductForm({ onProductCreated }: { onProductCreated?: (
   // Update categoryId when categories load
   React.useEffect(() => {
     if (categories.length > 0 && !formData.categoryId) {
-      setFormData(prev => ({ ...prev, categoryId: String(categories[0].id) }));
+      setFormData((prev) => ({
+        ...prev,
+        categoryId: String(categories[0].id),
+      }));
     }
   }, [categories, formData.categoryId]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const { name, value } = e.target;
+      setFormData((prev) => ({ ...prev, [name]: value }));
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-    }
-  };
+      // Clear error when user starts typing
+      if (errors[name]) {
+        setErrors((prev) => ({ ...prev, [name]: "" }));
+      }
+    },
+    [errors],
+  );
 
-  const validateForm = () => {
+  const handleImageChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        setImageFile(file);
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
+      }
+    },
+    [],
+  );
+
+  const validateForm = useCallback(() => {
     const payload = {
       title: formData.title,
       description: formData.description,
@@ -69,7 +84,7 @@ export default function ProductForm({ onProductCreated }: { onProductCreated?: (
     };
 
     const validation = productSchema.safeParse(payload);
-    
+
     if (!validation.success) {
       const newErrors: Record<string, string> = {};
       validation.error.errors.forEach((error) => {
@@ -79,19 +94,19 @@ export default function ProductForm({ onProductCreated }: { onProductCreated?: (
       setErrors(newErrors);
       return false;
     }
-    
+
     setErrors({});
     return true;
-  };
+  }, [formData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Client-side validation
     if (!validateForm()) {
       return;
     }
-    
+
     setLoading(true);
 
     let imageUrl = formData.imageUrl;
@@ -135,8 +150,8 @@ export default function ProductForm({ onProductCreated }: { onProductCreated?: (
       await createProduct(payload);
       alert("✅ Product created!");
 
-      // Revalidate SWR cache for product list
-      mutate('/admin/api/products?limit=20&page=1');
+      // Revalidate product list queries
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
 
       // Call the callback to refresh the product list
       onProductCreated?.();
@@ -171,7 +186,10 @@ export default function ProductForm({ onProductCreated }: { onProductCreated?: (
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto">
       <div>
-        <label htmlFor="product-title" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="product-title"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Product Title
         </label>
         <input
@@ -183,13 +201,18 @@ export default function ProductForm({ onProductCreated }: { onProductCreated?: (
           placeholder="Enter product title"
           autoComplete="off"
           required
-          className={`border px-3 py-2 w-full rounded ${errors.title ? 'border-red-500' : ''}`}
+          className={`border px-3 py-2 w-full rounded ${errors.title ? "border-red-500" : ""}`}
         />
-        {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
+        {errors.title && (
+          <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+        )}
       </div>
-      
+
       <div>
-        <label htmlFor="product-description" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="product-description"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Description
         </label>
         <input
@@ -200,13 +223,18 @@ export default function ProductForm({ onProductCreated }: { onProductCreated?: (
           onChange={handleChange}
           placeholder="Enter product description"
           autoComplete="off"
-          className={`border px-3 py-2 w-full rounded ${errors.description ? 'border-red-500' : ''}`}
+          className={`border px-3 py-2 w-full rounded ${errors.description ? "border-red-500" : ""}`}
         />
-        {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+        {errors.description && (
+          <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+        )}
       </div>
-      
+
       <div>
-        <label htmlFor="product-price" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="product-price"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Price
         </label>
         <input
@@ -220,13 +248,18 @@ export default function ProductForm({ onProductCreated }: { onProductCreated?: (
           placeholder="0.00"
           autoComplete="off"
           required
-          className={`border px-3 py-2 w-full rounded ${errors.price ? 'border-red-500' : ''}`}
+          className={`border px-3 py-2 w-full rounded ${errors.price ? "border-red-500" : ""}`}
         />
-        {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
+        {errors.price && (
+          <p className="text-red-500 text-sm mt-1">{errors.price}</p>
+        )}
       </div>
-      
+
       <div>
-        <label htmlFor="product-image" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="product-image"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Product Image
         </label>
         <input
@@ -240,7 +273,9 @@ export default function ProductForm({ onProductCreated }: { onProductCreated?: (
 
       {previewUrl && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Image Preview</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Image Preview
+          </label>
           <Image
             src={previewUrl}
             alt="Product preview"
@@ -252,7 +287,10 @@ export default function ProductForm({ onProductCreated }: { onProductCreated?: (
       )}
 
       <div>
-        <label htmlFor="product-category" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="product-category"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Category
         </label>
         <select
@@ -260,7 +298,7 @@ export default function ProductForm({ onProductCreated }: { onProductCreated?: (
           name="categoryId"
           value={formData.categoryId}
           onChange={handleChange}
-          className={`border px-3 py-2 w-full rounded ${errors.categoryId ? 'border-red-500' : ''}`}
+          className={`border px-3 py-2 w-full rounded ${errors.categoryId ? "border-red-500" : ""}`}
         >
           {categories.map((cat: { id: number; name: string }) => (
             <option key={cat.id} value={cat.id}>
@@ -268,7 +306,9 @@ export default function ProductForm({ onProductCreated }: { onProductCreated?: (
             </option>
           ))}
         </select>
-        {errors.categoryId && <p className="text-red-500 text-sm mt-1">{errors.categoryId}</p>}
+        {errors.categoryId && (
+          <p className="text-red-500 text-sm mt-1">{errors.categoryId}</p>
+        )}
       </div>
 
       <button

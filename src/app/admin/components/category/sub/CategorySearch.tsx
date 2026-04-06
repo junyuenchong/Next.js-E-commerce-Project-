@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo, useCallback } from "react";
 
 export interface CategorySearchProps {
   searchQuery: string;
@@ -8,11 +8,18 @@ export interface CategorySearchProps {
   onSearchSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
 }
 
-const CategorySearch: React.FC<CategorySearchProps> = ({
+const CategorySearch = memo(function CategorySearch({
   searchQuery,
   onSearchChange,
   onSearchSubmit,
-}) => {
+}: CategorySearchProps) {
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onSearchChange(e.target.value);
+    },
+    [onSearchChange],
+  );
+
   return (
     <form onSubmit={onSearchSubmit} className="mb-6 flex gap-2">
       <div className="flex-1">
@@ -24,7 +31,7 @@ const CategorySearch: React.FC<CategorySearchProps> = ({
           name="query"
           type="text"
           value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
+          onChange={handleChange}
           placeholder="Search categories..."
           autoComplete="off"
           className="border px-3 py-2 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -38,6 +45,6 @@ const CategorySearch: React.FC<CategorySearchProps> = ({
       </button>
     </form>
   );
-};
+});
 
-export default CategorySearch; 
+export default CategorySearch;

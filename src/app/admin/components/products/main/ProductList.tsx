@@ -1,10 +1,20 @@
 "use client";
 
-import React, { useState, useImperativeHandle, forwardRef, useEffect } from "react";
+import React, {
+  useState,
+  useImperativeHandle,
+  forwardRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import ProductGrid from "../sub/ProductGrid";
 import { updateProduct, deleteProduct } from "@/actions/product";
-import { useRealtimeSWR } from '@/lib/hooks/useRealtimeSWR';
+import { useRealtimeQuery } from "@/lib/hooks/useRealtimeQuery";
 import type { ProductWithCategory } from "../types/ProductItem";
+import { useQuery } from "@tanstack/react-query";
+
+type AdminCategory = { id: number; name: string };
 
 const PAGE_SIZE = 10;
 
@@ -26,16 +36,29 @@ const ProductList = forwardRef(function ProductList(_, ref) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
-  const url = `/admin/api/products?limit=${PAGE_SIZE}&page=${page}`;
-  const { data, mutate } = useRealtimeSWR({
-    url,
-    event: 'products_updated',
-    matchKey: (key) => typeof key === 'string' && key.includes('/products'),
-    swrOptions: {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 0,
+  const url = useMemo(
+    () => `/admin/api/products?limit=${PAGE_SIZE}&page=${page}`,
+    [page],
+  );
+  const { data, refetch } = useRealtimeQuery(
+    ["admin-products", page],
+    async () => {
+      const res = await fetch(url);
+      return res.json();
     },
+    {
+      channels: "products",
+    },
+  );
+
+  const categoriesQuery = useQuery<AdminCategory[]>({
+    queryKey: ["admin-categories"],
+    queryFn: async () => {
+      const res = await fetch("/admin/api/categories");
+      return res.json();
+    },
+    staleTime: 300000,
+    retry: 1,
   });
 
   useEffect(() => {
@@ -43,26 +66,26 @@ const ProductList = forwardRef(function ProductList(_, ref) {
     if (page === 1) {
       setProducts(Array.isArray(data) ? data : []);
     } else if (Array.isArray(data)) {
-      setProducts(prev => [...prev, ...data]);
+      setProducts((prev) => [...prev, ...data]);
     }
     setHasMore(Array.isArray(data) && data.length === PAGE_SIZE);
     setIsLoading(false);
   }, [data, page]);
 
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     setIsLoading(true);
-    setPage(p => p + 1);
-  };
+    setPage((p) => p + 1);
+  }, []);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     setPage(1);
-    await mutate();
+    await refetch();
     setIsRefreshing(false);
-  };
+  }, [refetch]);
 
   // --- Editing handlers ---
-  const handleEditClick = (product: ProductWithCategory) => {
+  const handleEditClick = useCallback((product: ProductWithCategory) => {
     setEditingId(product.id);
     setEditForm({
       title: product.title || "",
@@ -73,65 +96,111 @@ const ProductList = forwardRef(function ProductList(_, ref) {
     });
     setPreviewUrl(product.imageUrl || null);
     setEditErrors({});
-  };
+  }, []);
 
-  const handleEditChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
-  ) => {
-    const { name, value } = e.target;
-    setEditForm((prev) => ({ ...prev, [name]: value }));
-    if (editErrors[name]) {
-      setEditErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPreviewUrl(URL.createObjectURL(file));
-      setEditForm((prev) => ({ ...prev, imageUrl: "" }));
-    }
-  };
-
-  const handleUpdate = async (id: number) => {
-    try {
-      const payload = {
-        ...editForm,
-        price: parseFloat(editForm.price),
-        categoryId: parseInt(editForm.categoryId),
-      };
-      const result = await updateProduct(id, payload);
-      if (result) {
-        setEditingId(null);
-        setTimeout(() => handleRefresh(), 200);
-      } else {
-        alert("Update failed: No result returned");
+  const handleEditChange = useCallback(
+    (
+      e: React.ChangeEvent<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >,
+    ) => {
+      const { name, value } = e.target;
+      setEditForm((prev) => ({ ...prev, [name]: value }));
+      if (editErrors[name]) {
+        setEditErrors((prev) => ({ ...prev, [name]: "" }));
       }
-    } catch {
-      alert("Failed to update product");
-    }
-  };
+    },
+    [editErrors],
+  );
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
-    try {
-      await deleteProduct(id);
-      handleRefresh();
-    } catch {
-      alert("Failed to delete product");
-    }
-  };
+  const handleImageChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        setPreviewUrl(URL.createObjectURL(file));
+        setEditForm((prev) => ({ ...prev, imageUrl: "" }));
+      }
+    },
+    [],
+  );
+
+  const handleUpdate = useCallback(
+    async (id: number) => {
+      try {
+        const payload = {
+          ...editForm,
+          price: parseFloat(editForm.price),
+          categoryId: parseInt(editForm.categoryId),
+        };
+        const result = await updateProduct(id, payload);
+        if (result) {
+          setEditingId(null);
+          setTimeout(() => handleRefresh(), 200);
+        } else {
+          alert("Update failed: No result returned");
+        }
+      } catch {
+        alert("Failed to update product");
+      }
+    },
+    [editForm, handleRefresh],
+  );
+
+  const handleDelete = useCallback(
+    async (id: number) => {
+      if (!window.confirm("Are you sure you want to delete this product?"))
+        return;
+      try {
+        await deleteProduct(id);
+        handleRefresh();
+      } catch {
+        alert("Failed to delete product");
+      }
+    },
+    [handleRefresh],
+  );
 
   useImperativeHandle(ref, () => ({
     handleRefresh,
   }));
 
+  const itemProps = useMemo(() => {
+    return {
+      editingId,
+      editForm,
+      previewUrl,
+      editErrors,
+      setEditingId,
+      handleEditClick,
+      handleEditChange,
+      handleImageChange,
+      handleUpdate,
+      handleDelete,
+      categories: categoriesQuery.data ?? [],
+      categoriesLoading: categoriesQuery.isLoading,
+    };
+  }, [
+    editingId,
+    editForm,
+    previewUrl,
+    editErrors,
+    setEditingId,
+    handleEditClick,
+    handleEditChange,
+    handleImageChange,
+    handleUpdate,
+    handleDelete,
+    categoriesQuery.data,
+    categoriesQuery.isLoading,
+  ]);
+
   if (!products.length && isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-8">
-        <button className="px-4 py-2 bg-gray-300 text-gray-600 rounded flex items-center gap-2" disabled>
+        <button
+          className="px-4 py-2 bg-gray-300 text-gray-600 rounded flex items-center gap-2"
+          disabled
+        >
           <span className="animate-spin h-4 w-4 border-2 border-t-transparent border-gray-600 rounded-full inline-block"></span>
           Loading Products...
         </button>
@@ -143,18 +212,7 @@ const ProductList = forwardRef(function ProductList(_, ref) {
     <div className="space-y-6">
       <ProductGrid
         products={products}
-        itemProps={{
-          editingId: editingId,
-          editForm: editForm,
-          previewUrl: previewUrl,
-          editErrors: editErrors,
-          setEditingId: setEditingId,
-          handleEditClick: handleEditClick,
-          handleEditChange: handleEditChange,
-          handleImageChange: handleImageChange,
-          handleUpdate: handleUpdate,
-          handleDelete: handleDelete,
-        }}
+        itemProps={itemProps}
         onProductCreated={handleRefresh}
         onProductUpdated={handleRefresh}
         onProductDeleted={handleRefresh}
@@ -169,11 +227,15 @@ const ProductList = forwardRef(function ProductList(_, ref) {
             {isLoading ? (
               <span className="animate-spin h-4 w-4 border-2 border-t-transparent border-gray-600 rounded-full inline-block"></span>
             ) : null}
-            {isLoading ? 'Loading...' : 'Load More'}
+            {isLoading ? "Loading..." : "Load More"}
           </button>
         </div>
       )}
-      {!hasMore && <div className="flex justify-center text-gray-400 mt-4">No more products</div>}
+      {!hasMore && (
+        <div className="flex justify-center text-gray-400 mt-4">
+          No more products
+        </div>
+      )}
     </div>
   );
 });
