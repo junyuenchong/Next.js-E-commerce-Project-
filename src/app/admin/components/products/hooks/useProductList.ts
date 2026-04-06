@@ -46,6 +46,7 @@ export function useProductList() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [cursor, setCursor] = useState<number | null>(null);
+  const [nextCursorState, setNextCursorState] = useState<number | null>(null);
   const [allProducts, setAllProducts] = useState<ProductWithCategory[]>([]);
   const [isEnd, setIsEnd] = useState(false);
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
@@ -61,6 +62,7 @@ export function useProductList() {
     setAllProducts([]);
     setIsEnd(false);
     setCursor(null);
+    setNextCursorState(null);
     setSearch(effectiveSearch);
     setOptimisticUpdates(new Map());
   }, [effectiveSearch, urlSearch, search]);
@@ -132,12 +134,19 @@ export function useProductList() {
           return [...prev, ...newProducts];
         });
         if (productsWithUpdates.length < PAGE_SIZE) setIsEnd(true);
+        setNextCursorState(
+          nextCursor ??
+            (productsWithUpdates.length > 0
+              ? productsWithUpdates[productsWithUpdates.length - 1].id
+              : null),
+        );
       } else {
         if (allProducts.length === 0) setAllProducts([]);
         setIsEnd(true);
+        setNextCursorState(null);
       }
     }
-  }, [productsPage, applyOptimisticUpdates, allProducts.length]);
+  }, [productsPage, nextCursor, applyOptimisticUpdates, allProducts.length]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -279,7 +288,7 @@ export function useProductList() {
   // Pagination control for infinite "load more" behavior.
   const handleLoadMore = () => {
     if (isEnd || isLoading) return;
-    if (nextCursor != null) setCursor(nextCursor);
+    if (nextCursorState != null) setCursor(nextCursorState);
   };
 
   return {

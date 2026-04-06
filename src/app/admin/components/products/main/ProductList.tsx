@@ -23,6 +23,7 @@ const ProductList = forwardRef(function ProductList(_, ref) {
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [cursor, setCursor] = useState<number | null>(null);
+  const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [, setIsRefreshing] = useState(false);
   // --- Editing state ---
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -78,7 +79,7 @@ const ProductList = forwardRef(function ProductList(_, ref) {
     if (Array.isArray(items)) {
       setProducts((prev) => (cursor == null ? items : [...prev, ...items]));
       setHasMore(items.length === PAGE_SIZE);
-      setCursor(
+      setNextCursor(
         nextCursor ?? (items.length > 0 ? items[items.length - 1].id : null),
       );
     }
@@ -86,12 +87,15 @@ const ProductList = forwardRef(function ProductList(_, ref) {
   }, [data, cursor]);
 
   const handleLoadMore = useCallback(() => {
+    if (!hasMore || isLoading || nextCursor == null) return;
     setIsLoading(true);
-  }, []);
+    setCursor(nextCursor);
+  }, [hasMore, isLoading, nextCursor]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     setCursor(null);
+    setNextCursor(null);
     await refetch();
     setIsRefreshing(false);
   }, [refetch]);

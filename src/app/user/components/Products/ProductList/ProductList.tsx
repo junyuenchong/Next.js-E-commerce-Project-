@@ -21,6 +21,10 @@ export default function ProductList({
     const list = initialProducts ?? [];
     return list.length > 0 ? list[list.length - 1].id : null;
   });
+  const [nextCursor, setNextCursor] = useState<number | null>(() => {
+    const list = initialProducts ?? [];
+    return list.length > 0 ? list[list.length - 1].id : null;
+  });
   const [hasMore, setHasMore] = useState(() =>
     initialProducts != null && initialProducts.length > 0
       ? initialProducts.length === PAGE_SIZE
@@ -69,7 +73,7 @@ export default function ProductList({
     if (Array.isArray(items)) {
       setProducts((prev) => (cursor == null ? items : [...prev, ...items]));
       setHasMore(items.length === PAGE_SIZE);
-      setCursor(
+      setNextCursor(
         nextCursor ?? (items.length > 0 ? items[items.length - 1].id : null),
       );
     }
@@ -77,8 +81,10 @@ export default function ProductList({
   }, [data, cursor]);
 
   const handleLoadMore = useCallback(() => {
+    if (!hasMore || isLoading || nextCursor == null) return;
     setIsLoading(true);
-  }, []);
+    setCursor(nextCursor);
+  }, [hasMore, isLoading, nextCursor]);
 
   if (!products.length && isLoading)
     return (
