@@ -13,6 +13,8 @@ type RealtimeQueryOptions<TQueryFnData> = Omit<
   "queryKey" | "queryFn"
 > & {
   channels?: string | string[];
+  /** Polling fallback when SSE is unavailable (e.g. some hosts). */
+  fallbackIntervalMs?: number;
   /**
    * When an SSE event arrives, invalidate queries whose keys match.
    * If omitted, only invalidates `queryKey`.
@@ -38,7 +40,12 @@ export function useRealtimeQuery<TQueryFnData>(
   queryFn: () => Promise<TQueryFnData>,
   options: RealtimeQueryOptions<TQueryFnData> = {},
 ) {
-  const { channels, matchKey, ...queryOptions } = options;
+  const {
+    channels,
+    matchKey,
+    fallbackIntervalMs = 15000,
+    ...queryOptions
+  } = options;
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -51,11 +58,7 @@ export function useRealtimeQuery<TQueryFnData>(
     const normalized = normalizeChannels(channels);
     if (!normalized.length) return;
 
-    const es = new EventSource(
-      `/user/api/events?channels=${encodeURIComponent(normalized.join(","))}`,
-    );
-
-    es.onmessage = () => {
+    const invalidate = () => {
       if (matchKey) {
         queryClient.invalidateQueries({
           predicate: (q) => matchKey(q.queryKey),
@@ -65,8 +68,25 @@ export function useRealtimeQuery<TQueryFnData>(
       }
     };
 
-    return () => es.close();
-  }, [channels, matchKey, queryClient, queryKey]);
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    const startPolling = () => {
+      if (pollTimer) return;
+      pollTimer = setInterval(invalidate, fallbackIntervalMs);
+    };
+
+    const es = new EventSource(
+      `/user/api/events?channels=${encodeURIComponent(normalized.join(","))}`,
+    );
+
+    es.onmessage = invalidate;
+    // If SSE drops/unsupported, keep data fresh via polling.
+    es.onerror = () => startPolling();
+
+    return () => {
+      es.close();
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, [channels, fallbackIntervalMs, matchKey, queryClient, queryKey]);
 
   return query;
 }
