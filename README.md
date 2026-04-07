@@ -1,6 +1,6 @@
-## E‑Commerce (Next.js) — Basic Stack and Neon Postgres
+## E‑Commerce (Next.js) — App Router + Neon Postgres
 
-### 🌐 Live Demo
+### Live Demo
 
 **Production URLs:**
 
@@ -14,7 +14,7 @@
 - **Prisma** ORM (provider: `postgresql`)
 - **NextAuth.js** (+ Prisma Adapter)
 - **Redux Toolkit** + **redux-persist**
-- **SWR** for data fetching
+- **TanStack React Query** for data fetching/caching
 - **Redis** for caching hot data
 - **RabbitMQ** (via `amqplib`) for async business events
 - **Tailwind CSS v4** (via `@tailwindcss/postcss` + PostCSS)
@@ -22,62 +22,68 @@
 - **Cloudinary** for media uploads
 - **Node.js 20** runtime
 
-### Project Structure (Frontend & Backend)
+### Project Structure
 
-#### App / UI (`src/app`)
+#### Frontend (App Router)
 
-- `src/app/layout.tsx` – root HTML shell + global providers (Redux, Tailwind).
-- `src/app/page.tsx` – redirects `/` → `/user`.
-- `src/app/api/**/route.ts` – App Router API routes (e.g. `upload`).
-- `src/app/user/**`
-  - `layout.tsx`, `page.tsx`, `loading.tsx` – user storefront shell and entry.
-  - `api/**/route.ts` – user-facing APIs (cart, products, categories, session, logout).
-  - `components/**` – all user UI (header, product list, product card, cart sidebar, etc.).
-  - `hooks/**` – user UI hooks (e.g. `useCart`, `useUser`).
-- `src/app/admin/**`
-  - `layout.tsx`, `page.tsx`, `loading.tsx` – admin shell and entry.
-  - `api/**/route.ts` – admin APIs (products, categories, batch delete, SSE events).
-  - `components/**` – admin UI (sidebar, product & category management).
-  - `hooks/**` – admin UI hooks (product list, category manager, SSE hook).
+```txt
+src/
+├─ app/                        # Next.js App Router (UI + route handlers)
+│  ├─ admin/                   # Admin dashboard UI + admin pages
+│  ├─ user/                    # User storefront UI + user pages
+│  └─ api/                     # Route handlers (upload, SSE events, etc.)
+│
+├─ redux/                      # Redux store + persisted cart slice
+│  ├─ ReduxProvider.tsx
+│  ├─ store.ts
+│  └─ slices/
+│     └─ cartSlice.ts
+│
+└─ middleware.ts               # Session refresh + CSRF checks
+```
 
-#### Backend (Controllers & Domain Logic)
+#### Backend (Controllers + Modules)
 
-- `src/actions/**`
-  - Thin **controllers / server actions** that:
-    - validate input using Zod schemas,
-    - call domain services in `src/modules/**`,
-    - handle cache invalidation (`revalidatePath`, Redis keys),
-    - publish domain events (RabbitMQ, Redis pub/sub).
-  - Examples:
-    - `actions/product.ts` – product CRUD/search.
-    - `actions/category.ts` – category CRUD/search.
-    - `actions/cart.ts` – cart operations + merge logic entrypoint.
-    - `actions/auth.ts` – custom session, login, logout, register.
-
-- `src/modules/**`
-  - **Domain services + repositories**, one folder per domain:
-    - `modules/product/*` – product service + Prisma repository.
-    - `modules/category/*` – category service + Prisma repository.
-    - `modules/cart/*` – cart service + Prisma repository (user + guest carts, merge).
-    - `modules/auth/*` – auth/session service + Prisma repository.
-  - Services contain **business rules**; repositories contain **Prisma-only DB code**.
-  - UI and API routes never import repositories directly; they always go through `actions/*`.
-
-#### Shared Utilities
-
-- `src/lib/prisma.ts` – Prisma client.
-- `src/lib/redis.ts` – Redis client + JSON helpers.
-- `src/lib/rabbitmq.ts` – RabbitMQ connection + event publisher.
-- `src/lib/hooks/useRealtimeSWR.ts` – SWR + SSE integration for realtime updates.
-- `src/lib/validators/**` – Zod schemas (product, category, cart).
-- `src/lib/utils/utils.tsx` – small shared helpers.
-
-#### Middleware
-
-- `src/middleware.ts`
-  - Renews custom session cookie on GET.
-  - Performs basic CSRF protection (Origin vs Host check).
-  - Applied globally via Next.js middleware matcher.
+```txt
+src/
+├─ actions/                   # Controllers (server actions)
+│  ├─ product.ts             # Product CRUD/search + cache invalidation + events
+│  ├─ category.ts            # Category CRUD/search + cache invalidation + events
+│  ├─ cart.ts                # Cart operations + merge entrypoint
+│  └─ auth.ts                # Login/logout/register/session helpers
+│
+├─ modules/                   # Feature modules (Services + Repositories)
+│  ├─ product/
+│  │  ├─ product.service.ts
+│  │  └─ product.repository.ts
+│  │
+│  ├─ category/
+│  │  ├─ category.service.ts
+│  │  └─ category.repository.ts
+│  │
+│  ├─ cart/
+│  │  ├─ cart.service.ts
+│  │  └─ cart.repository.ts
+│  │
+│  └─ auth/
+│     ├─ auth.service.ts
+│     └─ auth.repository.ts
+│
+├─ lib/                        # Shared infrastructure
+│  ├─ prisma.ts
+│  ├─ redis.ts
+│  ├─ rabbitmq.ts
+│  ├─ hooks/
+│  │  └─ useRealtimeQuery.ts
+│  ├─ query-keys.ts           # TanStack query keys (qk.*)
+│  ├─ cache-keys.ts           # Redis key helpers (cacheKeys.*)
+│  └─ validators/
+│     ├─ product.ts
+│     ├─ category.ts
+│     └─ cart.ts
+│
+└─ cqrs/                      # (Optional) not used directly here
+```
 
 ### Prerequisites
 
@@ -151,12 +157,30 @@ Scripts available:
 - `npm run dev` → Next.js dev server
 - `npm run build` → Next.js build
 - `npm start` → Next.js production server
-- `npm run lint` → ESLint
+- `npm run lint` → ESLint (Next wrapper)
+- `npm run lint:fix` → ESLint fix (scoped to `src/`)
+- `npm run format` → Prettier write
+- `npm run clean` → remove `.next` safely on Windows
+- `npm run dev:clean` → clean + dev
 
 Utilities:
 
 - Seed DB: `node scripts/seed-db.js`
 - Check DB contents: `node scripts/check-db.js`
+
+### Pagination (Performance)
+
+Product lists use **cursor pagination** (by `Product.id`) for fast, stable "Load More" behavior.  
+The API supports:
+
+- `GET /user/api/products?limit=10&cursor=<lastId>` → `{ items, nextCursor }`
+- `GET /admin/api/products?limit=20&cursor=<lastId>` → `{ items, nextCursor }`
+
+There are composite DB indexes in Prisma migrations to support this efficiently (e.g. `Product(categoryId, id)`).
+
+### Realtime (SSE)
+
+Admin product/category pages subscribe to SSE endpoints under `src/app/admin/api/events/**` and trigger React Query invalidation via `useRealtimeInvalidate`. User-facing lists/details use `useRealtimeQuery` with a polling fallback when SSE is unavailable.
 
 ### Deployment
 
