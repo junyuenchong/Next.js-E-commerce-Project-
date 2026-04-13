@@ -6,10 +6,10 @@ A full‑stack shop with a **customer storefront** and an **admin dashboard**. T
 
 ## Try the live site
 
-| Area  | Link                                                                    |
-| ----- | ----------------------------------------------------------------------- |
-| Store | [Open storefront](https://next-js-e-commerce-project.onrender.com/user) |
-| Admin | [Open admin](https://next-js-e-commerce-project.onrender.com/admin)     |
+| Area  | Link                                                                            |
+| ----- | ------------------------------------------------------------------------------- |
+| Store | [Open storefront](https://next-js-e-commerce-project.onrender.com/modules/user) |
+| Admin | [Open admin](https://next-js-e-commerce-project.onrender.com/modules/admin)     |
 
 _(Replace with your own domain when you deploy.)_
 
@@ -108,6 +108,20 @@ FACEBOOK_CLIENT_ID=""
 FACEBOOK_CLIENT_SECRET=""
 
 # Optional
+PAYPAL_CLIENT_ID=""
+PAYPAL_CLIENT_SECRET=""
+# Defaults to MYR
+PAYPAL_CURRENCY="MYR"
+NEXT_PUBLIC_PAYPAL_CURRENCY="MYR"
+
+# Email (order receipts, password reset)
+EMAIL_USER=""
+EMAIL_PASS=""
+EMAIL_FROM=""
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT="465"
+SMTP_SECURE="1"
+
 REDIS_URL="redis://..."
 # RabbitMQ (optional): PayPal capture posts to two durable queues — receipt email + inventory.
 # If unset, email + stock decrement run inline in the API route.
@@ -144,6 +158,14 @@ Without **`RABBITMQ_URL`**, behavior stays fully synchronous (email + inventory 
 
 ```bash
 npm install
+npx prisma generate
+```
+
+### Windows note (Prisma EPERM)
+
+If `prisma generate` fails with `EPERM rename query_engine-windows.dll.node`, stop the running Next dev server / any `node` process using Prisma, then rerun:
+
+```bash
 npx prisma generate
 ```
 
@@ -201,6 +223,38 @@ Response shape includes items and a `nextCursor` when more pages exist.
 ## Live updates (SSE)
 
 The admin area can open **SSE** streams under `/modules/admin/api/events/...` so lists refresh when data changes elsewhere. If SSE fails, the UI falls back to polling. The storefront uses a similar pattern where needed.
+
+---
+
+## Support chat (Amazon-style, no websocket)
+
+- **User page**: `GET /modules/user/support/chat` (polling)
+- **Admin page**: `GET /modules/admin/support/chats` (polling)
+
+APIs:
+
+- User: `GET/POST /modules/user/api/support/conversations`
+- User: `GET/POST /modules/user/api/support/conversations/[id]/messages`
+- Admin: `GET /modules/admin/api/support/conversations`
+- Admin: `GET/POST /modules/admin/api/support/conversations/[id]/messages`
+
+---
+
+## Coupons & vouchers
+
+Supports Amazon-style vouchers:
+
+- **Public vouchers**: can be shown on storefront and used by anyone.
+- **Targeted vouchers**: require sign-in and must be assigned to selected users (bulk assign from admin users page).
+
+Storefront vouchers API: `GET /modules/user/api/coupons/vouchers`
+
+---
+
+## Orders
+
+- User order list: `/modules/user/orders`
+- User order detail: `/modules/user/orders/[id]` (items + images, shipping snapshot, PayPal ids, receipt email snapshot)
 
 ---
 
