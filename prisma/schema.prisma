@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,18 +10,165 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  USER
+  STAFF
+  ADMIN
+  SUPER_ADMIN
+}
+
 model User {
-  id            Int       @id @default(autoincrement())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  passwordHash  String?
-  session       Session[]
-  cart          Cart?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  accounts      Account[]
+  id               Int                  @id @default(autoincrement())
+  name             String?
+  email            String               @unique
+  emailVerified    DateTime?
+  image            String?
+  passwordHash     String?
+  role             UserRole             @default(USER)
+  isActive         Boolean              @default(true)
+  /// RBAC profile (`AdminRoleDefinition.id`) for `ADMIN` / `STAFF` only; must be null for `USER`. `SUPER_ADMIN` uses the built-in profile in app code (this field ignored when resolving permissions).
+  adminPermissionRoleId Int?
+  adminPermissionRole   AdminRoleDefinition? @relation(fields: [adminPermissionRoleId], references: [id], onDelete: SetNull)
+  session          Session[]
+  cart             Cart?
+  reviews          ProductReview[]
+  orders           Order[]
+  wishlist         WishlistItem[]
+  passwordResets   PasswordResetToken[]
+  addresses        UserAddress[]
+  couponAssignments UserCouponAssignment[]
+  supportConversations SupportConversation[]
+  supportMessages      SupportMessage[] @relation("SupportMessageUser")
+  supportAdminMessages SupportMessage[] @relation("SupportMessageAdmin")
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  accounts         Account[]
+  adminActionLogs  AdminActionLog[]
+
+  @@index([adminPermissionRoleId])
+}
+
+enum SupportConversationStatus {
+  OPEN
+  CLOSED
+}
+
+model SupportConversation {
+  id        Int                        @id @default(autoincrement())
+  userId    Int
+  user      User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    SupportConversationStatus   @default(OPEN)
+  subject   String?                    @db.VarChar(200)
+  lastMessageAt DateTime               @default(now())
+  messages  SupportMessage[]
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
+
+  @@index([userId, lastMessageAt])
+  @@index([status, lastMessageAt])
+}
+
+enum SupportMessageSenderType {
+  USER
+  ADMIN
+}
+
+model SupportMessage {
+  id             Int                     @id @default(autoincrement())
+  conversationId Int
+  conversation   SupportConversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderType     SupportMessageSenderType
+  userSenderId   Int?
+  userSender     User?                   @relation("SupportMessageUser", fields: [userSenderId], references: [id], onDelete: SetNull)
+  adminSenderId  Int?
+  adminSender    User?                   @relation("SupportMessageAdmin", fields: [adminSenderId], references: [id], onDelete: SetNull)
+  body           String                  @db.VarChar(4000)
+  createdAt      DateTime                @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([userSenderId])
+  @@index([adminSenderId])
+}
+
+/// Append-only audit of sensitive admin actions (refund, ban, catalog removals).
+model AdminActionLog {
+  id          Int      @id @default(autoincrement())
+  actorUserId Int?
+  actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  action      String
+  targetType  String?
+  targetId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+}
+
+/// Named permission profiles (built-in: super_admin, admin, staff; plus custom). `slug` is a stable code; `id` is the primary key.
+model AdminRoleDefinition {
+  id          Int                   @id @default(autoincrement())
+  slug        String                @unique
+  name        String
+  isSystem    Boolean               @default(false)
+  /// Soft-remove custom profiles; inactive profiles are hidden from assignment and ignored for permission resolution.
+  isActive    Boolean               @default(true)
+  sortOrder   Int                   @default(0)
+  permissions AdminRolePermission[]
+  users       User[]
+
+  @@index([isActive])
+}
+
+/// Canonical admin actions (stable `key` for code checks; `id` for APIs and role matrix).
+model AdminPermission {
+  id        Int                   @id @default(autoincrement())
+  key       String                @unique
+  label     String
+  sortOrder Int                   @default(0)
+  roleGrants AdminRolePermission[]
+}
+
+model AdminRolePermission {
+  id           Int                 @id @default(autoincrement())
+  roleId       Int
+  permissionId Int
+  role         AdminRoleDefinition @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   AdminPermission     @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+model UserAddress {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String?
+  line1     String
+  city      String
+  postcode  String
+  country   String   @default("Malaysia")
+  isDefault Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, isDefault])
+  @@index([userId, isActive])
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Session {
@@ -42,25 +186,33 @@ model Category {
   id        Int       @id @default(autoincrement())
   name      String    @unique
   slug      String    @unique
-  products  Product[] // One-to-many relationship
+  isActive  Boolean   @default(true)
+  products  Product[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([isActive])
 }
 
 model Product {
-  id          Int            @id @default(autoincrement())
+  id          Int             @id @default(autoincrement())
   title       String
-  slug        String         @unique
+  slug        String          @unique
   description String?
-  price       Float
+  /// Optional list / MSRP price; when greater than `price`, storefront shows a discount.
+  compareAtPrice Decimal? @db.Decimal(12, 2)
+  price       Decimal    @db.Decimal(12, 2)
   imageUrl    String?
-  stock       Int            @default(0)
-  isActive    Boolean        @default(true)
+  stock       Int             @default(0)
+  isActive    Boolean         @default(true)
   categoryId  Int
-  category    Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category    Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   cartItems   CartLineItem[]
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  reviews     ProductReview[]
+  orderLines  OrderLineItem[]
+  wishlists   WishlistItem[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   @@index([categoryId])
   @@index([isActive, createdAt])
@@ -69,13 +221,48 @@ model Product {
   @@index([categoryId, isActive, id])
 }
 
+model WishlistItem {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+  @@index([userId, isActive])
+}
+
+model ProductReview {
+  id         Int      @id @default(autoincrement())
+  productId  Int
+  userId     Int
+  rating     Int
+  comment    String
+  adminReply String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+  @@index([productId, createdAt])
+  @@index([userId, createdAt])
+  @@index([productId, isActive, createdAt])
+}
+
 model CartLineItem {
-  id        String  @id
+  id        String  @id @default(cuid())
   productId Int
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   quantity  Int
   title     String?
-  price     Float?
+  price     Decimal? @db.Decimal(12, 2)
   image     String?
   cartId    String
   cart      Cart    @relation(references: [id], fields: [cartId], onDelete: Cascade)
@@ -86,12 +273,12 @@ model CartLineItem {
 }
 
 model Cart {
-  id          String         @id
+  id          String         @id @default(cuid())
   userId      Int?           @unique
   user        User?          @relation(references: [id], fields: [userId], onDelete: Cascade)
   items       CartLineItem[]
   expiresAt   DateTime
-  guestCartId String?        @unique // For guest carts
+  guestCartId String?        @unique
 
   @@index([expiresAt])
 }
@@ -113,4 +300,112 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+enum OrderStatus {
+  pending
+  paid
+  processing
+  shipped
+  delivered
+  cancelled
+  fulfilled
+}
+
+enum CouponDiscountType {
+  PERCENT
+  FIXED
+}
+
+enum CouponRedemptionScope {
+  PUBLIC
+  ASSIGNED_USERS
+}
+
+model Coupon {
+  id               Int                  @id @default(autoincrement())
+  code             String               @unique
+  description      String?
+  discountType     CouponDiscountType
+  /// Percent (e.g. 10 = 10%) or fixed amount in order currency.
+  value            Decimal              @db.Decimal(12, 2)
+  minOrderSubtotal Decimal?             @db.Decimal(12, 2)
+  maxDiscount      Decimal?             @db.Decimal(12, 2)
+  startsAt         DateTime?
+  endsAt           DateTime?
+  usageLimit       Int?
+  usedCount        Int                  @default(0)
+  isActive         Boolean              @default(true)
+  /// Who can redeem this code at checkout.
+  redemptionScope  CouponRedemptionScope @default(PUBLIC)
+  /// Shown on cart/checkout “vouchers” strip (Amazon-style tap-to-apply).
+  showOnStorefront Boolean              @default(false)
+  voucherHeadline  String?              @db.VarChar(160)
+  orders           Order[]
+  assignments      UserCouponAssignment[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([isActive, code])
+  @@index([showOnStorefront, isActive])
+}
+
+model UserCouponAssignment {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  couponId   Int
+  coupon     Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+  emailedAt  DateTime?
+  usedAt     DateTime?
+
+  @@unique([userId, couponId])
+  @@index([couponId, assignedAt])
+  @@index([userId, assignedAt])
+}
+
+model Order {
+  id                Int             @id @default(autoincrement())
+  userId            Int?
+  user              User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  emailSnapshot     String?
+  status            OrderStatus     @default(pending)
+  currency          String
+  total             Decimal         @db.Decimal(12, 2)
+  paypalOrderId     String          @unique
+  paypalCaptureId   String?
+  couponId          Int?
+  coupon            Coupon?         @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponCodeSnapshot String?
+  discountAmount    Decimal         @default(0) @db.Decimal(12, 2)
+  shippingLine1     String?
+  shippingCity      String?
+  shippingPostcode  String?
+  shippingCountry   String?
+  shippingMethod    String?
+  items             OrderLineItem[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([couponId])
+}
+
+model OrderLineItem {
+  id         Int      @id @default(autoincrement())
+  orderId    Int
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  Int
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  title      String
+  unitPrice  Decimal  @db.Decimal(12, 2)
+  quantity   Int
+  imageUrl   String?
+
+  @@index([orderId])
+  @@index([productId])
 }

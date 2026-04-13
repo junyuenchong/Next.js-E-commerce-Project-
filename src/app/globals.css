@@ -56,3 +56,8 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
+
+/* react-datepicker (admin coupons) above fixed sidebar */
+.react-datepicker-z-popper {
+  z-index: 200 !important;
+}

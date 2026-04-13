@@ -1,7 +1,6 @@
-// app/page.tsx
+/** Site root → public storefront. */
 import { redirect } from "next/navigation";
 
 export default function RootRedirect() {
-  // First Page
-  redirect("/user");
+  redirect("/modules/user");
 }

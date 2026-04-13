@@ -1,0 +1,1 @@
+export { fetchSameOriginJson } from "./sameOriginFetch";

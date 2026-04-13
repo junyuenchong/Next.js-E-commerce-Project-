@@ -1,220 +1,243 @@
-## E‑Commerce (Next.js) — App Router + Neon Postgres
+# E‑commerce demo (Next.js + Postgres)
 
-### Live Demo
+A full‑stack shop with a **customer storefront** and an **admin dashboard**. The frontend uses Next.js; products, orders, and users are stored in a **PostgreSQL** database (this repo is set up for **Neon**).
 
-**Production URLs:**
+---
 
-- **User Interface**: [https://next-js-e-commerce-project.onrender.com/user](https://next-js-e-commerce-project.onrender.com/user)
-- **Admin Dashboard**: [https://next-js-e-commerce-project.onrender.com/admin](https://next-js-e-commerce-project.onrender.com/admin)
+## Try the live site
 
-### Tech Stack
+| Area  | Link                                                                    |
+| ----- | ----------------------------------------------------------------------- |
+| Store | [Open storefront](https://next-js-e-commerce-project.onrender.com/user) |
+| Admin | [Open admin](https://next-js-e-commerce-project.onrender.com/admin)     |
 
-- **Next.js 15** (App Router, Route Handlers)
-- **TypeScript**
-- **Prisma** ORM (provider: `postgresql`)
-- **NextAuth.js** (+ Prisma Adapter)
-- **Redux Toolkit** + **redux-persist**
-- **TanStack React Query** for data fetching/caching
-- **Redis** for caching hot data
-- **RabbitMQ** (via `amqplib`) for async business events
-- **Tailwind CSS v4** (via `@tailwindcss/postcss` + PostCSS)
-- **Zod** for validation
-- **Cloudinary** for media uploads
-- **Node.js 20** runtime
+_(Replace with your own domain when you deploy.)_
 
-### Project Structure
+---
 
-#### Frontend (App Router)
+## What this project uses
+
+| Piece            | What it does here                    |
+| ---------------- | ------------------------------------ |
+| **Next.js 15**   | Web app, pages, and API routes       |
+| **TypeScript**   | Typed JavaScript                     |
+| **Prisma**       | Talks to the database                |
+| **NextAuth.js**  | Sign‑in (email, Google, Facebook)    |
+| **React Query**  | Loads and caches data in the browser |
+| **Redux**        | Global cart state                    |
+| **Redis**        | Optional faster caching              |
+| **RabbitMQ**     | Optional background jobs             |
+| **Tailwind CSS** | Styling                              |
+| **Zod**          | Checks form data                     |
+| **Cloudinary**   | Optional image hosting for uploads   |
+| **Node.js 20**   | Runtime                              |
+
+---
+
+## How the folders are laid out
+
+**Frontend** lives under `src/app/`.
+
+- **`modules/user/`** — Everything for shoppers: pages, UI, and APIs under `/modules/user/...`.
+- **`modules/admin/`** — Same idea for staff: dashboard and APIs under `/modules/admin/...`.
+
+Inside each module, roughly:
+
+| Folder        | Purpose                                                     |
+| ------------- | ----------------------------------------------------------- |
+| `(routes)/`   | Page components                                             |
+| `api/`        | Server routes (REST handlers)                               |
+| `client/`     | Browser code that calls those APIs (+ auth session wrapper) |
+| `domain/`     | Plain rules (calculations, mapping) with no UI              |
+| `components/` | React UI                                                    |
+| `hooks/`      | Reusable React logic                                        |
+| `lib/`        | Small helpers for that module                               |
+
+Shared code used by both modules is in **`src/app/lib/`**. Cart state is in **`src/app/redux/`**.
+
+**Backend** logic (database access, business rules) is in **`src/backend/modules/`** — separate from the React tree.
+
+**`src/middleware.ts`** — Runs on requests first (session cookie refresh and security checks).
+
+<details>
+<summary>Folder tree (compact)</summary>
 
 ```txt
-src/
-├─ app/                        # Next.js App Router (UI + route handlers)
-│  ├─ admin/                   # Admin dashboard UI + admin pages
-│  ├─ user/                    # User storefront UI + user pages
-│  └─ api/                     # Route handlers (upload, SSE events, etc.)
-│
-├─ redux/                      # Redux store + persisted cart slice
-│  ├─ ReduxProvider.tsx
-│  ├─ store.ts
-│  └─ slices/
-│     └─ cartSlice.ts
-│
-└─ middleware.ts               # Session refresh + CSRF checks
+src/app/
+├─ lib/           # shared helpers, HTTP client, validators
+├─ modules/
+│  ├─ user/       # storefront: (routes)/, api/, client/, domain/, …
+│  └─ admin/      # dashboard: same pattern
+├─ redux/         # cart store
+└─ layout.tsx     # root layout
+
+src/backend/
+└─ modules/       # features: services, repos, actions
 ```
 
-#### Backend (Controllers + Modules)
+</details>
 
-```txt
-src/
-├─ actions/                   # Controllers (server actions)
-│  ├─ product.ts             # Product CRUD/search + cache invalidation + events
-│  ├─ category.ts            # Category CRUD/search + cache invalidation + events
-│  ├─ cart.ts                # Cart operations + merge entrypoint
-│  └─ auth.ts                # Login/logout/register/session helpers
-│
-├─ modules/                   # Feature modules (Services + Repositories)
-│  ├─ product/
-│  │  ├─ product.service.ts
-│  │  └─ product.repository.ts
-│  │
-│  ├─ category/
-│  │  ├─ category.service.ts
-│  │  └─ category.repository.ts
-│  │
-│  ├─ cart/
-│  │  ├─ cart.service.ts
-│  │  └─ cart.repository.ts
-│  │
-│  └─ auth/
-│     ├─ auth.service.ts
-│     └─ auth.repository.ts
-│
-├─ lib/                        # Shared infrastructure
-│  ├─ prisma.ts
-│  ├─ redis.ts
-│  ├─ rabbitmq.ts
-│  ├─ hooks/
-│  │  └─ useRealtimeQuery.ts
-│  ├─ query-keys.ts           # TanStack query keys (qk.*)
-│  ├─ cache-keys.ts           # Redis key helpers (cacheKeys.*)
-│  └─ validators/
-│     ├─ product.ts
-│     ├─ category.ts
-│     └─ cart.ts
-│
-└─ cqrs/                      # (Optional) not used directly here
-```
+---
 
-### Prerequisites
+## Before you start
 
-- Node.js 20+
-- npm (or pnpm/yarn)
-- A Neon Postgres database
+- **Node.js 20+**
+- **npm** (or pnpm / yarn)
+- A **PostgreSQL** URL (Neon works well)
 
-### Environment Variables
+---
 
-Create `.env` (or `.env.local`) in the project root:
+## Environment variables
+
+Create **`.env`** or **`.env.local`** in the project root.
 
 ```bash
-# Database
-DATABASE_URL="postgresql://<USER>:<PASSWORD>@<HOST>/<DATABASE>?sslmode=require"
+# Database (Neon: use SSL)
+DATABASE_URL="postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require"
 
-# Authentication
-NEXTAUTH_URL="http://localhost:3002"  # Production: https://next-js-e-commerce-project.onrender.com
-NEXTAUTH_SECRET="your-secret-key"
+# Auth — must match the site URL people use in the browser
+# Local example: http://localhost:3000  (use your real port)
+# Production: your real HTTPS URL
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="long-random-string"
 
-# OAuth Providers
-GOOGLE_CLIENT_ID="your-google-client-id"
-GOOGLE_CLIENT_SECRET="your-google-client-secret"
-FACEBOOK_CLIENT_ID="your-facebook-client-id"
-FACEBOOK_CLIENT_SECRET="your-facebook-client-secret"
+# Google / Facebook login (optional for local dev)
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+FACEBOOK_CLIENT_ID=""
+FACEBOOK_CLIENT_SECRET=""
 
-# Redis (Optional but recommended)
-REDIS_URL="redis://default:<PASSWORD>@localhost:6379/0"
-
-# RabbitMQ (Optional, for async business events)
-RABBITMQ_URL="amqp://guest:guest@localhost:5672/"
-
-# Cloudinary (Optional)
-CLOUDINARY_CLOUD_NAME="your-cloud-name"
-CLOUDINARY_API_KEY="your-api-key"
-CLOUDINARY_API_SECRET="your-api-secret"
+# Optional
+REDIS_URL="redis://..."
+# RabbitMQ (optional): PayPal capture posts to two durable queues — receipt email + inventory.
+# If unset, email + stock decrement run inline in the API route.
+RABBITMQ_URL="amqp://..."
+RABBITMQ_QUEUE_ORDER_EMAIL="order.email"
+RABBITMQ_QUEUE_ORDER_INVENTORY="order.inventory"
+CLOUDINARY_CLOUD_NAME=""
+CLOUDINARY_API_KEY=""
+CLOUDINARY_API_SECRET=""
 ```
 
-**Production Environment Variables in Render:**
+**On Render:** copy the same keys into the dashboard. Set **`NEXTAUTH_URL`** to your production URL. Add OAuth redirect URLs in Google/Facebook (see below).
 
-- Set all variables in Render dashboard
-- Use production URLs for OAuth callbacks
-- Ensure database connection is working
+### RabbitMQ (optional) — paid orders
 
-### Install and Setup
+When **`RABBITMQ_URL`** is set, the PayPal **capture** route creates the DB order **without** decrementing stock, then enqueues:
+
+| Queue (default name) | Purpose                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------- |
+| `order.email`        | Send receipt email (same content as sync path; worker should use your SMTP / `sendTransactionalEmail`). |
+| `order.inventory`    | Decrement `Product.stock` per line (mirror `decrementStockForOrderLinesRepo` in `order.repo.ts`).       |
+
+Message body is JSON with `v: 1`. **Email:** `{ v, orderId, to, subject, text }`. **Inventory:** `{ v, orderId, lines: [{ productId, quantity }] }`.
+
+If enqueue fails (broker down), the API **falls back** to synchronous stock decrement + email so the customer is not left with wrong inventory.
+
+Without **`RABBITMQ_URL`**, behavior stays fully synchronous (email + inventory in the request).
+
+**Later:** you can add separate queues for payment webhooks or analytics the same way (e.g. `order.payment`, `order.analytics`).
+
+---
+
+## Install and run
 
 ```bash
 npm install
-
-# Generate Prisma Client
 npx prisma generate
-
-# Apply existing migrations (recommended for existing schema)
-npx prisma migrate deploy
-
-# (Optional) Seed sample data
-node scripts/seed-db.js
 ```
 
-### Run
+Optional sample data:
 
 ```bash
-# Dev (Next.js)
-npm run dev
+tsx scripts/seed-db.ts
+```
 
-# Prod (Next.js)
+**Development:**
+
+```bash
+npm run dev
+```
+
+Then open the URL Next.js prints (usually `http://localhost:3000`).
+
+**Production build:**
+
+```bash
+npm run build
 npm start
 ```
 
-Scripts available:
+**Other scripts:**
 
-- `npm run dev` → Next.js dev server
-- `npm run build` → Next.js build
-- `npm start` → Next.js production server
-- `npm run lint` → ESLint (Next wrapper)
-- `npm run lint:fix` → ESLint fix (scoped to `src/`)
-- `npm run format` → Prettier write
-- `npm run clean` → remove `.next` safely on Windows
-- `npm run dev:clean` → clean + dev
+| Command             | Meaning                          |
+| ------------------- | -------------------------------- |
+| `npm run lint`      | Check code style                 |
+| `npm run lint:fix`  | Fix style in `src/`              |
+| `npm run format`    | Format with Prettier             |
+| `npm run clean`     | Delete `.next` (safe on Windows) |
+| `npm run dev:clean` | Clean then start dev             |
 
-Utilities:
+**Helpers:**
 
-- Seed DB: `node scripts/seed-db.js`
-- Check DB contents: `node scripts/check-db.js`
+- `tsx scripts/seed-db.ts` — seed data
+- `tsx scripts/check-db.ts` — inspect DB
 
-### Pagination (Performance)
+---
 
-Product lists use **cursor pagination** (by `Product.id`) for fast, stable "Load More" behavior.  
-The API supports:
+## Product lists (pagination)
 
-- `GET /user/api/products?limit=10&cursor=<lastId>` → `{ items, nextCursor }`
-- `GET /admin/api/products?limit=20&cursor=<lastId>` → `{ items, nextCursor }`
+Lists use **cursor pagination** (by product id) so “Load more” stays fast and stable.
 
-There are composite DB indexes in Prisma migrations to support this efficiently (e.g. `Product(categoryId, id)`).
+Example endpoints:
 
-### Realtime (SSE)
+- Store: `GET /modules/user/api/products?limit=10&cursor=<lastId>`
+- Admin: `GET /modules/admin/api/products?limit=20&cursor=<lastId>`
 
-Admin product/category pages subscribe to SSE endpoints under `src/app/admin/api/events/**` and trigger React Query invalidation via `useRealtimeInvalidate`. User-facing lists/details use `useRealtimeQuery` with a polling fallback when SSE is unavailable.
+Response shape includes items and a `nextCursor` when more pages exist.
 
-### Deployment
+---
 
-**Render Deployment:**
+## Live updates (SSE)
 
-1. Connect your GitHub repository to Render
-2. Set environment variables in Render dashboard
-3. Configure OAuth providers (Google, Facebook)
-4. Deploy automatically on git push
+The admin area can open **SSE** streams under `/modules/admin/api/events/...` so lists refresh when data changes elsewhere. If SSE fails, the UI falls back to polling. The storefront uses a similar pattern where needed.
 
-**Build Commands:**
+---
 
-- **Build**: `npm install && npx prisma generate && npm run build`
-- **Start**: `npm start` (Next.js production server)
+## Deploy (example: Render)
 
-### Development Notes
+1. Connect the GitHub repo to Render.
+2. Add all environment variables.
+3. Set OAuth redirect URLs in Google and Facebook (next section).
+4. Push to deploy.
 
-- If you change the database schema, create a new migration:
-  ```bash
-  npx prisma migrate dev --name <change>
-  ```
-- Ensure Neon uses SSL (`sslmode=require`)
-- For pooled connections, use `-pooler` host with `pgbouncer=true`
+**Suggested Render commands:**
 
-### OAuth Setup
+- Build: `npm install && npx prisma generate && npm run build`
+- Start: `npm start`
 
-**Google OAuth:**
+---
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create OAuth 2.0 credentials
-3. Add redirect URI: `https://next-js-e-commerce-project.onrender.com/api/auth/callback/google`
+## Database tips
 
-**Facebook OAuth:**
+- After you change `schema.prisma`, apply schema updates using your team’s usual database workflow.
+- Neon needs **SSL** (`sslmode=require` in the URL).
+- For Neon’s pooler, use the **`-pooler`** host and `pgbouncer=true` if Neon’s docs say so.
 
-1. Go to [Facebook Developers](https://developers.facebook.com/)
-2. Create app and add Facebook Login
-3. Add redirect URI: `https://next-js-e-commerce-project.onrender.com/api/auth/callback/facebook`
+---
+
+## OAuth (Google and Facebook)
+
+Use these **redirect URLs** in the provider consoles (adjust the domain if you self‑host):
+
+**Google**
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials.
+2. Add authorized redirect URI:  
+   `https://next-js-e-commerce-project.onrender.com/modules/user/api/auth/callback/google`
+
+**Facebook**
+
+1. [Facebook Developers](https://developers.facebook.com/) → your app → Facebook Login.
+2. Add redirect URI:  
+   `https://next-js-e-commerce-project.onrender.com/modules/user/api/auth/callback/facebook`

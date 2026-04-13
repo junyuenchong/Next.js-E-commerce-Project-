@@ -1,36 +1,39 @@
 const nextConfig = {
-  // ✅ Enable standalone build for optimized Docker/Nixpacks deployment
   output: "standalone",
-
-  // ✅ Allow loading remote images from specific domains
+  /** Extra dev hostnames so session/API calls work when using 127.0.0.1 vs localhost (see Next.js `allowedDevOrigins`). */
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
+  async redirects() {
+    return [
+      {
+        source: "/admin",
+        destination: "/modules/admin",
+        permanent: false,
+      },
+      {
+        source: "/admin/:path*",
+        destination: "/modules/admin/:path*",
+        permanent: false,
+      },
+    ];
+  },
+  /** NextAuth lives under `modules/user/api/auth`; keep `/api/auth/*` working for existing OAuth redirect URIs. */
+  async rewrites() {
+    return [
+      {
+        source: "/api/auth/:path*",
+        destination: "/modules/user/api/auth/:path*",
+      },
+    ];
+  },
   images: {
-    unoptimized: true,
-    domains: [
-      "lh3.googleusercontent.com",
-      "platform-lookaside.fbsbx.com",
-      // add other domains as needed
-    ],
+    unoptimized: process.env.NEXT_IMAGE_UNOPTIMIZED === "1",
+    domains: ["lh3.googleusercontent.com", "platform-lookaside.fbsbx.com"],
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
-        hostname: "res.cloudinary.com",
-      },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
-
-  // ✅ Optional: Enable strict React rendering rules (can be removed if not needed)
   reactStrictMode: true,
-
-  // ✅ Optional: Set up i18n or trailingSlash if needed later
-  // trailingSlash: true,
-  // i18n: {
-  //   locales: ['en'],
-  //   defaultLocale: 'en',
-  // },
 };
 
 module.exports = nextConfig;

@@ -1,10 +1,8 @@
-// app/layout.tsx
-
-import "./globals.css"; // <-- Import TailwindCSS (or your global styles)
+import "./globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import ReduxProvider from "./ReduxProvider";
-import { getSiteUrl } from "@/lib/site-url";
+import { getSiteUrl } from "@/app/lib/site-url";
 import QueryProvider from "./QueryProvider";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -46,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${inter.className} bg-white text-black min-h-screen antialiased`}
         suppressHydrationWarning
