@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
-import {
-  ADMIN_LIST_DEFAULT,
-  clampAdminListLimit,
-  parseAdminCursorId,
-} from "@/app/lib/admin-pagination";
 import { adminUserPatchBodySchema } from "@/app/modules/admin/schema/users-api.schema";
 import { Prisma } from "@prisma/client";
 import prisma from "@/app/lib/prisma";

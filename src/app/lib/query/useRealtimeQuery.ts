@@ -169,6 +169,7 @@ export function useRealtimeInvalidate(
     channelsSignature,
     eventsUrl,
     fallbackIntervalMs,
+    normalizedChannels,
     queryClient,
     queryKeySignature,
   ]);

@@ -302,7 +302,7 @@ export default function AdminUsersPage() {
         kind: "ok",
         text: `Assigned voucher to ${userIds.length} users (new: ${data.created}). Emails sent: ${data.emailed}.`,
       });
-    } catch (e) {
+    } catch {
       setBulkBanner({
         kind: "err",
         text: "Bulk assign failed. Check your permissions.",
