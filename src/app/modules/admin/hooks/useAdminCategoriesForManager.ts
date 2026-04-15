@@ -5,7 +5,7 @@ import type { QueryKey } from "@tanstack/react-query";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/app/lib/query-keys";
 import type { Category } from "@/app/modules/admin/types";
-import { fetchAdminCategories } from "@/app/modules/admin/client";
+import { fetchAdminCategories } from "@/app/modules/admin/components/client/http";
 import { useRealtimeInvalidate } from "./useRealtimeQuery";
 
 export function useAdminCategoriesForManager() {

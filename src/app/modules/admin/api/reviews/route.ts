@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { listAllReviewsAdminService } from "@/backend/modules/review/review.service";
-import { adminApiRequireCatalogAccess } from "@/backend/lib/admin-api-guard";
+import { listAllReviewsAdminService } from "@/backend/modules/review";
+import { adminApiRequireCatalogAccess } from "@/backend/core/admin-api-guard";
+import { jsonInternalServerError } from "@/backend/lib/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -40,10 +41,7 @@ export async function GET(request: Request) {
       { reviews: rows, total, page, limit },
       { headers: { "Cache-Control": "no-store" } },
     );
-  } catch (e: unknown) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Internal Server Error" },
-      { status: 500 },
-    );
+  } catch (error) {
+    return jsonInternalServerError(error, "[admin/api/reviews GET]");
   }
 }

@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRealtimeInvalidate } from "@/app/lib/query/useRealtimeQuery";
-import { fetchCart } from "@/app/modules/user/client";
+import { fetchCart } from "@/app/modules/user/components/client/http";
 
 /** Stable query key for cart + realtime invalidation. */
 export const USER_CART_QUERY_KEY = ["user-cart"] as const;

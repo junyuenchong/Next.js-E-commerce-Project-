@@ -1,4 +1,4 @@
-import http from "@/app/lib/http";
+import http from "@/app/utils/http";
 import { adminApiPaths } from "./paths";
 
 export async function fetchAdminCategories() {

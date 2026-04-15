@@ -1,5 +1,5 @@
 import type { ProductCardProduct } from "@/app/modules/user/types";
-import { moneyToNumber } from "@/backend/lib/money";
+import { moneyToNumber } from "@/backend/core/money";
 
 function toIso(d: unknown): string {
   if (d instanceof Date) return d.toISOString();

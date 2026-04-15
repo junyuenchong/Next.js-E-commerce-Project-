@@ -5,13 +5,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import http, { isAxiosError } from "@/app/lib/http";
+import http, { isAxiosError } from "@/app/utils/http";
 import {
   formatLoginProviderLabel,
   type LoginProviderId,
 } from "@/app/lib/login-providers";
-import { useUser } from "@/app/modules/user/client/components/UserContext";
-import AddressBookSection from "@/app/modules/user/client/components/profile/AddressBookSection";
+import { useUser } from "@/app/modules/user/components/client/UserContext";
+import AddressBookSection from "@/app/modules/user/components/client/profile/AddressBookSection";
 
 type ProfileDto = {
   id: number;

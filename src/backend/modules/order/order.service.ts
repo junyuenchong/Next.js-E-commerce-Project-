@@ -1,5 +1,5 @@
 import type { OrderStatus } from "@prisma/client";
-import { publishAdminOrderEvent } from "@/app/lib/admin-events";
+import { publishAdminOrderEvent } from "@/backend/modules/admin-events";
 import {
   createPaidOrderRepo,
   decrementStockForOrderLinesRepo,
@@ -8,10 +8,11 @@ import {
   findOrderForUserByIdRepo,
   listAllOrdersAdminRepo,
   listOrdersForUserRepo,
+  updateOrderShipmentRepo,
   updateOrderStatusRepo,
 } from "./order.repo";
-import { moneyToNumber } from "@/backend/lib/money";
-import type { CreatePaidOrderInput } from "./types/order.type";
+import { moneyToNumber } from "@/backend/core/money";
+import type { CreatePaidOrderInput } from "@/shared/types/order";
 
 type CartLineWithProduct = {
   productId: number;
@@ -119,6 +120,38 @@ export async function updateOrderStatusAdminService(
     id: orderId,
     status,
   });
+  return order;
+}
+
+export async function updateOrderShipmentAdminService(
+  orderId: number,
+  input: {
+    shippingCarrier?: string | null;
+    trackingNumber?: string | null;
+    trackingUrl?: string | null;
+  },
+) {
+  const shippedAt =
+    (input.trackingNumber && input.trackingNumber.trim()) ||
+    (input.trackingUrl && input.trackingUrl.trim()) ||
+    (input.shippingCarrier && input.shippingCarrier.trim())
+      ? new Date()
+      : undefined;
+
+  const order = await updateOrderShipmentRepo(orderId, {
+    ...input,
+    shippedAt,
+  });
+
+  if (shippedAt && order.status !== "cancelled" && order.status !== "shipped") {
+    await updateOrderStatusAdminService(orderId, "shipped");
+  }
+
+  await publishAdminOrderEvent({
+    kind: "updated",
+    id: orderId,
+  });
+
   return order;
 }
 

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { OrderStatus } from "@prisma/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/lib/http";
+import http, { getErrorMessage } from "@/app/utils/http";
+import { useAdminResourceSSE } from "@/app/modules/admin/hooks";
 
 type OrderLine = {
   id: number;
@@ -31,6 +32,10 @@ type OrderDetail = {
   shippingPostcode: string | null;
   shippingCountry: string | null;
   shippingMethod: string | null;
+  shippingCarrier: string | null;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
+  shippedAt: string | null;
   createdAt: string;
   updatedAt: string;
   user: { id: number; email: string | null; name: string | null } | null;
@@ -62,13 +67,50 @@ function formatMoney(amount: number, currency: string) {
   }
 }
 
+function normalizeOptionalText(value: string): string | null {
+  const v = value.trim();
+  return v ? v : null;
+}
+
+function buildTrackingUrl(
+  carrierInput: string,
+  trackingNumberInput: string,
+): string | null {
+  const carrier = carrierInput.trim().toLowerCase();
+  const trackingNumber = trackingNumberInput.trim();
+  if (!carrier || !trackingNumber) return null;
+
+  const encoded = encodeURIComponent(trackingNumber);
+
+  if (carrier.includes("j&t") || carrier.includes("jnt")) {
+    return `https://www.jtexpress.my/track?consignment_no=${encoded}`;
+  }
+  if (carrier.includes("pos laju") || carrier.includes("poslaju")) {
+    return `https://www.pos.com.my/send/ratecalculator?trackingNo=${encoded}`;
+  }
+  if (carrier.includes("dhl")) {
+    return `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${encoded}`;
+  }
+  if (carrier.includes("fedex")) {
+    return `https://www.fedex.com/fedextrack/?trknbr=${encoded}`;
+  }
+
+  return null;
+}
+
 export default function AdminOrderDetailClient({
   orderId,
 }: {
   orderId: number;
 }) {
   const [draftStatus, setDraftStatus] = useState<OrderStatus | null>(null);
+  const [shipmentDraft, setShipmentDraft] = useState({
+    shippingCarrier: "",
+    trackingNumber: "",
+    trackingUrl: "",
+  });
   const [saving, setSaving] = useState(false);
+  const [savingShipment, setSavingShipment] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   const { data: me } = useQuery({
@@ -84,11 +126,29 @@ export default function AdminOrderDetailClient({
         .data,
   });
 
+  useAdminResourceSSE(
+    "/modules/admin/api/events/orders",
+    () => {
+      void orderQuery.refetch();
+    },
+    15000,
+  );
+
   const order = orderQuery.data;
 
   useEffect(() => {
     setDraftStatus(null);
-  }, [order?.id]);
+    setShipmentDraft({
+      shippingCarrier: order?.shippingCarrier ?? "",
+      trackingNumber: order?.trackingNumber ?? "",
+      trackingUrl: order?.trackingUrl ?? "",
+    });
+  }, [
+    order?.id,
+    order?.shippingCarrier,
+    order?.trackingNumber,
+    order?.trackingUrl,
+  ]);
 
   const effectiveStatus = draftStatus ?? order?.status ?? "pending";
 
@@ -98,6 +158,77 @@ export default function AdminOrderDetailClient({
     if (draftStatus === "cancelled") return me.can.orderRefund;
     return me.can.orderUpdate;
   }, [draftStatus, me, order]);
+
+  const shipmentDirty = useMemo(() => {
+    if (!order) return false;
+    return (
+      normalizeOptionalText(shipmentDraft.shippingCarrier) !==
+        (order.shippingCarrier ?? null) ||
+      normalizeOptionalText(shipmentDraft.trackingNumber) !==
+        (order.trackingNumber ?? null) ||
+      normalizeOptionalText(shipmentDraft.trackingUrl) !==
+        (order.trackingUrl ?? null)
+    );
+  }, [order, shipmentDraft]);
+
+  const canSaveShipment = (me?.can.orderUpdate ?? false) && shipmentDirty;
+  const generatedTrackingUrl = useMemo(
+    () =>
+      buildTrackingUrl(
+        shipmentDraft.shippingCarrier,
+        shipmentDraft.trackingNumber,
+      ),
+    [shipmentDraft.shippingCarrier, shipmentDraft.trackingNumber],
+  );
+
+  const shippingState = useMemo(() => {
+    if (!order)
+      return {
+        label: "Not shipped",
+        tone: "text-amber-800 bg-amber-50 border-amber-200",
+      };
+    const hasTracking =
+      Boolean(order.trackingNumber?.trim()) ||
+      Boolean(order.trackingUrl?.trim());
+    if (order.status === "cancelled") {
+      return {
+        label: "Cancelled",
+        tone: "text-rose-800 bg-rose-50 border-rose-200",
+      };
+    }
+    if (order.status === "fulfilled") {
+      return {
+        label: "Fulfilled",
+        tone: "text-sky-800 bg-sky-50 border-sky-200",
+      };
+    }
+    if (order.status === "delivered") {
+      return {
+        label: "Delivered",
+        tone: "text-violet-800 bg-violet-50 border-violet-200",
+      };
+    }
+    const markedShipped =
+      order.status === "shipped" ||
+      // NOTE: `delivered/fulfilled` are handled above; shippedAt/tracking does not imply status.
+      false;
+    if (markedShipped) {
+      return {
+        label: "Shipped",
+        tone: "text-emerald-800 bg-emerald-50 border-emerald-200",
+      };
+    }
+    if (hasTracking) {
+      return {
+        label: "Tracking available",
+        tone: "text-emerald-800 bg-emerald-50 border-emerald-200",
+      };
+    }
+    return {
+      label: "Not shipped",
+      tone: "text-amber-800 bg-amber-50 border-amber-200",
+    };
+  }, [order]);
 
   const saveStatus = useCallback(async () => {
     if (!order || draftStatus == null || !canSave) return;
@@ -117,6 +248,26 @@ export default function AdminOrderDetailClient({
       setSaving(false);
     }
   }, [canSave, draftStatus, order, orderQuery]);
+
+  const saveShipment = useCallback(async () => {
+    if (!order || !canSaveShipment) return;
+    setSavingShipment(true);
+    setMsg(null);
+    try {
+      await http.patch("/modules/admin/api/orders", {
+        orderId: order.id,
+        shippingCarrier: normalizeOptionalText(shipmentDraft.shippingCarrier),
+        trackingNumber: normalizeOptionalText(shipmentDraft.trackingNumber),
+        trackingUrl: normalizeOptionalText(shipmentDraft.trackingUrl),
+      });
+      await orderQuery.refetch();
+      setMsg("Shipment info updated.");
+    } catch (e) {
+      setMsg(getErrorMessage(e, "Shipment update failed"));
+    } finally {
+      setSavingShipment(false);
+    }
+  }, [canSaveShipment, order, orderQuery, shipmentDraft]);
 
   if (orderQuery.isLoading) {
     return <p className="text-sm text-gray-500">Loading order…</p>;
@@ -200,6 +351,11 @@ export default function AdminOrderDetailClient({
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="font-medium text-gray-900">Shipping</h2>
+          <div
+            className={`mt-3 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${shippingState.tone}`}
+          >
+            {shippingState.label}
+          </div>
           <p className="mt-3 text-sm text-gray-700">
             {[
               order.shippingLine1,
@@ -215,6 +371,129 @@ export default function AdminOrderDetailClient({
               Method: {order.shippingMethod}
             </p>
           )}
+          {order.shippedAt && (
+            <p className="mt-1 text-xs text-gray-500">
+              Shipped at: {new Date(order.shippedAt).toLocaleString()}
+            </p>
+          )}
+          {order.trackingNumber && (
+            <p className="mt-1 text-xs text-gray-500">
+              Tracking #: {order.trackingNumber}
+            </p>
+          )}
+          {order.trackingUrl && (
+            <p className="mt-1 text-xs text-gray-500">
+              Tracking URL:{" "}
+              <a
+                href={order.trackingUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                {order.trackingUrl}
+              </a>
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <h2 className="font-medium text-gray-900">Shipment update</h2>
+        <p className="mt-1 text-xs text-gray-500">
+          Update carrier and tracking details for customer delivery tracking.
+        </p>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <label className="text-xs text-gray-600">
+            Carrier
+            <input
+              value={shipmentDraft.shippingCarrier}
+              onChange={(e) =>
+                setShipmentDraft((prev) => ({
+                  ...prev,
+                  shippingCarrier: e.target.value,
+                }))
+              }
+              placeholder="e.g. J&T Express"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="text-xs text-gray-600">
+            Tracking number
+            <input
+              value={shipmentDraft.trackingNumber}
+              onChange={(e) =>
+                setShipmentDraft((prev) => ({
+                  ...prev,
+                  trackingNumber: e.target.value,
+                }))
+              }
+              placeholder="e.g. JT123456789MY"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="text-xs text-gray-600">
+            Tracking URL
+            <input
+              value={shipmentDraft.trackingUrl}
+              onChange={(e) =>
+                setShipmentDraft((prev) => ({
+                  ...prev,
+                  trackingUrl: e.target.value,
+                }))
+              }
+              placeholder="https://..."
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+            <div className="mt-1 flex items-center gap-2">
+              <button
+                type="button"
+                disabled={!generatedTrackingUrl || savingShipment}
+                onClick={() =>
+                  generatedTrackingUrl &&
+                  setShipmentDraft((prev) => ({
+                    ...prev,
+                    trackingUrl: generatedTrackingUrl,
+                  }))
+                }
+                className="rounded border border-gray-300 bg-white px-2 py-1 text-[11px] hover:bg-gray-50 disabled:opacity-50"
+              >
+                Auto fill URL
+              </button>
+              {generatedTrackingUrl ? (
+                <span className="text-[11px] text-gray-500">
+                  Generated from carrier + tracking number
+                </span>
+              ) : (
+                <span className="text-[11px] text-gray-400">
+                  Supports J&T, Pos Laju, DHL, FedEx
+                </span>
+              )}
+            </div>
+          </label>
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void saveShipment()}
+            disabled={!canSaveShipment || savingShipment}
+            className="rounded-md bg-black px-4 py-2 text-sm text-white hover:bg-gray-800 disabled:opacity-50"
+          >
+            {savingShipment ? "Saving…" : "Save shipment"}
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setShipmentDraft({
+                shippingCarrier: order.shippingCarrier ?? "",
+                trackingNumber: order.trackingNumber ?? "",
+                trackingUrl: order.trackingUrl ?? "",
+              })
+            }
+            disabled={!shipmentDirty || savingShipment}
+            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+          >
+            Reset
+          </button>
         </div>
       </div>
 

@@ -7,12 +7,12 @@ import {
   readCheckoutCouponCode,
 } from "@/app/lib/checkout-coupon-cookie";
 import type { CartItemRowData } from "@/app/modules/user/types";
-import { getCartWithLiveProductsService } from "@/backend/modules/cart/cart.service";
-import { resolveUserId } from "@/backend/lib/session";
+import { getCartWithLiveProductsService } from "@/backend/modules/cart";
+import { resolveUserId } from "@/backend/core/session";
 import {
   resolveCheckoutCouponPricing,
   type ResolvedCheckoutCoupon,
-} from "@/backend/modules/coupon/coupon.service";
+} from "@/backend/modules/coupon";
 
 async function cartSubtotal(): Promise<number | null> {
   const cart = await getCartWithLiveProductsService();

@@ -1,19 +1,6 @@
-export type LoginProviderId = "local" | "google" | "facebook";
-
-const ORDER: LoginProviderId[] = ["local", "google", "facebook"];
-
-export function loginProvidersFromRow(
-  passwordHash: string | null | undefined,
-  accounts: { provider: string }[],
-): LoginProviderId[] {
-  const set = new Set<LoginProviderId>();
-  if (passwordHash) set.add("local");
-  for (const a of accounts) {
-    if (a.provider === "google") set.add("google");
-    else if (a.provider === "facebook") set.add("facebook");
-  }
-  return ORDER.filter((id) => set.has(id));
-}
+import type { LoginProviderId } from "@/backend/modules/auth/dto/login-providers.dto";
+export type { LoginProviderId } from "@/backend/modules/auth/dto/login-providers.dto";
+export { loginProvidersFromRow } from "@/backend/modules/auth/dto/login-providers.dto";
 
 export function formatLoginProviderLabel(id: LoginProviderId): string {
   switch (id) {

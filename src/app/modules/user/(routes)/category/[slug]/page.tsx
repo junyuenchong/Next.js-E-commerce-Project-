@@ -8,7 +8,7 @@ import {
   getProductsByCategorySlug,
 } from "@/backend/modules/category";
 import { serializeProductCardListForClient } from "@/app/lib/serialize-product-card";
-import CategoryInfoClient from "@/app/modules/user/client/components/category/CategoryInfoClient";
+import CategoryInfo from "@/app/modules/user/components/client/category/CategoryInfo";
 
 export async function generateMetadata({
   params,
@@ -49,7 +49,7 @@ const CategoryPage = async ({
       getProductsByCategorySlug(slug, 10, 1),
     ]);
     return (
-      <CategoryInfoClient
+      <CategoryInfo
         slug={slug}
         initialCategory={category as Category}
         initialProducts={serializeProductCardListForClient(

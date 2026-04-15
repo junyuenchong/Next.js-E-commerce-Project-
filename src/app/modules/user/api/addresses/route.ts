@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/app/lib/prisma";
 import { rateLimit } from "@/app/lib/rate-limit";
-import { resolveUserId } from "@/backend/lib/session";
+import { resolveUserId } from "@/backend/core/session";
 
 const addressFields = {
   label: z.string().max(80).nullable().optional(),

@@ -1,5 +1,5 @@
 import slugify from "slugify";
-import { categorySchema, categorySlugSchema } from "./schema/category.schema";
+import { categorySchema, categorySlugSchema } from "@/shared/schema/category";
 import { attachPublicListStats } from "@/backend/modules/product/product.repo";
 import {
   categorySlugExists,

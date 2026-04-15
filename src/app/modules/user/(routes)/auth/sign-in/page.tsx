@@ -1,11 +1,11 @@
 /** Customer sign-in; redirects if already logged in. */
-import { getServerSessionCached } from "@/backend/lib/session";
-import { postAuthRedirectPath } from "@/backend/lib/auth";
+import { getServerSessionCached } from "@/backend/core/session";
+import { postAuthRedirectPath } from "@/backend/core/auth/auth.service";
 import type { UserRole } from "@prisma/client";
 
 import { redirect } from "next/navigation";
 import React from "react";
-import SignIn from "@/app/modules/user/client/components/auth/SignIn";
+import SignIn from "@/app/modules/user/components/client/auth/SignInClient";
 
 const SignInPage = async ({
   searchParams,

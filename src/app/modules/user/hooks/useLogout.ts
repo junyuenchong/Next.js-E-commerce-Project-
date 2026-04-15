@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { signOut } from "next-auth/react";
-import { postLogout } from "@/app/modules/user/client";
+import { postLogout } from "@/app/modules/user/components/client/http";
 import { USER_CART_QUERY_KEY } from "./useCart";
 
 /** Clears server cookies (guest cart, auth, etc.) then refreshes. */

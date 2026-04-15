@@ -15,22 +15,25 @@ _(Replace with your own domain when you deploy.)_
 
 ---
 
-## What this project uses
+## Tech stack
 
-| Piece            | What it does here                    |
-| ---------------- | ------------------------------------ |
-| **Next.js 15**   | Web app, pages, and API routes       |
-| **TypeScript**   | Typed JavaScript                     |
-| **Prisma**       | Talks to the database                |
-| **NextAuth.js**  | Sign‑in (email, Google, Facebook)    |
-| **React Query**  | Loads and caches data in the browser |
-| **Redux**        | Global cart state                    |
-| **Redis**        | Optional faster caching              |
-| **RabbitMQ**     | Optional background jobs             |
-| **Tailwind CSS** | Styling                              |
-| **Zod**          | Checks form data                     |
-| **Cloudinary**   | Optional image hosting for uploads   |
-| **Node.js 20**   | Runtime                              |
+| Piece                            | What it does here                                    |
+| -------------------------------- | ---------------------------------------------------- |
+| **Next.js 15 (App Router)**      | Frontend + server routes under `src/app/`            |
+| **React + TypeScript**           | UI and typed codebase                                |
+| **PostgreSQL (Neon-ready)**      | Primary database                                     |
+| **Prisma**                       | ORM / database queries                               |
+| **NextAuth.js (`next-auth`)**    | Authentication (email + OAuth like Google/Facebook)  |
+| **TanStack Query (React Query)** | Client-side fetching, caching, and refetching        |
+| **Redux (cart store)**           | Global cart state (`src/app/redux/`)                 |
+| **Tailwind CSS**                 | Styling                                              |
+| **Zod**                          | Request/body validation (e.g. cart mutations)        |
+| **PayPal**                       | Checkout / order payment integration                 |
+| **SSE (Server-Sent Events)**     | “Realtime” updates for some lists (events endpoints) |
+| **Redis (optional)**             | Caching / speed-ups when configured                  |
+| **RabbitMQ (optional)**          | Background jobs (email + inventory after payment)    |
+| **Cloudinary (optional)**        | Image hosting for uploads                            |
+| **Node.js 20+**                  | Runtime (local + deployment)                         |
 
 ---
 
@@ -53,18 +56,63 @@ Inside each module, roughly:
 | `hooks/`      | Reusable React logic                                        |
 | `lib/`        | Small helpers for that module                               |
 
-Shared code used by both modules is in **`src/app/lib/`**. Cart state is in **`src/app/redux/`**.
+Shared code used by both modules is in **`src/app/lib/`** (with compatibility aliases under **`src/app/utils/`**). Cart state is in **`src/app/redux/`**.
 
-**Backend** logic (database access, business rules) is in **`src/backend/modules/`** — separate from the React tree.
+**Backend** logic (database access, business rules) is in **`src/backend/modules/`** — separate from the React tree. New imports should prefer **`src/backend/core/`** aliases; legacy **`src/backend/lib/`** paths are still available for compatibility.
 
 **`src/middleware.ts`** — Runs on requests first (session cookie refresh and security checks).
+
+### Import conventions
+
+- Prefer **`@/app/utils/*`** for shared app-layer helpers (HTTP/auth/query aliases).
+- Prefer **`@/backend/core/*`** for backend shared utilities (session, money, guards, auth aliases).
+- Keep **`@/app/lib/*`** and **`@/backend/lib/*`** only for backward compatibility while migrating older files.
+
+Examples:
+
+```ts
+import http from "@/app/utils/http";
+import { authOptions } from "@/app/utils/auth";
+import { resolveUserId } from "@/backend/core/session";
+import { moneyToNumber } from "@/backend/core/money";
+```
+
+### Frontend → Backend Workflow (Basic Flow)
+
+```
+Browser UI
+  ↓
+Client HTTP Wrappers
+  ↓
+App Utils HTTP Layer
+  ↓
+Next.js Route Handlers
+  ↓
+Backend Services
+  ↓
+Backend Repositories
+  ↓
+Prisma
+  ↓
+PostgreSQL (Neon)
+  ↓
+JSON Response → React Query/Redux → UI re-render
+```
+
+Notes:
+
+- Backend runtime is **Node.js via Next.js route handlers** (not Express).
+- Server Actions exist in some modules, but the primary data flow is API route based.
+- Auth/session checks are enforced at route/middleware/backend guard level before service calls.
 
 <details>
 <summary>Folder tree (compact)</summary>
 
 ```txt
 src/app/
+├─ providers/     # QueryProvider + ReduxProvider
 ├─ lib/           # shared helpers, HTTP client, validators
+├─ utils/         # compatibility aliases that mirror lib/
 ├─ modules/
 │  ├─ user/       # storefront: (routes)/, api/, client/, domain/, …
 │  └─ admin/      # dashboard: same pattern
@@ -72,6 +120,8 @@ src/app/
 └─ layout.tsx     # root layout
 
 src/backend/
+├─ core/          # canonical alias entrypoints (preferred import path)
+├─ lib/           # legacy paths kept for compatibility
 └─ modules/       # features: services, repos, actions
 ```
 
@@ -172,7 +222,7 @@ npx prisma generate
 Optional sample data:
 
 ```bash
-tsx scripts/seed-db.ts
+tsx scripts/seed.ts
 ```
 
 **Development:**
@@ -202,8 +252,8 @@ npm start
 
 **Helpers:**
 
-- `tsx scripts/seed-db.ts` — seed data
-- `tsx scripts/check-db.ts` — inspect DB
+- `tsx scripts/seed.ts` — seed data
+- `tsx scripts/check.ts` — inspect DB
 
 ---
 

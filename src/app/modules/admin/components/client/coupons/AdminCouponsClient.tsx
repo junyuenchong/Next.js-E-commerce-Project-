@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import DatePicker from "react-datepicker";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/lib/http";
-import { adminApiPaths } from "@/app/modules/admin/client";
+import http, { getErrorMessage } from "@/app/utils/http";
+import { adminApiPaths } from "@/app/modules/admin/components/client";
 import "react-datepicker/dist/react-datepicker.css";
 
 type CouponDiscountType = "PERCENT" | "FIXED";

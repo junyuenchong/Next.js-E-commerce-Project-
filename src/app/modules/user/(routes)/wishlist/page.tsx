@@ -1,6 +1,6 @@
 /** Route wrapper: wishlist page client implementation. */
-import WishlistPageClient from "@/app/modules/user/client/components/pages/WishlistPageClient";
+import WishlistPageView from "@/app/modules/user/components/client/pages/WishlistPage";
 
 export default function WishlistPage() {
-  return <WishlistPageClient />;
+  return <WishlistPageView />;
 }

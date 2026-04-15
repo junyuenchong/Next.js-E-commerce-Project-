@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
-import { getErrorMessage } from "@/app/lib/http";
-import { postCartMutation } from "@/app/modules/user/client";
+import { getErrorMessage } from "@/app/utils/http";
+import { postCartMutation } from "@/app/modules/user/components/client";
 import { summarizeCartLines } from "@/app/lib/cart";
 import type { CartItemRowData } from "@/app/modules/user/types";
 import { useCart } from "./useCart";

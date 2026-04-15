@@ -1,8 +1,8 @@
 import prisma from "@/app/lib/prisma";
-import { moneyToNumber } from "@/backend/lib/money";
-import type { CartWithItems } from "./types/cart.type";
+import { moneyToNumber } from "@/backend/core/money";
+import type { CartWithItems } from "@/shared/types/cart";
 
-export type { CartWithItems } from "./types/cart.type";
+export type { CartWithItems } from "@/shared/types/cart";
 
 export async function findUserCart(
   userId: number,

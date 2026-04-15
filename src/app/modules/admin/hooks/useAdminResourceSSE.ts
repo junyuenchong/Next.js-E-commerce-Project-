@@ -5,7 +5,8 @@ import { useRealtimeInvalidate } from "@/app/lib/query/useRealtimeQuery";
 
 type AdminSSEPath =
   | "/modules/admin/api/events/products"
-  | "/modules/admin/api/events/categories";
+  | "/modules/admin/api/events/categories"
+  | "/modules/admin/api/events/orders";
 
 /** Subscribes to admin SSE and runs `onInvalidate` when events arrive. */
 export function useAdminResourceSSE(

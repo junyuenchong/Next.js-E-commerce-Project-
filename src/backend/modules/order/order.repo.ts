@@ -1,6 +1,6 @@
 import { Prisma, type OrderStatus } from "@prisma/client";
-import prisma from "@/backend/shared/db/prisma";
-import type { CreatePaidOrderInput } from "./types/order.type";
+import prisma from "@/backend/core/db/prisma";
+import type { CreatePaidOrderInput } from "@/shared/types/order";
 
 export async function createPaidOrderRepo(
   input: CreatePaidOrderInput,
@@ -214,5 +214,25 @@ export async function updateOrderStatusRepo(
   return prisma.order.update({
     where: { id: orderId },
     data: { status },
+  });
+}
+
+export async function updateOrderShipmentRepo(
+  orderId: number,
+  input: {
+    shippingCarrier?: string | null;
+    trackingNumber?: string | null;
+    trackingUrl?: string | null;
+    shippedAt?: Date | null;
+  },
+) {
+  return prisma.order.update({
+    where: { id: orderId },
+    data: {
+      shippingCarrier: input.shippingCarrier ?? undefined,
+      trackingNumber: input.trackingNumber ?? undefined,
+      trackingUrl: input.trackingUrl ?? undefined,
+      shippedAt: input.shippedAt ?? undefined,
+    },
   });
 }

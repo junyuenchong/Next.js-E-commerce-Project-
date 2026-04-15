@@ -1,5 +1,5 @@
 /** Checkout: server passes PayPal client id / currency to client. */
-import CheckoutClient from "@/app/modules/user/client/components/Checkout/CheckoutClient";
+import Checkout from "@/app/modules/user/components/client/Checkout/Checkout";
 
 export default function CheckoutPage() {
   const paypalClientId =
@@ -13,9 +13,6 @@ export default function CheckoutPage() {
   ).trim();
 
   return (
-    <CheckoutClient
-      paypalClientId={paypalClientId}
-      paypalCurrency={paypalCurrency}
-    />
+    <Checkout paypalClientId={paypalClientId} paypalCurrency={paypalCurrency} />
   );
 }

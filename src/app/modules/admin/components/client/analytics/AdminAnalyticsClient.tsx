@@ -1,8 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/lib/http";
+import http, { getErrorMessage } from "@/app/utils/http";
 import { formatPriceRM } from "@/app/lib/format-price";
+import { useAdminResourceSSE } from "@/app/modules/admin/hooks";
 
 type TopProduct = {
   productId: number;
@@ -40,6 +41,14 @@ export default function AdminAnalyticsClient() {
     refetchOnWindowFocus: true,
   });
 
+  useAdminResourceSSE(
+    "/modules/admin/api/events/orders",
+    () => {
+      void q.refetch();
+    },
+    15000,
+  );
+
   if (q.isLoading)
     return <p className="text-sm text-gray-500">Loading analytics…</p>;
   if (q.isError) {
@@ -57,7 +66,8 @@ export default function AdminAnalyticsClient() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Analytics</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Sales by month and top products (excluding cancelled orders).
+          Sales by month and top products (excluding pending and cancelled
+          orders).
         </p>
       </div>
 
@@ -72,7 +82,7 @@ export default function AdminAnalyticsClient() {
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium uppercase text-gray-500">
-            Orders (all statuses)
+            Orders (excluding pending/cancelled)
           </p>
           <p className="mt-2 text-2xl font-semibold">{d.orderCount}</p>
         </div>

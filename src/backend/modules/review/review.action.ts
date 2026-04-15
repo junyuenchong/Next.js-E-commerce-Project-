@@ -1,7 +1,7 @@
 "use server";
 
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/lib/authOptions";
+import { authOptions } from "@/backend/modules/auth";
 import {
   listProductReviewsService,
   updateAdminReplyService,
@@ -41,6 +41,5 @@ export async function replyProductReviewAction(
   return updateAdminReplyService(reviewId, adminReply);
 }
 
-export const listProductReviews = listProductReviewsAction;
 export const createOrUpdateProductReview = createOrUpdateProductReviewAction;
 export const replyProductReview = replyProductReviewAction;

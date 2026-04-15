@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 import {
   ADMIN_CACHE_KEYS,
@@ -7,13 +7,13 @@ import {
   bustAdminCouponsListCache,
   getAdminCachedJson,
   setAdminCachedJson,
-} from "@/app/lib/admin-cache";
+} from "@/backend/modules/admin-cache";
 import {
   adminActorNumericId,
   logAdminAction,
-} from "@/backend/lib/admin-action-log";
-import { adminApiRequire } from "@/backend/lib/admin-api-guard";
-import { moneyToNumber } from "@/backend/lib/money";
+} from "@/backend/core/admin-action-log";
+import { adminApiRequire } from "@/backend/core/admin-api-guard";
+import { moneyToNumber } from "@/backend/core/money";
 import {
   adminCouponCreateBodySchema,
   adminCouponPatchBodySchema,
@@ -22,6 +22,7 @@ import {
   listCouponsAdminService,
   updateCouponAdminService,
 } from "@/backend/modules/coupon";
+import { jsonInternalServerError } from "@/backend/lib/api-error";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -62,24 +63,32 @@ function serializeCoupon(
 }
 
 export async function GET() {
-  const g = await adminApiRequire("coupon.read");
-  if (!g.ok) return g.response;
+  try {
+    const g = await adminApiRequire("coupon.read");
+    if (!g.ok) return g.response;
 
-  const cacheKey = ADMIN_CACHE_KEYS.couponsList;
-  const hit =
-    await getAdminCachedJson<ReturnType<typeof serializeCoupon>[]>(cacheKey);
-  if (hit) {
-    return NextResponse.json(hit, {
+    const cacheKey = ADMIN_CACHE_KEYS.couponsList;
+    const hit =
+      await getAdminCachedJson<ReturnType<typeof serializeCoupon>[]>(cacheKey);
+    if (hit) {
+      return NextResponse.json(hit, {
+        headers: { "Cache-Control": "private, max-age=30" },
+      });
+    }
+
+    const rows = await listCouponsAdminService();
+    const body = rows.map(serializeCoupon);
+    await setAdminCachedJson(
+      cacheKey,
+      body,
+      ADMIN_CACHE_TTL_SECONDS.couponsList,
+    );
+    return NextResponse.json(body, {
       headers: { "Cache-Control": "private, max-age=30" },
     });
+  } catch (error) {
+    return jsonInternalServerError(error, "[admin/api/coupons GET]");
   }
-
-  const rows = await listCouponsAdminService();
-  const body = rows.map(serializeCoupon);
-  await setAdminCachedJson(cacheKey, body, ADMIN_CACHE_TTL_SECONDS.couponsList);
-  return NextResponse.json(body, {
-    headers: { "Cache-Control": "private, max-age=30" },
-  });
 }
 
 export async function POST(req: Request) {
@@ -134,7 +143,7 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.json({ error: "code_taken" }, { status: 409 });
     }
-    throw e;
+    return jsonInternalServerError(e, "[admin/api/coupons POST]");
   }
 }
 
@@ -203,8 +212,14 @@ export async function PATCH(req: Request) {
     }
     void bustAdminCouponsListCache();
     return NextResponse.json(serializeCoupon(row));
-  } catch {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    }
+    return jsonInternalServerError(error, "[admin/api/coupons PATCH]");
   }
 }
 
@@ -232,7 +247,13 @@ export async function DELETE(req: Request) {
     }
     void bustAdminCouponsListCache();
     return NextResponse.json(serializeCoupon(row));
-  } catch {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    }
+    return jsonInternalServerError(error, "[admin/api/coupons DELETE]");
   }
 }

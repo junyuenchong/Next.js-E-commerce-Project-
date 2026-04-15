@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
-import { moneyToNumber } from "@/backend/lib/money";
-import { authOptions } from "@/app/lib/authOptions";
+import { moneyToNumber } from "@/backend/core/money";
+import { authOptions } from "@/app/utils/auth";
 import { randomUUID } from "crypto";
 import {
   assignGuestCartToUser,

@@ -4,10 +4,11 @@ import type { ProductCardProduct } from "@/app/modules/user/types";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Suspense } from "react";
-import SalesCampaignBanner from "@/app/modules/user/client/components/SalesCampaignBanner/SalesCampaignBanner";
-import LoadError from "@/app/modules/user/client/components/LoadError";
-import ProductGrid from "@/app/modules/user/client/components/Products/ProductGrid/ProductGrid";
+import SalesCampaignBanner from "@/app/modules/user/components/client/SalesCampaignBanner/SalesCampaignBanner";
+import LoadError from "@/app/modules/user/components/server/LoadError";
+import ProductGrid from "@/app/modules/user/components/client/Products/ProductGrid/ProductGrid";
 import { parseSearchQuery } from "@/app/lib/search-query";
+import { serializeProductCardListForClient } from "@/app/lib/serialize-product-card";
 import { getAllCategories } from "@/backend/modules/category";
 import {
   searchProductsWithFilters,
@@ -119,7 +120,9 @@ async function SearchResults(filters: FilterProps) {
       take,
     });
 
-    const products = (Array.isArray(raw) ? raw : []) as ProductCardProduct[];
+    const products = serializeProductCardListForClient(
+      (Array.isArray(raw) ? raw : []) as ProductCardProduct[],
+    );
 
     let title: ReactNode;
     let subtitle: string;
@@ -286,7 +289,7 @@ export default async function SearchPage({
             type="submit"
             className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
           >
-            Apply
+            Search
           </button>
         </form>
       </div>

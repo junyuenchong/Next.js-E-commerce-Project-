@@ -4,7 +4,8 @@ import { OrderStatus } from "@prisma/client";
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/lib/http";
+import http, { getErrorMessage } from "@/app/utils/http";
+import { useAdminResourceSSE } from "@/app/modules/admin/hooks";
 
 type OrderLine = {
   id: number;
@@ -29,6 +30,9 @@ type AdminOrderRow = {
   shippingPostcode: string | null;
   shippingCountry: string | null;
   shippingMethod: string | null;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
+  shippedAt: string | null;
   createdAt: string;
   updatedAt: string;
   user: { email: string | null; name: string | null } | null;
@@ -127,6 +131,14 @@ export default function AdminOrdersClient() {
       fetchOrdersPage(pageParam, searchQ || undefined),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
+
+  useAdminResourceSSE(
+    "/modules/admin/api/events/orders",
+    () => {
+      void ordersQuery.refetch();
+    },
+    15000,
+  );
 
   const rows = useMemo(
     () => ordersQuery.data?.pages.flatMap((p) => p.orders) ?? [],
@@ -406,6 +418,29 @@ export default function AdminOrdersClient() {
                             </option>
                           ))}
                         </select>
+                        <div
+                          className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                            o.status === "fulfilled"
+                              ? "border-sky-200 bg-sky-50 text-sky-700"
+                              : o.status === "cancelled"
+                                ? "border-rose-200 bg-rose-50 text-rose-700"
+                                : o.status === "delivered"
+                                  ? "border-violet-200 bg-violet-50 text-violet-700"
+                                  : o.status === "shipped"
+                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                    : "border-amber-200 bg-amber-50 text-amber-700"
+                          }`}
+                        >
+                          {o.status === "fulfilled"
+                            ? "Fulfilled"
+                            : o.status === "cancelled"
+                              ? "Cancelled"
+                              : o.status === "delivered"
+                                ? "Delivered"
+                                : o.status === "shipped"
+                                  ? "Shipped"
+                                  : "Pending shipment"}
+                        </div>
                       </td>
                       <td className="px-3 py-2 space-x-2 whitespace-nowrap">
                         <Link

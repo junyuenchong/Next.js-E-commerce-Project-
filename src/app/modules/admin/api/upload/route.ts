@@ -1,11 +1,12 @@
 import * as cloudinary from "cloudinary";
 import sharp from "sharp";
 import { Readable } from "stream";
-import { adminApiRequireAny } from "@/backend/lib/admin-api-guard";
+import { adminApiRequireAny } from "@/backend/core/admin-api-guard";
 import {
   adminActorNumericId,
   logAdminAction,
-} from "@/backend/lib/admin-action-log";
+} from "@/backend/core/admin-action-log";
+import { unknownErrorMessage } from "@/backend/lib/api-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,7 +84,13 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     console.error("Upload handler error:", error);
     return new Response(
-      JSON.stringify({ message: "Upload failed", error: String(error) }),
+      JSON.stringify({
+        message: "Upload failed",
+        error:
+          process.env.NODE_ENV === "development"
+            ? unknownErrorMessage(error)
+            : "Internal Server Error",
+      }),
       {
         status: 500,
         headers: { "Content-Type": "application/json" },

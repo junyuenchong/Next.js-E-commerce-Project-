@@ -1,4 +1,4 @@
 export {
   useRealtimeInvalidate,
   useRealtimeQuery,
-} from "@/app/lib/query/useRealtimeQuery";
+} from "@/app/utils/query/useRealtimeQuery";

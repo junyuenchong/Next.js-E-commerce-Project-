@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/lib/http";
+import http, { getErrorMessage } from "@/app/utils/http";
 import { formatPriceRM } from "@/app/lib/format-price";
+import { useAdminResourceSSE } from "@/app/modules/admin/hooks";
 
 type TopProduct = {
   productId: number;
@@ -104,6 +105,14 @@ export default function AdminDashboardClient() {
     refetchOnWindowFocus: true,
   });
 
+  useAdminResourceSSE(
+    "/modules/admin/api/events/orders",
+    () => {
+      void q.refetch();
+    },
+    15000,
+  );
+
   if (q.isLoading) {
     return <p className="text-sm text-gray-500">Loading overview…</p>;
   }
@@ -135,7 +144,7 @@ export default function AdminDashboardClient() {
             {formatPriceRM(d.revenueTotal)}
           </p>
           <p className="mt-1 text-xs text-gray-500">
-            Excluding cancelled orders
+            Excluding pending and cancelled orders
           </p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">

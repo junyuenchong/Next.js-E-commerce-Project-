@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { deleteProductReviewAdminService } from "@/backend/modules/review/review.service";
-import { adminApiRequire } from "@/backend/lib/admin-api-guard";
+import { deleteProductReviewAdminService } from "@/backend/modules/review";
+import { adminApiRequire } from "@/backend/core/admin-api-guard";
 import {
   adminActorNumericId,
   logAdminAction,
-} from "@/backend/lib/admin-action-log";
+} from "@/backend/core/admin-action-log";
+import { jsonInternalServerError } from "@/backend/lib/api-error";
 
 export async function DELETE(
   _request: Request,
@@ -31,7 +32,10 @@ export async function DELETE(
       });
     }
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  } catch (error) {
+    if (error instanceof Error && /not[_ -]?found/i.test(error.message)) {
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    }
+    return jsonInternalServerError(error, "[admin/api/reviews/[id] DELETE]");
   }
 }

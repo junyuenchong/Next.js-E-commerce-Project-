@@ -6,15 +6,15 @@ import {
   deleteCacheKeysByPattern,
   getCachedJson,
   setCachedJson,
-} from "@/app/lib/redis";
-import { publishAdminProductEvent } from "@/app/lib/admin-events";
-import { cacheKeys } from "@/app/lib/redis";
+  cacheKeys,
+} from "@/backend/modules/db/redis";
+import { publishAdminProductEvent } from "@/backend/modules/admin-events";
 import {
   adminActorNumericId,
   logAdminAction,
-} from "@/backend/lib/admin-action-log";
-import { requireAdminPermission } from "@/backend/lib/require-admin-permission";
-import { getCurrentAdminUser } from "@/backend/lib/session";
+} from "@/backend/core/admin-action-log";
+import { requireAdminPermission } from "@/backend/core/require-admin-permission";
+import { getCurrentAdminUser } from "@/backend/core/session";
 import {
   createProductService,
   deleteProductService,

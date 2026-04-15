@@ -2,8 +2,8 @@ export type {
   Category,
   ProductItemProps,
   ProductWithCategory,
-} from "./types/catalog.type";
-export type { AdminMe, AdminMeCan } from "./types/admin.type";
+} from "@/shared/types/admin";
+export type { AdminMe, AdminMeCan } from "@/shared/types/admin";
 export type {
   AdminCategoryCreateBody,
   AdminCategoryPatchBody,
@@ -13,4 +13,4 @@ export type {
   AdminUpdateOrderStatusBody,
   AdminUpdateReviewReplyBody,
   AdminUserPatchBody,
-} from "./types/api.type";
+} from "@/shared/types/admin";

@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { readCheckoutCouponCode } from "@/app/lib/checkout-coupon-cookie";
 import { summarizeCartLines } from "@/app/lib/cart";
 import type { CartItemRowData } from "@/app/modules/user/types";
-import { paypalCreateOrder } from "@/app/lib/paypal";
-import { getCartWithLiveProductsService } from "@/backend/modules/cart/cart.service";
-import { resolveCheckoutCouponPricing } from "@/backend/modules/coupon/coupon.service";
-import { resolveUserId } from "@/backend/lib/session";
-import { validateCartStockForOrder } from "@/backend/modules/order/order.service";
+import { paypalCreateOrder } from "@/backend/modules/payment";
+import { getCartWithLiveProductsService } from "@/backend/modules/cart";
+import { resolveCheckoutCouponPricing } from "@/backend/modules/coupon";
+import { resolveUserId } from "@/backend/core/session";
+import { validateCartStockForOrder } from "@/backend/modules/order";
 
 const DEFAULT_CURRENCY = (
   process.env.PAYPAL_CURRENCY ||

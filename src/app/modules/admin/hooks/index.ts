@@ -6,8 +6,8 @@ export {
   categorySlugSchema,
   productSchema,
   productSlugSchema,
-} from "@/app/modules/admin/schema/catalog.schema";
-export { getErrorMessage } from "@/app/lib/http";
+} from "@/shared/schema/admin";
+export { getErrorMessage } from "@/app/utils/http";
 export { qk } from "@/app/lib/query-keys";
 
 export { useAdminResourceSSE } from "./useAdminResourceSSE";

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/app/lib/prisma";
-import { resolveUserId } from "@/backend/lib/session";
+import { resolveUserId } from "@/backend/core/session";
 import {
   addWishlistItem,
   listWishlistForUser,

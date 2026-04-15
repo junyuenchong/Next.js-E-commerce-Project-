@@ -1,6 +1,6 @@
 /** Public list of promoted vouchers (cart / checkout strip). Optional `subtotal` for eligibility hints. */
 import { NextResponse } from "next/server";
-import { listStorefrontVouchersPublicService } from "@/backend/modules/coupon/coupon.service";
+import { listStorefrontVouchersPublicService } from "@/backend/modules/coupon";
 
 export const dynamic = "force-dynamic";
 

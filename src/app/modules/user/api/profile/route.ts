@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/app/lib/prisma";
-import { resolveUserId } from "@/backend/lib/session";
-import { loginProvidersFromRow } from "@/app/lib/login-providers";
+import { resolveUserId } from "@/backend/core/session";
+import { loginProvidersFromRow } from "@/backend/modules/auth/dto/login-providers.dto";
 
 const patchSchema = z.object({
   name: z.string().min(1).max(120).optional(),

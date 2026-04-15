@@ -1,5 +1,5 @@
 import slugify from "slugify";
-import { productSchema, productSlugSchema } from "./schema/product.schema";
+import { productSchema, productSlugSchema } from "@/shared/schema/product";
 import {
   attachPublicListStats,
   createProductRecord,
@@ -48,7 +48,13 @@ export function normalizeProductInput(data: unknown) {
   };
   const validated = productSchema.safeParse(parsed);
   if (!validated.success) {
-    throw new Error("Invalid product data");
+    const issues = validated.error.issues
+      .map((i) => {
+        const path = i.path?.length ? i.path.join(".") : "root";
+        return `${path}: ${i.message}`;
+      })
+      .join("; ");
+    throw new Error(`invalid_product_data: ${issues}`);
   }
   return validated.data;
 }

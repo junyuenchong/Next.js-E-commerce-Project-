@@ -1,6 +1,6 @@
 /** Route wrapper: orders page client implementation. */
-import OrdersPageClient from "@/app/modules/user/client/components/pages/OrdersPageClient";
+import OrdersPageView from "@/app/modules/user/components/client/pages/OrdersPage";
 
 export default function OrdersPage() {
-  return <OrdersPageClient />;
+  return <OrdersPageView />;
 }

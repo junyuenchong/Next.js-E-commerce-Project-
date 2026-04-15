@@ -10,7 +10,7 @@ import {
   type Ref,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/lib/http";
+import http, { getErrorMessage } from "@/app/utils/http";
 import type { ProductWithCategory } from "@/app/modules/admin/types";
 import {
   ADMIN_PRODUCTS_PAGE_SIZE,
@@ -18,7 +18,7 @@ import {
   adminProductsListUrl,
   fetchAdminCategories,
   postImageUpload,
-} from "@/app/modules/admin/client";
+} from "@/app/modules/admin/components/client";
 
 type AdminCategory = { id: number; name: string };
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { nextAuthClearableCookieNames } from "@/backend/lib/next-auth-cookies";
+import { nextAuthClearableCookieNames } from "@/backend/core/next-auth-cookies";
 
 export async function POST() {
   const res = NextResponse.json({ success: true });

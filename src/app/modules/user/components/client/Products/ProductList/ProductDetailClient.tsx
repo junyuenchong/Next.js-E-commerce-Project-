@@ -4,19 +4,16 @@ import React, { memo, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Home, ChevronRight } from "lucide-react";
-import AddToCartButton from "@/app/modules/user/client/components/Products/AddToCartButton/AddToCartButton";
-import SalesCampaignBanner from "@/app/modules/user/client/components/SalesCampaignBanner/SalesCampaignBanner";
+import AddToCartButton from "@/app/modules/user/components/client/Products/AddToCartButton/AddToCartButton";
+import SalesCampaignBanner from "@/app/modules/user/components/client/SalesCampaignBanner/SalesCampaignBanner";
 import {
   formatPriceRM,
   discountPercentFromCompareAt,
 } from "@/app/lib/format-price";
 import { IMG } from "@/app/lib/image-sizes";
 import type { ProductDetailPayload } from "@/app/modules/user/types";
-import {
-  useProductDetailClient,
-  type ProductReview,
-} from "@/app/modules/user/hooks";
-import { moneyToNumber } from "@/backend/lib/money";
+import { useProductDetail, type ProductReview } from "@/app/modules/user/hooks";
+import { moneyToNumber } from "@/backend/core/money";
 
 const ProductDetailClient = memo(function ProductDetailClient({
   productId,
@@ -37,7 +34,7 @@ const ProductDetailClient = memo(function ProductDetailClient({
     averageRating,
     reviewMutation,
     submitReview,
-  } = useProductDetailClient(productId, initialProduct);
+  } = useProductDetail(productId, initialProduct);
 
   const priceDisplay = useMemo(
     () => formatPriceRM(moneyToNumber(product?.price)).replace("RM ", ""),

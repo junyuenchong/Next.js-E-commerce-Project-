@@ -1,4 +1,4 @@
-import http from "@/app/lib/http";
+import http from "@/app/utils/http";
 import type { OrderListItem } from "@/app/modules/user/types";
 
 export type OrdersPageResponse = {

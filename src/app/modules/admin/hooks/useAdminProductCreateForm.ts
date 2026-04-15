@@ -4,12 +4,12 @@ import { useCallback, useMemo, useState } from "react";
 import React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createProduct } from "@/backend/modules/product";
-import { getErrorMessage } from "@/app/lib/http";
-import { productSchema } from "@/app/modules/admin/schema/catalog.schema";
+import { getErrorMessage } from "@/app/utils/http";
+import { productSchema } from "@/shared/schema/admin";
 import {
   fetchAdminCategories,
   postImageUpload,
-} from "@/app/modules/admin/client";
+} from "@/app/modules/admin/components/client";
 
 type AdminCategory = { id: number; name: string };
 

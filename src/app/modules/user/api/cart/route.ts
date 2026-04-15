@@ -10,8 +10,14 @@ import {
   CART_OUT_OF_STOCK,
   CART_PRODUCT_NOT_FOUND,
   CART_PRODUCT_UNAVAILABLE,
-} from "@/backend/modules/cart/cart.service";
+} from "@/backend/modules/cart";
 import { NextResponse } from "next/server";
+
+function isPrismaUnreachableError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const anyErr = error as { code?: unknown };
+  return anyErr.code === "P1001";
+}
 
 // --- Type Definitions ---
 type CartItem = {
@@ -35,8 +41,25 @@ export async function GET() {
     });
   } catch (error: unknown) {
     console.error("GET cart error:", error);
+    if (isPrismaUnreachableError(error)) {
+      return NextResponse.json(
+        {
+          message: "Database is unreachable.",
+          hint: "Check your DATABASE_URL and make sure your Postgres/Neon instance is running and reachable from this machine/network.",
+          ...(process.env.NODE_ENV === "development"
+            ? { error: error instanceof Error ? error.message : String(error) }
+            : null),
+        },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      {
+        message: "Internal Server Error",
+        ...(process.env.NODE_ENV === "development"
+          ? { error: error instanceof Error ? error.message : String(error) }
+          : null),
+      },
       { status: 500 },
     );
   }
@@ -48,7 +71,10 @@ export async function POST(req: Request) {
     const raw = (await req.json().catch(() => null)) as unknown;
     const parsed = cartMutationSchema.safeParse(raw);
     if (!parsed.success) {
-      return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+      return NextResponse.json(
+        { message: "Invalid request body.", error: "invalid_body" },
+        { status: 400 },
+      );
     }
 
     let cart: Cart | null = null;
@@ -103,8 +129,25 @@ export async function POST(req: Request) {
       );
     }
     console.error("POST cart error:", error);
+    if (isPrismaUnreachableError(error)) {
+      return NextResponse.json(
+        {
+          message: "Database is unreachable.",
+          hint: "Check your DATABASE_URL and make sure your Postgres/Neon instance is running and reachable from this machine/network.",
+          ...(process.env.NODE_ENV === "development"
+            ? { error: error instanceof Error ? error.message : String(error) }
+            : null),
+        },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      {
+        message: "Internal Server Error",
+        ...(process.env.NODE_ENV === "development"
+          ? { error: error instanceof Error ? error.message : String(error) }
+          : null),
+      },
       { status: 500 },
     );
   }

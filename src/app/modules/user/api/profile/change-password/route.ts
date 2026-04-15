@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { changePasswordUserService } from "@/backend/modules/user/user.service";
-import { updateUserPasswordSchema } from "@/backend/modules/user/schema/user.schema";
+import { changePasswordUserService } from "@/backend/modules/user";
+import { updateUserPasswordSchema } from "@/shared/schema/user";
 import { clientIp, rateLimit } from "@/app/lib/rate-limit";
-import { resolveUserId } from "@/backend/lib/session";
+import { resolveUserId } from "@/backend/core/session";
 
 export async function POST(request: Request) {
   const ip = clientIp(request);

@@ -10,17 +10,18 @@ import {
   serializeAdminProductListItem,
   type ProductListItem,
   type ProductPublicListStats,
-} from "@/backend/modules/product/product.repo";
+} from "@/backend/modules/product";
 import { NextResponse } from "next/server";
-import { bustAdminAnalyticsCache } from "@/app/lib/admin-cache";
+import { bustAdminAnalyticsCache } from "@/backend/modules/admin-cache";
 import {
   clampAdminListLimit,
   parseAdminCursorId,
-} from "@/app/lib/admin-pagination";
+} from "@/backend/shared/pagination/admin-pagination";
 import {
   adminApiRequire,
   adminApiRequireCatalogAccess,
-} from "@/backend/lib/admin-api-guard";
+} from "@/backend/core/admin-api-guard";
+import { jsonInternalServerError } from "@/backend/lib/api-error";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -38,12 +39,21 @@ export async function POST(req: Request) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal Server Error",
-      },
-      { status: 500 },
-    );
+    const msg =
+      error instanceof Error && typeof error.message === "string"
+        ? error.message
+        : "";
+    if (msg.startsWith("invalid_product_data:")) {
+      return NextResponse.json(
+        {
+          error: "invalid_body",
+          message: "Invalid product data",
+          detail: msg.replace(/^invalid_product_data:\s*/, ""),
+        },
+        { status: 400 },
+      );
+    }
+    return jsonInternalServerError(error, "[admin/api/products POST]");
   }
 }
 
@@ -106,12 +116,7 @@ export async function GET(req: Request) {
     // Backward-compatible response: plain array when `cursor` is omitted
     return NextResponse.json(serialized, { status: 200, headers });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal Server Error",
-      },
-      { status: 500 },
-    );
+    return jsonInternalServerError(error, "[admin/api/products GET]");
   }
 }
 
@@ -136,12 +141,7 @@ export async function PATCH(req: Request) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal Server Error",
-      },
-      { status: 500 },
-    );
+    return jsonInternalServerError(error, "[admin/api/products PATCH]");
   }
 }
 
@@ -163,11 +163,6 @@ export async function DELETE(req: Request) {
       { status: 200, headers: { "Cache-Control": "no-store" } },
     );
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal Server Error",
-      },
-      { status: 500 },
-    );
+    return jsonInternalServerError(error, "[admin/api/products DELETE]");
   }
 }

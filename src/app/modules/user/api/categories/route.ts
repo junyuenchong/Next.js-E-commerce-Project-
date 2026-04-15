@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { cacheKeys } from "@/app/lib/redis";
-import { getCachedJson, setCachedJson } from "@/app/lib/redis";
-import { getStorefrontCategoriesService } from "@/backend/modules/category/category.service";
+import {
+  cacheKeys,
+  getCachedJson,
+  setCachedJson,
+} from "@/backend/modules/db/redis";
+import { getStorefrontCategoriesService } from "@/backend/modules/category";
 
 const TTL_SECONDS = 300;
 

@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import http from "@/app/lib/http";
-import { adminApiPaths } from "@/app/modules/admin/client";
-import {
-  AuditLogDetailsCell,
-  AuditLogDetailsRawToggle,
-} from "@/app/modules/admin/components/audit/auditLogDetails";
+import http from "@/app/utils/http";
+import { adminApiPaths } from "@/app/modules/admin/components/client";
+import { AuditLogDetailsCell } from "@/app/modules/admin/components/client/audit/auditLogDetails";
 
 type AuditRow = {
   id: number;
@@ -161,7 +158,6 @@ export default function AdminAuditLogClient() {
                       action={r.action}
                       metadata={r.metadata}
                     />
-                    <AuditLogDetailsRawToggle metadata={r.metadata} />
                   </td>
                 </tr>
               ))

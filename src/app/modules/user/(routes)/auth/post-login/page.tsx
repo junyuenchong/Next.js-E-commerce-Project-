@@ -1,8 +1,11 @@
 /** OAuth/callback landing: merge guest cart, then role-based redirect. */
 import { redirect } from "next/navigation";
-import { canAccessAdminPanel, postAuthRedirectPath } from "@/backend/lib/auth";
-import { getServerSessionCached } from "@/backend/lib/session";
-import { mergeGuestCartToUserService } from "@/backend/modules/cart/cart.service";
+import {
+  canAccessAdminPanel,
+  postAuthRedirectPath,
+} from "@/backend/core/auth/auth.service";
+import { getServerSessionCached } from "@/backend/core/session";
+import { mergeGuestCartToUserService } from "@/backend/modules/cart";
 import type { UserRole } from "@prisma/client";
 
 export const dynamic = "force-dynamic";

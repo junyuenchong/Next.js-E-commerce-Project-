@@ -1,4 +1,4 @@
-import http from "@/app/lib/http";
+import http from "@/app/utils/http";
 
 export function productsListUrl(
   categorySlug: string | undefined,

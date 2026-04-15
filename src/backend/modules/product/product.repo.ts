@@ -1,8 +1,8 @@
 import prisma from "@/app/lib/prisma";
 import { productReviewHasIsActiveColumn } from "@/backend/modules/review/review-schema-capability";
-import { moneyToNumber } from "@/backend/lib/money";
+import { moneyToNumber } from "@/backend/core/money";
 import type { OrderStatus, Prisma } from "@prisma/client";
-import type { ProductSearchSort } from "./types/product.type";
+import type { ProductSearchSort } from "@/shared/types/product";
 
 export const productListSelect = {
   id: true,

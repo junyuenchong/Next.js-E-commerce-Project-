@@ -1,10 +1,10 @@
 /** Email/password registration (server action). */
 import { registerUser } from "@/backend/modules/user";
-import { getServerSessionCached } from "@/backend/lib/session";
+import { getServerSessionCached } from "@/backend/core/session";
 import { redirect } from "next/navigation";
 import React from "react";
-import SignUp from "@/app/modules/user/client/components/auth/SignUp";
-import { signUpCredentialsSchema } from "@/app/modules/user/schema/user.schema";
+import SignUp from "@/app/modules/user/components/client/auth/SignUpClient";
+import { signUpCredentialsSchema } from "@/shared/schema/user";
 
 const SignUpPage = async () => {
   const session = await getServerSessionCached();

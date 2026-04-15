@@ -1,23 +1,24 @@
 import { NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
-import { adminUserPatchBodySchema } from "@/app/modules/admin/schema/users-api.schema";
+import { adminUserPatchBodySchema } from "@/shared/schema/admin";
 import { Prisma } from "@prisma/client";
 import prisma from "@/app/lib/prisma";
-import { loginProvidersFromRow } from "@/app/lib/login-providers";
+import { loginProvidersFromRow } from "@/backend/modules/auth/dto/login-providers.dto";
 import {
   adminApiRequire,
   adminJsonForbidden,
   adminJsonUnauthorized,
   assertCanAssignUserRole,
-} from "@/backend/lib/admin-api-guard";
-import { permissionAppRoleFromUserRole } from "@/backend/lib/auth";
+} from "@/backend/core/admin-api-guard";
+import { permissionAppRoleFromUserRole } from "@/backend/core/auth/auth.service";
 import {
   adminActorNumericId,
   logAdminAction,
-} from "@/backend/lib/admin-action-log";
-import { adminRoleDefinitionHasIsActiveColumn } from "@/backend/lib/admin-role-definition-schema-capability";
-import { getAdminPermissionKeysForUser } from "@/backend/lib/permission-resolver";
-import { getCurrentAdminUser } from "@/backend/lib/session";
+} from "@/backend/core/admin-action-log";
+import { adminRoleDefinitionHasIsActiveColumn } from "@/backend/core/admin-role-definition-schema-capability";
+import { getAdminPermissionKeysForUser } from "@/backend/modules/access-control";
+import { getCurrentAdminUser } from "@/backend/core/session";
+import { jsonInternalServerError } from "@/backend/lib/api-error";
 
 function mapUserListRow(row: {
   id: number;
@@ -53,46 +54,50 @@ function parseUserListParams(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const g = await adminApiRequire("user.read");
-  if (!g.ok) return g.response;
+  try {
+    const g = await adminApiRequire("user.read");
+    if (!g.ok) return g.response;
 
-  const { cursor, take } = parseUserListParams(request);
+    const { cursor, take } = parseUserListParams(request);
 
-  const rows = await prisma.user.findMany({
-    where: cursor != null ? { id: { lt: cursor } } : undefined,
-    orderBy: { id: "desc" },
-    take: take + 1,
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      isActive: true,
-      createdAt: true,
-      passwordHash: true,
-      accounts: { select: { provider: true } },
-      adminPermissionRoleId: true,
-    },
-  });
-
-  const hasMore = rows.length > take;
-  const page = hasMore ? rows.slice(0, take) : rows;
-  const nextCursor = hasMore ? page[page.length - 1]!.id : null;
-
-  return NextResponse.json(
-    {
-      users: page.map(mapUserListRow),
-      nextCursor,
-      hasMore: nextCursor != null,
-      limit: take,
-    },
-    {
-      headers: {
-        "Cache-Control": "no-store",
-        "X-Next-Cursor": nextCursor != null ? String(nextCursor) : "",
+    const rows = await prisma.user.findMany({
+      where: cursor != null ? { id: { lt: cursor } } : undefined,
+      orderBy: { id: "desc" },
+      take: take + 1,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        passwordHash: true,
+        accounts: { select: { provider: true } },
+        adminPermissionRoleId: true,
       },
-    },
-  );
+    });
+
+    const hasMore = rows.length > take;
+    const page = hasMore ? rows.slice(0, take) : rows;
+    const nextCursor = hasMore ? page[page.length - 1]!.id : null;
+
+    return NextResponse.json(
+      {
+        users: page.map(mapUserListRow),
+        nextCursor,
+        hasMore: nextCursor != null,
+        limit: take,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store",
+          "X-Next-Cursor": nextCursor != null ? String(nextCursor) : "",
+        },
+      },
+    );
+  } catch (error) {
+    return jsonInternalServerError(error, "[admin/api/users GET]");
+  }
 }
 
 export async function PATCH(request: Request) {
@@ -234,7 +239,11 @@ export async function PATCH(request: Request) {
       ) {
         return NextResponse.json({ error: "email_taken" }, { status: 409 });
       }
-      return NextResponse.json({ error: "update_failed" }, { status: 500 });
+      return jsonInternalServerError(
+        e,
+        "[admin/api/users PATCH profile]",
+        "update_failed",
+      );
     }
   }
 
@@ -292,30 +301,34 @@ export async function PATCH(request: Request) {
     return adminJsonForbidden("You don't have permission to reactivate users.");
   }
 
-  const u = await prisma.user.update({
-    where: { id: parsed.data.userId },
-    data: { isActive: parsed.data.isActive },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      isActive: true,
-      createdAt: true,
-      passwordHash: true,
-      accounts: { select: { provider: true } },
-      adminPermissionRoleId: true,
-    },
-  });
-  const actorIdBan = adminActorNumericId(actor);
-  if (actorIdBan != null) {
-    void logAdminAction({
-      actorUserId: actorIdBan,
-      action: parsed.data.isActive ? "user.activate" : "user.ban",
-      targetType: "User",
-      targetId: String(u.id),
-      metadata: { email: u.email },
+  try {
+    const u = await prisma.user.update({
+      where: { id: parsed.data.userId },
+      data: { isActive: parsed.data.isActive },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        passwordHash: true,
+        accounts: { select: { provider: true } },
+        adminPermissionRoleId: true,
+      },
     });
+    const actorIdBan = adminActorNumericId(actor);
+    if (actorIdBan != null) {
+      void logAdminAction({
+        actorUserId: actorIdBan,
+        action: parsed.data.isActive ? "user.activate" : "user.ban",
+        targetType: "User",
+        targetId: String(u.id),
+        metadata: { email: u.email },
+      });
+    }
+    return NextResponse.json(mapUserListRow(u));
+  } catch (error) {
+    return jsonInternalServerError(error, "[admin/api/users PATCH status]");
   }
-  return NextResponse.json(mapUserListRow(u));
 }

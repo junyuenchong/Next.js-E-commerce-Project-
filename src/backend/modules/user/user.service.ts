@@ -5,8 +5,8 @@ import {
   findUserByIdRepo,
   updateUserPasswordHashRepo,
 } from "./user.repo";
-import type { AuthResult } from "./types/user.type";
-export type { AuthResult } from "./types/user.type";
+import type { AuthResult } from "@/shared/types/user";
+export type { AuthResult } from "@/shared/types/user";
 
 export const hashPasswordUserService = async (password: string) => {
   return encodeHexLowerCase(sha256(new TextEncoder().encode(password)));

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import http from "@/app/lib/http";
-import ProductItem from "@/app/modules/admin/client/components/products/types/ProductItem";
+import http from "@/app/utils/http";
+import ProductItem from "@/app/modules/admin/components/client/products/types/ProductItem";
 import {
   useAdminProductList,
   type AdminProductListHandle,

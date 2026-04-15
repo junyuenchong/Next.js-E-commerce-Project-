@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/lib/authOptions";
 import type { OrderListItem } from "@/app/modules/user/types";
-import { listOrdersForUserService } from "@/backend/modules/order/order.service";
-import { moneyToNumber } from "@/backend/lib/money";
+import { listOrdersForUserService } from "@/backend/modules/order";
+import { moneyToNumber } from "@/backend/core/money";
+import { resolveUserId } from "@/backend/core/session";
 
 function parseCursorParams(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -21,14 +20,8 @@ function parseCursorParams(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-  const user = session?.user as { id?: string } | undefined;
-  if (!user?.id) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-
-  const userId = parseInt(String(user.id), 10);
-  if (!Number.isFinite(userId)) {
+  const userId = await resolveUserId();
+  if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

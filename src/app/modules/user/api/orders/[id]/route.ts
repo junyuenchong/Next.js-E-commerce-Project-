@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/lib/authOptions";
-import { getOrderForUserByIdService } from "@/backend/modules/order/order.service";
-import { moneyToNumber } from "@/backend/lib/money";
+import { getOrderForUserByIdService } from "@/backend/modules/order";
+import { moneyToNumber } from "@/backend/core/money";
+import { resolveUserId } from "@/backend/core/session";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +13,8 @@ function parseId(req: Request): number | null {
 }
 
 export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  const user = session?.user as { id?: string } | undefined;
-  if (!user?.id)
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
-  const userId = Number.parseInt(String(user.id), 10);
-  if (!Number.isFinite(userId))
+  const userId = await resolveUserId();
+  if (!userId)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const orderId = parseId(req);

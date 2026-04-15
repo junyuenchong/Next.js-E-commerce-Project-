@@ -11,19 +11,20 @@ import {
   bustAdminCategoriesListCache,
   getAdminCachedJson,
   setAdminCachedJson,
-} from "@/app/lib/admin-cache";
+} from "@/backend/modules/admin-cache";
 import {
   adminCategoryCreateBodySchema,
   adminCategoryPatchBodySchema,
-} from "@/app/modules/admin/schema/category-api.schema";
+} from "@/shared/schema/admin";
 import {
   adminApiRequire,
   adminApiRequireCatalogAccess,
-} from "@/backend/lib/admin-api-guard";
+} from "@/backend/core/admin-api-guard";
 import {
   adminActorNumericId,
   logAdminAction,
-} from "@/backend/lib/admin-action-log";
+} from "@/backend/core/admin-action-log";
+import { jsonInternalServerError } from "@/backend/lib/api-error";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -52,12 +53,7 @@ export async function GET() {
       headers: { "Cache-Control": "private, max-age=30" },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal Server Error",
-      },
-      { status: 500 },
-    );
+    return jsonInternalServerError(error, "[admin/api/categories GET]");
   }
 }
 
@@ -93,12 +89,7 @@ export async function POST(req: Request) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal Server Error",
-      },
-      { status: 500 },
-    );
+    return jsonInternalServerError(error, "[admin/api/categories POST]");
   }
 }
 
@@ -133,12 +124,7 @@ export async function PATCH(req: Request) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal Server Error",
-      },
-      { status: 500 },
-    );
+    return jsonInternalServerError(error, "[admin/api/categories PATCH]");
   }
 }
 
@@ -172,11 +158,6 @@ export async function DELETE(req: Request) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal Server Error",
-      },
-      { status: 500 },
-    );
+    return jsonInternalServerError(error, "[admin/api/categories DELETE]");
   }
 }

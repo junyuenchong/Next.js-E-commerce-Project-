@@ -1,4 +1,4 @@
-import { parseApiJsonErrorMessage } from "@/app/lib/http";
+import { parseApiJsonErrorMessage } from "@/app/utils/http";
 
 /**
  * Same-origin `fetch` with cookies for admin routes. Bypasses Axios `NEXT_PUBLIC_API_BASE_URL`

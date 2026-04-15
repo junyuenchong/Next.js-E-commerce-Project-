@@ -1,28 +1,33 @@
 import { NextResponse } from "next/server";
-import { bustAdminAnalyticsCache } from "@/app/lib/admin-cache";
+import { bustAdminAnalyticsCache } from "@/backend/modules/admin-cache";
 import {
   ADMIN_LIST_DEFAULT,
   clampAdminListLimit,
   parseAdminCursorId,
-} from "@/app/lib/admin-pagination";
+} from "@/backend/shared/pagination/admin-pagination";
 import prisma from "@/app/lib/prisma";
 import {
   listAllOrdersAdminService,
+  updateOrderShipmentAdminService,
   updateOrderStatusAdminService,
-} from "@/backend/modules/order/order.service";
-import { updateOrderStatusSchema } from "@/app/modules/admin/schema/order.schema";
+} from "@/backend/modules/order";
+import {
+  updateOrderShipmentSchema,
+  updateOrderStatusSchema,
+} from "@/shared/schema/order";
 import {
   adminApiRequire,
   adminJsonForbidden,
   adminJsonUnauthorized,
-} from "@/backend/lib/admin-api-guard";
+} from "@/backend/core/admin-api-guard";
 import {
   adminActorNumericId,
   logAdminAction,
-} from "@/backend/lib/admin-action-log";
-import { adminUserHasPermission } from "@/backend/lib/permission-resolver";
-import { getCurrentAdminUser } from "@/backend/lib/session";
-import { moneyToNumber } from "@/backend/lib/money";
+} from "@/backend/core/admin-action-log";
+import { adminUserHasPermission } from "@/backend/modules/access-control";
+import { getCurrentAdminUser } from "@/backend/core/session";
+import { moneyToNumber } from "@/backend/core/money";
+import { jsonInternalServerError } from "@/backend/lib/api-error";
 
 function parseCursorParams(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -36,46 +41,68 @@ function parseCursorParams(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const g = await adminApiRequire("order.read");
-  if (!g.ok) return g.response;
+  try {
+    const g = await adminApiRequire("order.read");
+    if (!g.ok) return g.response;
 
-  const { cursor, take, q } = parseCursorParams(request);
-  const { orders, nextCursor } = await listAllOrdersAdminService(
-    cursor,
-    take,
-    q,
-  );
+    const { cursor, take, q } = parseCursorParams(request);
+    const { orders, nextCursor } = await listAllOrdersAdminService(
+      cursor,
+      take,
+      q,
+    );
 
-  const payload = orders.map((o) => ({
-    ...o,
-    total: moneyToNumber(o.total),
-    items: o.items.map((line) => ({
-      ...line,
-      unitPrice: moneyToNumber(line.unitPrice),
-    })),
-  }));
+    const payload = orders.map((o) => ({
+      ...o,
+      total: moneyToNumber(o.total),
+      items: o.items.map((line) => ({
+        ...line,
+        unitPrice: moneyToNumber(line.unitPrice),
+      })),
+    }));
 
-  return NextResponse.json(
-    {
-      orders: payload,
-      nextCursor,
-      hasMore: nextCursor != null,
-      limit: take,
-    },
-    {
-      headers: {
-        "Cache-Control": "no-store",
-        "X-Next-Cursor": nextCursor != null ? String(nextCursor) : "",
+    return NextResponse.json(
+      {
+        orders: payload,
+        nextCursor,
+        hasMore: nextCursor != null,
+        limit: take,
       },
-    },
-  );
+      {
+        headers: {
+          "Cache-Control": "no-store",
+          "X-Next-Cursor": nextCursor != null ? String(nextCursor) : "",
+        },
+      },
+    );
+  } catch (error) {
+    return jsonInternalServerError(error, "[admin/api/orders GET]");
+  }
 }
 
 export async function PATCH(request: Request) {
   const json = (await request.json().catch(() => null)) as unknown;
-  const parsed = updateOrderStatusSchema.safeParse(json);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  const statusParsed = updateOrderStatusSchema.safeParse(json);
+  const shipmentParsed = updateOrderShipmentSchema.safeParse(json);
+  if (!statusParsed.success && !shipmentParsed.success) {
+    const statusErrors = statusParsed.error.issues.map(
+      (issue) => issue.message,
+    );
+    const shipmentErrors = shipmentParsed.error.issues.map(
+      (issue) => issue.message,
+    );
+    return NextResponse.json(
+      {
+        error: "invalid_body",
+        message:
+          "Body must match either status update or shipment update payload.",
+        details: {
+          status: statusErrors,
+          shipment: shipmentErrors,
+        },
+      },
+      { status: 400 },
+    );
   }
 
   const user = await getCurrentAdminUser();
@@ -83,47 +110,99 @@ export async function PATCH(request: Request) {
     return adminJsonUnauthorized();
   }
 
-  const target = parsed.data.status;
-  const needRefund = target === "cancelled";
-  const allowed = needRefund
-    ? await adminUserHasPermission(user, "order.refund")
-    : await adminUserHasPermission(user, "order.update");
-  if (!allowed) {
-    return adminJsonForbidden(
-      needRefund
-        ? "You don't have permission to cancel orders (refund permission required)."
-        : "You don't have permission to update order status.",
-    );
+  // Handle status updates first because shipment schema is permissive and
+  // also accepts `{ orderId }` payloads.
+  if (statusParsed.success) {
+    const target = statusParsed.data.status;
+    const needRefund = target === "cancelled";
+    const allowed = needRefund
+      ? await adminUserHasPermission(user, "order.refund")
+      : await adminUserHasPermission(user, "order.update");
+    if (!allowed) {
+      return adminJsonForbidden(
+        needRefund
+          ? "You don't have permission to cancel orders (refund permission required)."
+          : "You don't have permission to update order status.",
+      );
+    }
+
+    const previous = await prisma.order.findUnique({
+      where: { id: statusParsed.data.orderId },
+      select: { status: true },
+    });
+    if (!previous) {
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    }
+
+    try {
+      const order = await updateOrderStatusAdminService(
+        statusParsed.data.orderId,
+        statusParsed.data.status,
+      );
+      const actorId = adminActorNumericId(user);
+      if (actorId != null) {
+        const refundLike = target === "cancelled";
+        void logAdminAction({
+          actorUserId: actorId,
+          action: refundLike ? "order.refund" : "order.status",
+          targetType: "Order",
+          targetId: String(order.id),
+          metadata: { from: previous.status, to: order.status },
+        });
+      }
+      void bustAdminAnalyticsCache();
+      return NextResponse.json(order);
+    } catch (error) {
+      return jsonInternalServerError(
+        error,
+        "[admin/api/orders PATCH]",
+        "update_failed",
+      );
+    }
   }
 
-  const previous = await prisma.order.findUnique({
-    where: { id: parsed.data.orderId },
-    select: { status: true },
-  });
-  if (!previous) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  if (!shipmentParsed.success) {
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  const allowed = await adminUserHasPermission(user, "order.update");
+  if (!allowed) {
+    return adminJsonForbidden(
+      "You don't have permission to update shipment details.",
+    );
   }
 
   try {
-    const order = await updateOrderStatusAdminService(
-      parsed.data.orderId,
-      parsed.data.status,
+    const order = await updateOrderShipmentAdminService(
+      shipmentParsed.data.orderId,
+      {
+        shippingCarrier: shipmentParsed.data.shippingCarrier ?? null,
+        trackingNumber: shipmentParsed.data.trackingNumber ?? null,
+        trackingUrl: shipmentParsed.data.trackingUrl ?? null,
+      },
     );
     const actorId = adminActorNumericId(user);
     if (actorId != null) {
-      const refundLike = target === "cancelled";
       void logAdminAction({
         actorUserId: actorId,
-        action: refundLike ? "order.refund" : "order.status",
+        action: "order.shipment",
         targetType: "Order",
         targetId: String(order.id),
-        metadata: { from: previous.status, to: order.status },
+        metadata: {
+          shippingCarrier: order.shippingCarrier ?? null,
+          trackingNumber: order.trackingNumber ?? null,
+          trackingUrl: order.trackingUrl ?? null,
+          shippedAt: order.shippedAt ? order.shippedAt.toISOString() : null,
+        },
       });
     }
     void bustAdminAnalyticsCache();
     return NextResponse.json(order);
-  } catch (e) {
-    console.error("[admin/orders PATCH]", e);
-    return NextResponse.json({ error: "update_failed" }, { status: 500 });
+  } catch (error) {
+    return jsonInternalServerError(
+      error,
+      "[admin/api/orders PATCH shipment]",
+      "update_failed",
+    );
   }
 }

@@ -1,4 +1,4 @@
-import { getProductByIdService } from "@/backend/modules/product/product.service";
+import { getProductByIdService } from "@/backend/modules/product";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";

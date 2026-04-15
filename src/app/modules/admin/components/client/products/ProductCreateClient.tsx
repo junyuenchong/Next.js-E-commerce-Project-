@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/lib/http";
+import http, { getErrorMessage } from "@/app/utils/http";
 import {
   adminApiPaths,
   fetchAdminCategories,
   postImageUpload,
-} from "@/app/modules/admin/client";
-import { useAdminToast } from "@/app/modules/admin/(main)/AdminProviders";
+} from "@/app/modules/admin/components/client";
+import { useAdminToast } from "@/app/providers/AdminProviders";
 
 type AdminCategory = { id: number; name: string };
 

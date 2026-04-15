@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { consumePasswordResetToken } from "@/app/lib/password-reset";
+import { consumePasswordResetToken } from "@/backend/modules/auth";
 import { clientIp, rateLimit } from "@/app/lib/rate-limit";
-import { hashPasswordUserService } from "@/backend/modules/user/user.service";
+import { hashPasswordUserService } from "@/backend/modules/user";
 
 const bodySchema = z.object({
   token: z.string().min(10),

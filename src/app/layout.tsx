@@ -1,9 +1,9 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import ReduxProvider from "./ReduxProvider";
 import { getSiteUrl } from "@/app/lib/site-url";
-import QueryProvider from "./QueryProvider";
+import QueryProvider from "./providers/QueryProvider";
+import ReduxProvider from "./providers/ReduxProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 

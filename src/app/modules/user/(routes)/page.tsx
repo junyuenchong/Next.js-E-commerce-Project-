@@ -1,12 +1,12 @@
 /** Storefront home: featured products + banner. */
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import ProductList from "@/app/modules/user/client/components/Products/ProductList/ProductList";
+import ProductList from "@/app/modules/user/components/client/Products/ProductList/ProductList";
 import type { ProductCardProduct } from "@/app/modules/user/types";
-import SalesCampaignBanner from "@/app/modules/user/client/components/SalesCampaignBanner/SalesCampaignBanner";
-import ShopLoadingFallback from "@/app/modules/user/client/components/home/ShopLoadingFallback";
+import SalesCampaignBanner from "@/app/modules/user/components/client/SalesCampaignBanner/SalesCampaignBanner";
+import ShopLoadingFallback from "@/app/modules/user/components/server/home/ShopLoadingFallback";
 import { serializeProductCardListForClient } from "@/app/lib/serialize-product-card";
-import { listProductsService } from "@/backend/modules/product/product.service";
+import { listProductsService } from "@/backend/modules/product";
 
 export const metadata: Metadata = {
   title: "Shop",

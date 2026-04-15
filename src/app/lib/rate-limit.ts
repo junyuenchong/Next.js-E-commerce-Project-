@@ -1,4 +1,4 @@
-import { getRedisClient } from "@/app/lib/redis";
+import { getRedisClient } from "@/backend/modules/db/redis";
 
 /**
  * Simple fixed-window rate limit using Redis INCR.

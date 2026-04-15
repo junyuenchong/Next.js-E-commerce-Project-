@@ -1,6 +1,6 @@
 /** Route wrapper: reset-password page client implementation. */
-import ResetPasswordPageClient from "@/app/modules/user/client/components/pages/auth/ResetPasswordPageClient";
+import ResetPasswordPageView from "@/app/modules/user/components/client/pages/auth/ResetPasswordPage";
 
 export default function ResetPasswordPage() {
-  return <ResetPasswordPageClient />;
+  return <ResetPasswordPageView />;
 }

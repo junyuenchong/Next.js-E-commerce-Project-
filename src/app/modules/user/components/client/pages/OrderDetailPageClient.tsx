@@ -4,9 +4,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/lib/http";
+import http, { getErrorMessage } from "@/app/utils/http";
 import { formatPriceRM } from "@/app/lib/format-price";
-import { useUser } from "@/app/modules/user/client/components/UserContext";
+import { useUser } from "@/app/modules/user/components/client/UserContext";
 
 type OrderItemDto = {
   id: string;

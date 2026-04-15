@@ -2,10 +2,10 @@
 
 import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/lib/http";
-import { adminApiPaths } from "@/app/modules/admin/client";
-import CategoryItem from "@/app/modules/admin/client/components/category/types/CategoryItem";
-import type { Category } from "@/app/modules/admin/client/components/category/types/CategoryItem";
+import http, { getErrorMessage } from "@/app/utils/http";
+import { adminApiPaths } from "@/app/modules/admin/components/client/http";
+import CategoryItem from "@/app/modules/admin/components/client/category/types/CategoryItem";
+import type { Category } from "@/app/modules/admin/components/client/category/types/CategoryItem";
 
 type CategoryRow = Omit<Category, "createdAt" | "updatedAt"> & {
   createdAt: string;

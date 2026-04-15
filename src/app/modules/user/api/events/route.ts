@@ -1,7 +1,7 @@
 import {
   ADMIN_SSE_CHANNELS,
   createRedisSubscriber,
-} from "@/app/lib/admin-events";
+} from "@/backend/modules/admin-events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

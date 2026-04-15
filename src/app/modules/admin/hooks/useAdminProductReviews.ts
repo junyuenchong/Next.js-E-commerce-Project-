@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getErrorMessage } from "@/app/lib/http";
+import { getErrorMessage } from "@/app/utils/http";
 import {
   deleteAdminReview,
   fetchAdminProductReviews,
   patchAdminReviewReply,
-} from "@/app/modules/admin/client";
+} from "@/app/modules/admin/components/client";
 
 export type AdminReviewItem = {
   id: number;

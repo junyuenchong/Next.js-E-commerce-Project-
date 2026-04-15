@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/lib/http";
+import http, { getErrorMessage } from "@/app/utils/http";
 import {
   adminApiPaths,
   patchAdminReviewReply,
-} from "@/app/modules/admin/client";
-import { useAdminToast } from "@/app/modules/admin/(main)/AdminProviders";
+} from "@/app/modules/admin/components/client";
+import { useAdminToast } from "@/app/providers/AdminProviders";
 
 type ReviewRow = {
   id: number;

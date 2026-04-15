@@ -1,5 +1,5 @@
 /** MYR display + sale badge % from compare-at vs price. */
-import { moneyToNumber } from "@/backend/lib/money";
+import { moneyToNumber } from "@/backend/core/money";
 
 export function formatPriceRM(value: unknown): string {
   const n = moneyToNumber(value);

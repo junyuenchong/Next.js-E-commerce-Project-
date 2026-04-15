@@ -1,4 +1,4 @@
-import { isAxiosError } from "@/app/lib/http";
+import { isAxiosError } from "@/app/utils/http";
 
 export function messageFromReviewSubmitError(error: unknown): string {
   const message =

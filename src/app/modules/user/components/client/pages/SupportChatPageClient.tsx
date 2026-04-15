@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/lib/http";
+import http, { getErrorMessage } from "@/app/utils/http";
 import Link from "next/link";
-import { useUser } from "@/app/modules/user/client/components/UserContext";
+import { useUser } from "@/app/modules/user/components/client/UserContext";
 import { useSearchParams } from "next/navigation";
 import type { OrderListItem } from "@/app/modules/user/types";
 import { formatPriceRM } from "@/app/lib/format-price";

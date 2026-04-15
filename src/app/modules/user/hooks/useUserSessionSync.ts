@@ -2,7 +2,10 @@ import { useEffect, useRef } from "react";
 import type { AppDispatch } from "@/app/redux/store";
 import { setCart, clearCart, setCartId } from "@/app/redux/store";
 import type { QueryClient } from "@tanstack/react-query";
-import { fetchCart, mergeGuestCart } from "@/app/modules/user/client";
+import {
+  fetchCart,
+  mergeGuestCart,
+} from "@/app/modules/user/components/client/http";
 import { USER_CART_QUERY_KEY } from "./useCart";
 import { cartLinesFromApiPayload } from "@/app/lib/cart";
 

@@ -385,6 +385,10 @@ model Order {
   shippingPostcode  String?
   shippingCountry   String?
   shippingMethod    String?
+  shippingCarrier   String?
+  trackingNumber    String?
+  trackingUrl       String?
+  shippedAt         DateTime?
   items             OrderLineItem[]
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt

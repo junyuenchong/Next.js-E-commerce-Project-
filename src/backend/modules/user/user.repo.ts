@@ -1,4 +1,4 @@
-import prisma from "@/backend/shared/db/prisma";
+import prisma from "@/backend/core/db/prisma";
 
 export async function createUserRepo(email: string, passwordHash: string) {
   return prisma.user.create({

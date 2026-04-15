@@ -1,6 +1,6 @@
 /** Product PDP + SEO metadata. */
 import type { Metadata } from "next";
-import ProductDetailClient from "@/app/modules/user/client/components/Products/ProductList/ProductDetailClient";
+import ProductDetail from "@/app/modules/user/components/client/Products/ProductList/ProductDetail";
 import type { ProductDetailPayload } from "@/app/modules/user/types";
 import { getProductById } from "@/backend/modules/product";
 import { serializeProductCardForClient } from "@/app/lib/serialize-product-card";
@@ -84,7 +84,7 @@ const ProductPage = async ({
   }
 
   return (
-    <ProductDetailClient
+    <ProductDetail
       productId={productId}
       initialProduct={serializeProductCardForClient(product)}
     />

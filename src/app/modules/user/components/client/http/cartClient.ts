@@ -1,4 +1,4 @@
-import http from "@/app/lib/http";
+import http from "@/app/utils/http";
 
 const CART_API = "/modules/user/api/cart";
 const MERGE_API = "/modules/user/api/products/cart/merge";

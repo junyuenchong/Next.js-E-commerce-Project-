@@ -7,7 +7,7 @@ import type {
 } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 import prisma from "@/app/lib/prisma";
-import { moneyToNumber } from "@/backend/lib/money";
+import { moneyToNumber } from "@/backend/core/money";
 
 export const MIN_PAYPAL_CHARGE = 0.01;
 

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSiteUrl } from "@/app/lib/site-url";
-import { createPasswordResetForEmail } from "@/app/lib/password-reset";
+import { createPasswordResetForEmail } from "@/backend/modules/auth";
 import { clientIp, rateLimit } from "@/app/lib/rate-limit";
-import { sendTransactionalEmail } from "@/app/lib/email";
+import { sendTransactionalEmail } from "@/backend/modules/notification";
 
 const bodySchema = z.object({
   email: z.string().email(),

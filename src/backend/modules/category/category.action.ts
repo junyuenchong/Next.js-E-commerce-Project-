@@ -7,10 +7,10 @@ import {
   deleteCacheKeysByPattern,
   getCachedJson,
   setCachedJson,
-} from "@/app/lib/redis";
-import { publishAdminCategoryEvent } from "@/app/lib/admin-events";
-import { cacheKeys } from "@/app/lib/redis";
-import { requireAdminPermission } from "@/backend/lib/require-admin-permission";
+  cacheKeys,
+} from "@/backend/modules/db/redis";
+import { publishAdminCategoryEvent } from "@/backend/modules/admin-events";
+import { requireAdminPermission } from "@/backend/core/require-admin-permission";
 import { listProductsService } from "@/backend/modules/product/product.service";
 import {
   createCategoryService,

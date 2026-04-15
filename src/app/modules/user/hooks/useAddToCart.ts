@@ -2,8 +2,8 @@ import { useCallback, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useQueryClient } from "@tanstack/react-query";
 import { setCart, setCartId } from "@/app/redux/store";
-import { getErrorMessage } from "@/app/lib/http";
-import { postCartMutation } from "@/app/modules/user/client";
+import { getErrorMessage } from "@/app/utils/http";
+import { postCartMutation } from "@/app/modules/user/components/client";
 import { cartLinesFromApiPayload } from "@/app/lib/cart";
 import { USER_CART_QUERY_KEY } from "./useCart";
 

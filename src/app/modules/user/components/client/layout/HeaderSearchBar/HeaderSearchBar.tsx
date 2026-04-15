@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import React, { memo } from "react";
-import { navigateToSearch } from "@/app/modules/user/client";
+import { navigateToSearch } from "@/app/modules/user/components/client";
 
 const HeaderSearchBar = memo(function HeaderSearchBar() {
   const router = useRouter();
@@ -42,7 +42,7 @@ const HeaderSearchBar = memo(function HeaderSearchBar() {
             name="query"
             placeholder="Search products…"
             autoComplete="off"
-            className="h-9 w-full min-w-0 rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-3 text-sm font-normal text-gray-900 shadow-sm placeholder:text-gray-400 placeholder:font-normal focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+            className="h-9 w-full min-w-0 rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-3 text-xs font-normal text-gray-900 shadow-sm placeholder:text-gray-400 placeholder:font-normal placeholder:text-xs focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10"
           />
         </div>
 

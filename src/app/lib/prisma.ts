@@ -1,3 +1,3 @@
-import prisma from "@/backend/shared/db/prisma";
+import prisma from "@/backend/core/db/prisma";
 
 export default prisma;

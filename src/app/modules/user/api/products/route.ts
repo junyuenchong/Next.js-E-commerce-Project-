@@ -7,17 +7,17 @@ import {
   listProductsCursorService,
   listProductsService,
   searchProductsService,
-} from "@/backend/modules/product/product.service";
+} from "@/backend/modules/product";
 import {
   getProductsByCategorySlugCursorService,
   getProductsByCategorySlugService,
-} from "@/backend/modules/category/category.service";
+} from "@/backend/modules/category";
 import { addToCart } from "@/backend/modules/cart";
 import {
   CART_OUT_OF_STOCK,
   CART_PRODUCT_NOT_FOUND,
   CART_PRODUCT_UNAVAILABLE,
-} from "@/backend/modules/cart/cart.service";
+} from "@/backend/modules/cart";
 import { NextResponse } from "next/server";
 
 type ListMode = "search" | "category" | "all";

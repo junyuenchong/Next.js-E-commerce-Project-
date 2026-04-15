@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { listProductReviewsForAdminService } from "@/backend/modules/review/review.service";
-import { adminApiRequireCatalogAccess } from "@/backend/lib/admin-api-guard";
+import { listProductReviewsForAdminService } from "@/backend/modules/review";
+import { adminApiRequireCatalogAccess } from "@/backend/core/admin-api-guard";
+import { jsonInternalServerError } from "@/backend/lib/api-error";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-const getErrorText = (error: unknown) =>
-  error instanceof Error ? error.message : "Internal Server Error";
 
 export async function GET(
   _request: Request,
@@ -21,12 +20,10 @@ export async function GET(
     return NextResponse.json(reviews, {
       headers: { "Cache-Control": "no-store" },
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: getErrorText(error),
-      },
-      { status: 500 },
+  } catch (error) {
+    return jsonInternalServerError(
+      error,
+      "[admin/api/products/[id]/reviews GET]",
     );
   }
 }

@@ -19,6 +19,52 @@
       }
     ],
     "paths": {
+      "@/backend/core/session": ["./src/backend/modules/auth/session"],
+      "@/backend/core/admin-api-guard": [
+        "./src/backend/modules/access-control"
+      ],
+      "@/backend/core/auth/auth.service": [
+        "./src/backend/modules/auth/auth.service"
+      ],
+      "@/backend/core/auth/permission": [
+        "./src/backend/modules/access-control"
+      ],
+      "@/backend/core/next-auth-cookies": [
+        "./src/backend/modules/auth/next-auth-cookies"
+      ],
+      "@/backend/core/require-admin-permission": [
+        "./src/backend/modules/access-control"
+      ],
+      "@/backend/core/utils/helpers": ["./src/backend/shared/helpers"],
+      "@/backend/core/money": ["./src/backend/shared/money"],
+      "@/backend/core/db/prisma": ["./src/backend/modules/db/prisma"],
+      "@/backend/core/admin-role-definition-schema-capability": [
+        "./src/backend/modules/access-control"
+      ],
+      "@/backend/core/admin-action-log": [
+        "./src/backend/modules/admin-action-log"
+      ],
+      "@/backend/lib/session": ["./src/backend/modules/auth/session"],
+      "@/backend/lib/admin-session": [
+        "./src/backend/modules/auth/admin-session"
+      ],
+      "@/backend/lib/admin-api-guard": ["./src/backend/modules/access-control"],
+      "@/backend/lib/auth": ["./src/backend/modules/auth/auth.service"],
+      "@/backend/lib/api-error": ["./src/backend/shared/api-error"],
+      "@/backend/lib/admin-role-definition-schema-capability": [
+        "./src/backend/modules/access-control"
+      ],
+      "@/backend/lib/next-auth-cookies": [
+        "./src/backend/modules/auth/next-auth-cookies"
+      ],
+      "@/backend/lib/money": ["./src/backend/shared/money"],
+      "@/backend/lib/permissions": ["./src/backend/modules/access-control"],
+      "@/backend/lib/permission-resolver": [
+        "./src/backend/modules/access-control"
+      ],
+      "@/backend/lib/require-admin-permission": [
+        "./src/backend/modules/access-control"
+      ],
       "@/*": ["./src/*", "./*"]
     }
   },

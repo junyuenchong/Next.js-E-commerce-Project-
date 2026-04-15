@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { getSession, signIn, signOut } from "next-auth/react";
-import { signInCredentialsSchema } from "@/app/modules/user/schema/user.schema";
+import { signInCredentialsSchema } from "@/shared/schema/user";
 import { canAccessAdminPanel, postAuthRedirectPath } from "@/backend/lib/auth";
 import type { UserRole } from "@prisma/client";
 import { useSignInResultAlerts } from "@/app/modules/user/hooks";
@@ -52,6 +52,35 @@ const SignIn = ({ returnUrl, mode = "customer" }: SignInProps) => {
     }
 
     const { email, password } = parsed.data;
+    if (isAdmin) {
+      const adminRes = await fetch("/modules/admin/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const adminJson = (await adminRes.json().catch(() => null)) as {
+        role?: UserRole;
+        message?: string;
+      } | null;
+      const role = (adminJson?.role ?? null) as UserRole | null;
+
+      if (!adminRes.ok || !role || !canAccessAdminPanel(role)) {
+        setState({
+          message:
+            adminJson?.message ??
+            "This portal is for staff and administrators only. Sign in as a customer on the shop page.",
+        });
+        setIsPending(false);
+        return;
+      }
+
+      const nextPath = postAuthRedirectPath(role, returnUrl);
+      router.push(nextPath);
+      router.refresh();
+      setIsPending(false);
+      return;
+    }
+
     const res = await signIn("credentials", {
       email,
       password,
@@ -76,18 +105,7 @@ const SignIn = ({ returnUrl, mode = "customer" }: SignInProps) => {
     }
 
     const role = (session.user.role ?? "USER") as UserRole;
-
-    if (isAdmin) {
-      if (!canAccessAdminPanel(role)) {
-        await signOut({ redirect: false });
-        setState({
-          message:
-            "This portal is for staff and administrators only. Sign in as a customer on the shop page.",
-        });
-        setIsPending(false);
-        return;
-      }
-    } else if (canAccessAdminPanel(role)) {
+    if (canAccessAdminPanel(role)) {
       await signOut({ redirect: false });
       setState({
         message:
@@ -97,9 +115,7 @@ const SignIn = ({ returnUrl, mode = "customer" }: SignInProps) => {
       return;
     }
 
-    const nextPath = isAdmin
-      ? postAuthRedirectPath(role, returnUrl)
-      : withReturnUrl(returnUrl);
+    const nextPath = withReturnUrl(returnUrl);
     router.push(nextPath);
     router.refresh();
     setIsPending(false);

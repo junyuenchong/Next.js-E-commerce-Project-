@@ -1,6 +1,6 @@
 /** Cart: API → Redux lines, and live line totals for checkout. */
 import type { CartItemRowData } from "@/app/modules/user/types";
-import { moneyToNumber } from "@/backend/lib/money";
+import { moneyToNumber } from "@/backend/core/money";
 
 export type CartReduxLine = {
   id: string;
