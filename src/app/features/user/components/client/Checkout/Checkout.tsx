@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import http, { getErrorMessage } from "@/app/utils/http";
@@ -70,7 +69,6 @@ export default function Checkout({
   paypalClientId,
   paypalCurrency,
 }: CheckoutProps) {
-  const router = useRouter();
   const qc = useQueryClient();
   const { user } = useUser();
   const { cart, isLoading, summary, mutate } = useShoppingCart();
@@ -194,15 +192,11 @@ export default function Checkout({
     [qc],
   );
 
-  const handlePaid = useCallback(
-    (payload: { orderId: number }) => {
-      setPaid(true);
-      setPaidOrderId(payload.orderId);
-      setErr(null);
-      router.refresh();
-    },
-    [router],
-  );
+  const handlePaid = useCallback((payload: { orderId: number }) => {
+    setPaid(true);
+    setPaidOrderId(payload.orderId);
+    setErr(null);
+  }, []);
 
   useEffect(() => {
     if (!paid) return;
@@ -284,7 +278,7 @@ export default function Checkout({
     );
   }
 
-  if (!showInitialLoading && empty) {
+  if (!showInitialLoading && empty && !paid) {
     return (
       <div className="min-h-screen bg-gray-50 py-16 px-4 text-center">
         <p className="text-gray-700 mb-6">Your cart is empty.</p>
