@@ -1,3 +1,4 @@
+// Feature: Implements review repository queries and updates for product feedback workflows.
 import type { Prisma } from "@prisma/client";
 import prisma from "@/app/lib/prisma";
 import { productReviewHasIsActiveColumn } from "./review-schema-capability";
@@ -13,7 +14,9 @@ const userInclude = {
   },
 } as const;
 
+// Feature: list storefront product reviews, hiding soft-deactivated rows when supported.
 export async function listProductReviews(productId: number) {
+  // Fallback: some environments may not have `ProductReview.isActive` yet.
   const hasIsActive = await productReviewHasIsActiveColumn();
   if (hasIsActive) {
     return prisma.productReview.findMany({
@@ -30,7 +33,7 @@ export async function listProductReviews(productId: number) {
   });
 }
 
-/** Admin product card: active reviews only (soft-removed hidden like a real delete). */
+// Guard: admin product card list returns active reviews only.
 export async function listProductReviewsForAdmin(productId: number) {
   const hasIsActive = await productReviewHasIsActiveColumn();
   if (hasIsActive) {
@@ -48,12 +51,14 @@ export async function listProductReviewsForAdmin(productId: number) {
   });
 }
 
+// Feature: upsert user review and reactivate when previously soft-deactivated.
 export async function upsertProductReview(params: {
   productId: number;
   userId: number;
   rating: number;
   comment: string;
 }) {
+  // Feature: keep one review per (product,user) and reactivate soft-removed rows.
   const hasIsActive = await productReviewHasIsActiveColumn();
   const where = {
     productId_userId: {
@@ -87,7 +92,9 @@ export async function upsertProductReview(params: {
   });
 }
 
+// Feature: update admin reply field without rating/comment changes.
 export async function updateAdminReply(reviewId: number, adminReply: string) {
+  // Guard: reply update intentionally avoids rating/comment mutations.
   const hasIsActive = await productReviewHasIsActiveColumn();
   if (hasIsActive) {
     return prisma.productReview.update({
@@ -102,6 +109,7 @@ export async function updateAdminReply(reviewId: number, adminReply: string) {
   });
 }
 
+// Guard: validate product id existence for service-layer guards.
 export async function findProductById(productId: number) {
   return prisma.product.findUnique({
     where: { id: productId },
@@ -109,7 +117,7 @@ export async function findProductById(productId: number) {
   });
 }
 
-/** Soft-remove when the column exists; otherwise hard-delete (pre-migration DBs). */
+// Fallback: soft-remove when column exists; hard-delete for pre-migration databases.
 export async function softDeactivateProductReviewById(reviewId: number) {
   const hasIsActive = await productReviewHasIsActiveColumn();
   if (hasIsActive) {
@@ -123,12 +131,14 @@ export async function softDeactivateProductReviewById(reviewId: number) {
   });
 }
 
+// Feature: list admin moderation reviews with optional product/search filters.
 export async function listAllReviewsAdminRepo(params: {
   skip: number;
   take: number;
   productId?: number;
   q?: string;
 }) {
+  // Feature: build filters incrementally for deterministic active/product/search conditions.
   const hasIsActive = await productReviewHasIsActiveColumn();
   const and: Prisma.ProductReviewWhereInput[] = [];
   if (hasIsActive) and.push({ isActive: true });

@@ -1,31 +1,39 @@
+// Feature: Publishes admin SSE event payloads to Redis channels for dashboard live updates.
 import type { RedisClientType } from "redis";
 import { getRedisClient } from "@/backend/modules/db/redis";
+import {
+  logErrorWithContext,
+  runSafely,
+  runSafelyVoid,
+} from "@/backend/shared/async-safety";
 
+// Note: Redis channel names used for admin SSE events.
 export const ADMIN_SSE_CHANNELS = {
   products: "admin:sse:products",
   categories: "admin:sse:categories",
   orders: "admin:sse:orders",
 } as const;
 
+// Guard: ensure Redis client is available and open.
 async function ensureClient() {
+  // Note: shared connector keeps publisher/subscriber readiness checks aligned.
   const client = getRedisClient();
   if (!client) return null;
-  try {
+  await runSafelyVoid(async () => {
     if (!client.isOpen) await client.connect();
-  } catch (error: unknown) {
-    console.error("[admin-events] ensure client failed", error);
-    return null;
-  }
+  }, "[admin-events] ensure client failed");
   return client.isOpen ? client : null;
 }
 
+// Feature: publish product event to products SSE channel.
 export async function publishAdminProductEvent(payload: {
   kind: "created" | "updated" | "deleted";
   id?: number;
 }) {
   const client = await ensureClient();
   if (!client) return;
-  try {
+  // Fallback: publish is best-effort; failures are logged and do not block mutations.
+  await runSafelyVoid(async () => {
     await client.publish(
       ADMIN_SSE_CHANNELS.products,
       JSON.stringify({
@@ -34,18 +42,18 @@ export async function publishAdminProductEvent(payload: {
         at: Date.now(),
       }),
     );
-  } catch (e) {
-    console.error("[admin-events] publish products", e);
-  }
+  }, "[admin-events] publish products");
 }
 
+// Feature: publish category event to categories SSE channel.
 export async function publishAdminCategoryEvent(payload: {
   kind: "created" | "updated" | "deleted";
   id?: number;
 }) {
   const client = await ensureClient();
   if (!client) return;
-  try {
+  // Feature: category events drive admin list refresh and live dashboard updates.
+  await runSafelyVoid(async () => {
     await client.publish(
       ADMIN_SSE_CHANNELS.categories,
       JSON.stringify({
@@ -54,11 +62,10 @@ export async function publishAdminCategoryEvent(payload: {
         at: Date.now(),
       }),
     );
-  } catch (e) {
-    console.error("[admin-events] publish categories", e);
-  }
+  }, "[admin-events] publish categories");
 }
 
+// Feature: publish order event to orders SSE channel.
 export async function publishAdminOrderEvent(payload: {
   kind: "updated";
   id: number;
@@ -66,7 +73,8 @@ export async function publishAdminOrderEvent(payload: {
 }) {
   const client = await ensureClient();
   if (!client) return;
-  try {
+  // Feature: emit order events after status/shipment changes for realtime admin UI.
+  await runSafelyVoid(async () => {
     await client.publish(
       ADMIN_SSE_CHANNELS.orders,
       JSON.stringify({
@@ -75,20 +83,23 @@ export async function publishAdminOrderEvent(payload: {
         at: Date.now(),
       }),
     );
-  } catch (e) {
-    console.error("[admin-events] publish orders", e);
-  }
+  }, "[admin-events] publish orders");
 }
 
+// Feature: create Redis subscriber client for event listening.
 export async function createRedisSubscriber(): Promise<RedisClientType | null> {
   const main = await ensureClient();
   if (!main) return null;
-  try {
-    const sub = main.duplicate();
-    await sub.connect();
-    return sub;
-  } catch (e) {
-    console.error("[admin-events] subscriber failed", e);
-    return null;
-  }
+  // Guard: duplicate connection avoids blocking publisher traffic with subscriber flow.
+  return runSafely(
+    async () => {
+      const sub = main.duplicate();
+      await sub.connect();
+      return sub;
+    },
+    (error) => {
+      logErrorWithContext("[admin-events] subscriber failed", error);
+      return null;
+    },
+  );
 }

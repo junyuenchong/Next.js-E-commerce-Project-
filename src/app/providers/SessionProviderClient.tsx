@@ -4,7 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { Session } from "next-auth";
 import { ReactNode } from "react";
 
-const NEXTAUTH_BASE_PATH = "/modules/user/api/auth";
+const NEXTAUTH_BASE_PATH = "/features/user/api/auth";
 
 interface SessionProviderClientProps {
   children: ReactNode;

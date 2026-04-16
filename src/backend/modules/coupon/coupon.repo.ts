@@ -1,3 +1,4 @@
+// Feature: Implements coupon repository reads and writes for checkout and admin management.
 import type {
   CouponDiscountType,
   CouponRedemptionScope,
@@ -7,13 +8,16 @@ import { Decimal } from "@prisma/client/runtime/library";
 import prisma from "@/app/lib/prisma";
 
 function toDecimal(n: number): Decimal {
+  // Note: normalize to 2 decimals so money fields remain consistent in DB.
   return new Decimal(n.toFixed(2));
 }
 
+// Feature: fetch coupon row by code.
 export async function findCouponByCodeRepo(code: string) {
   return prisma.coupon.findUnique({ where: { code } });
 }
 
+// Feature: fetch user's assignment row for targeted coupon.
 export async function findUserCouponAssignmentRepo(
   userId: number,
   couponId: number,
@@ -24,7 +28,9 @@ export async function findUserCouponAssignmentRepo(
   });
 }
 
+// Feature: list active public coupons surfaced on storefront.
 export async function listActiveStorefrontCouponsRepo() {
+  // Guard: storefront only shows public coupons explicitly surfaced as vouchers.
   return prisma.coupon.findMany({
     where: {
       isActive: true,
@@ -35,12 +41,14 @@ export async function listActiveStorefrontCouponsRepo() {
   });
 }
 
+// Feature: list all coupons for admin management UI.
 export async function listCouponsAdminRepo() {
   return prisma.coupon.findMany({
     orderBy: [{ isActive: "desc" }, { code: "asc" }],
   });
 }
 
+// Feature: create coupon record from normalized admin payload.
 export async function createCouponAdminRepo(data: {
   code: string;
   description?: string | null;
@@ -56,6 +64,7 @@ export async function createCouponAdminRepo(data: {
   showOnStorefront?: boolean;
   voucherHeadline?: string | null;
 }) {
+  // Feature: repository handles decimal conversion and nullable normalization before insert.
   return prisma.coupon.create({
     data: {
       code: data.code,
@@ -77,6 +86,7 @@ export async function createCouponAdminRepo(data: {
   });
 }
 
+// Feature: update coupon record by id.
 export async function updateCouponAdminRepo(
   id: number,
   data: Prisma.CouponUpdateInput,
@@ -84,6 +94,7 @@ export async function updateCouponAdminRepo(
   return prisma.coupon.update({ where: { id }, data });
 }
 
+// Feature: deactivate coupon record by id.
 export async function deactivateCouponAdminRepo(id: number) {
   return prisma.coupon.update({
     where: { id },

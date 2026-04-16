@@ -1,4 +1,5 @@
-import type { AdminActionLogInput } from "@/shared/types/admin-action-log";
+// Feature: Records structured admin audit entries and normalizes actor identifiers for logs.
+import type { AdminActionLogInput } from "@/shared/types";
 import { createAdminActionLogRecord } from "./admin-action-log.repo";
 
 export function adminActorNumericId(
@@ -13,6 +14,7 @@ export function adminActorNumericId(
 export async function logAdminAction(
   input: AdminActionLogInput,
 ): Promise<void> {
+  // Fire-and-forget audit log write; errors are swallowed to avoid breaking core flows.
   try {
     await createAdminActionLogRecord(input);
   } catch (error) {

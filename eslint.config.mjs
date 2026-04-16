@@ -29,15 +29,15 @@ const eslintConfig = [
           patterns: [
             {
               group: [
-                "@/backend/modules/*/*.service",
-                "@/backend/modules/*/*.service.*",
-                "@/backend/modules/*/*.repo",
-                "@/backend/modules/*/*.repo.*",
-                "@/backend/modules/*/*.route-handler",
-                "@/backend/modules/*/*.route-handler.*",
+                "@/backend/features/*/*.service",
+                "@/backend/features/*/*.service.*",
+                "@/backend/features/*/*.repo",
+                "@/backend/features/*/*.repo.*",
+                "@/backend/features/*/*.route-handler",
+                "@/backend/features/*/*.route-handler.*",
               ],
               message:
-                "Do not deep-import backend module internals from app/api routes. Import from the module entrypoint (e.g. `@/backend/modules/<module>`) or a module action instead.",
+                "Do not deep-import backend module internals from app/api routes. Import from the module entrypoint (e.g. `@/backend/features/<module>`) or a module action instead.",
             },
           ],
         },

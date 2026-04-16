@@ -1,3 +1,5 @@
+import type { UserRole } from "@prisma/client";
+
 export type AdminMeCan = {
   userRead: boolean;
   orderRead: boolean;
@@ -10,5 +12,6 @@ export type AdminMeCan = {
 };
 
 export type AdminMe = {
+  role?: UserRole;
   can: AdminMeCan;
 };

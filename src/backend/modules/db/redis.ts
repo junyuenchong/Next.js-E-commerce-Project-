@@ -1,4 +1,10 @@
+// Feature: Redis utilities for JSON cache get/set/delete and key patterns.
 import { createClient, type RedisClientType } from "redis";
+import {
+  logErrorWithContext,
+  runSafely,
+  runSafelyVoid,
+} from "@/backend/shared/async-safety";
 
 let redis: RedisClientType | null = null;
 
@@ -16,6 +22,7 @@ export function getRedisClient() {
   return redis;
 }
 
+// Guard: ensure Redis is connected and return client (or null).
 async function ensureRedisConnected(): Promise<RedisClientType | null> {
   const client = getRedisClient();
   if (!client) return null;
@@ -27,19 +34,24 @@ async function ensureRedisConnected(): Promise<RedisClientType | null> {
   return client.isOpen ? client : null;
 }
 
+// Feature: get JSON value from Redis cache.
 export async function getCachedJson<T>(key: string): Promise<T | null> {
   const client = await ensureRedisConnected();
   if (!client) return null;
-  try {
-    const cached = await client.get(key);
-    if (!cached) return null;
-    return JSON.parse(cached) as T;
-  } catch (err) {
-    console.error("[Redis] getCachedJson error:", err);
-    return null;
-  }
+  return runSafely(
+    async () => {
+      const cached = await client.get(key);
+      if (!cached) return null;
+      return JSON.parse(cached) as T;
+    },
+    (err) => {
+      logErrorWithContext("[Redis] getCachedJson error:", err);
+      return null;
+    },
+  );
 }
 
+// Feature: set JSON value in Redis with TTL (default 5 minutes).
 export async function setCachedJson(
   key: string,
   value: unknown,
@@ -47,23 +59,21 @@ export async function setCachedJson(
 ) {
   const client = await ensureRedisConnected();
   if (!client) return;
-  try {
+  await runSafelyVoid(async () => {
     await client.set(key, JSON.stringify(value), { EX: ttlSeconds });
-  } catch (err) {
-    console.error("[Redis] setCachedJson error:", err);
-  }
+  }, "[Redis] setCachedJson error:");
 }
 
+// Feature: delete one or more explicit cache keys.
 export async function deleteCacheKeys(keys: string[]) {
   const client = await ensureRedisConnected();
   if (!client || keys.length === 0) return;
-  try {
+  await runSafelyVoid(async () => {
     await client.del(keys);
-  } catch (err) {
-    console.error("[Redis] deleteCacheKeys error:", err);
-  }
+  }, "[Redis] deleteCacheKeys error:");
 }
 
+// Feature: delete cache keys that match a pattern.
 export async function deleteCacheKeysByPattern(pattern: string) {
   const client = await ensureRedisConnected();
   if (!client) return;
@@ -71,15 +81,13 @@ export async function deleteCacheKeysByPattern(pattern: string) {
   const batch: string[] = [];
   const flush = async () => {
     if (batch.length === 0) return;
-    try {
+    await runSafelyVoid(async () => {
       await client.del(batch);
-    } catch (err) {
-      console.error("[Redis] deleteCacheKeysByPattern del batch:", err);
-    }
+    }, "[Redis] deleteCacheKeysByPattern del batch:");
     batch.length = 0;
   };
 
-  try {
+  await runSafelyVoid(async () => {
     for await (const key of client.scanIterator({
       MATCH: pattern,
       COUNT: 200,
@@ -88,11 +96,10 @@ export async function deleteCacheKeysByPattern(pattern: string) {
       if (batch.length >= 200) await flush();
     }
     await flush();
-  } catch (err) {
-    console.error("[Redis] deleteCacheKeysByPattern error:", err);
-  }
+  }, "[Redis] deleteCacheKeysByPattern error:");
 }
 
+// Note: shared cache key helper functions.
 export const cacheKeys = {
   productsList: (take: number, page: number) => `products:list:${take}:${page}`,
   productListPattern: () => "products:list:*",

@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { productSchema } from "@/shared/schema/product";
+import type { productSchema } from "@/shared/schema";
 
-/** Admin create product body (matches `productSchema`). */
+// Feature: admin create product DTO (matches `productSchema`).
 export type CreateProductDto = z.infer<typeof productSchema>;

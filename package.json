@@ -19,7 +19,10 @@
     "postinstall": "prisma generate",
     "prepare": "husky",
     "db:seed": "tsx scripts/seed.ts",
-    "db:check": "tsx scripts/check.ts"
+    "db:check": "tsx scripts/check.ts",
+    "worker:payment": "tsx scripts/workers/payment-worker.ts",
+    "worker:email": "tsx scripts/workers/email-worker.ts",
+    "worker:analytics": "tsx scripts/workers/analytics-worker.ts"
   },
   "prisma": {
     "seed": "tsx scripts/seed.ts"

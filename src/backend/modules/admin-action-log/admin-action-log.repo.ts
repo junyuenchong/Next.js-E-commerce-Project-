@@ -1,7 +1,9 @@
+// Feature: Persists admin action log records with JSON-safe metadata normalization.
 import prisma from "@/app/lib/prisma";
 import { Prisma } from "@prisma/client";
-import type { AdminActionLogInput } from "@/shared/types/admin-action-log";
+import type { AdminActionLogInput } from "@/shared/types";
 
+// Guard: convert value to Prisma-compatible JSON, using JsonNull for undefined.
 function toJsonValue(
   input: unknown,
 ): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput {
@@ -9,6 +11,7 @@ function toJsonValue(
   return input as Prisma.InputJsonValue;
 }
 
+// Feature: insert new admin action log record into database.
 export async function createAdminActionLogRecord(
   input: AdminActionLogInput,
 ): Promise<void> {

@@ -1,3 +1,4 @@
+// Feature: Provides payment data helpers for PayPal capture verification and order persistence.
 import {
   getPayPalAccessToken,
   getPayPalApiBase,
@@ -17,3 +18,4 @@ export {
   paypalGetOrder,
   paypalOrderAmount,
 };
+// Note: this module is a thin alias layer so callers import one payment entrypoint.

@@ -8,7 +8,7 @@ import {
   adminUserPatchBodySchema,
   updateOrderStatusSchema,
   updateReviewReplySchema,
-} from "@/shared/schema/admin";
+} from "@/shared/schema";
 
 export type AdminCategoryCreateBody = z.infer<
   typeof adminCategoryCreateBodySchema

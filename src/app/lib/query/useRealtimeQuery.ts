@@ -54,7 +54,7 @@ type RealtimeInvalidateOptions = {
 
 // Returns URL for user SSE event subscriptions
 function buildUserEventsUrl(channels: string[]) {
-  return `/modules/user/api/events?channels=${encodeURIComponent(channels.join(","))}`;
+  return `/features/user/api/events?channels=${encodeURIComponent(channels.join(","))}`;
 }
 
 // Checks frame to see if it is a "status" kind

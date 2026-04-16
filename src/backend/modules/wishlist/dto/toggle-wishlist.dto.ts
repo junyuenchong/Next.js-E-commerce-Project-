@@ -1,3 +1,3 @@
-import type { WishlistProductRef } from "@/shared/types/wishlist";
+import type { WishlistProductRef } from "@/shared/types";
 
 export type ToggleWishlistDto = WishlistProductRef;

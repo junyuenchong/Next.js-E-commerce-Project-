@@ -1,6 +1,7 @@
+// Feature: Wishlist — user wishlist read/toggle operations.
 export * from "./wishlist.action";
 export * from "./wishlist.service";
 export * from "./wishlist.repo";
-export * from "@/shared/types/wishlist";
+export * from "@/shared/types";
 export * from "./dto/toggle-wishlist.dto";
-export * from "@/shared/schema/wishlist";
+export * from "@/shared/schema";

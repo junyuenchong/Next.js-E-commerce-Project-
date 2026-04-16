@@ -1,3 +1,4 @@
+// Feature: Queries role and permission persistence needed for admin access-control decisions.
 import prisma from "@/app/lib/prisma";
 import {
   deleteCacheKeys,
@@ -5,15 +6,20 @@ import {
   setCachedJson,
 } from "@/backend/modules/db/redis";
 
+// Note: prefix for permission cache keys.
 const CACHE_PREFIX = "admin:perm:v1:";
+// Note: permission cache TTL in seconds.
 const CACHE_TTL_SECONDS = 120;
 
+// Note: in-memory flag for `AdminRoleDefinition.isActive` schema capability.
 let cachedAdminRoleHasIsActive: true | null = null;
 
+// Feature: build Redis cache key for role id.
 function cacheKeyForRoleId(roleId: number) {
   return `${CACHE_PREFIX}role:${roleId}`;
 }
 
+// Guard: check whether `AdminRoleDefinition.isActive` column exists in DB.
 export async function adminRoleDefinitionHasIsActiveColumn(): Promise<boolean> {
   if (cachedAdminRoleHasIsActive === true) return true;
   try {
@@ -32,15 +38,18 @@ export async function adminRoleDefinitionHasIsActiveColumn(): Promise<boolean> {
   }
 }
 
+// Feature: reset cached `isActive` column capability flag.
 export function resetAdminRoleDefinitionIsActiveCache() {
   cachedAdminRoleHasIsActive = null;
 }
 
+// Feature: clear role permission cache entries for provided role ids.
 export async function invalidateAdminPermissionCaches(roleIds: number[]) {
   if (roleIds.length === 0) return;
   await deleteCacheKeys(roleIds.map(cacheKeyForRoleId));
 }
 
+// Feature: get effective role permission keys with Redis cache.
 export async function getEffectivePermissionKeysByRoleId(
   roleId: number,
 ): Promise<string[]> {
@@ -51,11 +60,17 @@ export async function getEffectivePermissionKeysByRoleId(
     where: { roleId },
     include: { permission: { select: { key: true } } },
   });
-  const keys = [...new Set(rows.map((r) => r.permission.key))];
+  // Note: de-duplicate permission keys before caching.
+  const keys = [
+    ...new Set(
+      rows.map((r: { permission: { key: string } }) => r.permission.key),
+    ),
+  ];
   await setCachedJson(cacheKey, keys, CACHE_TTL_SECONDS);
-  return keys;
+  return keys as string[];
 }
 
+// Feature: find `AdminRoleDefinition` id by slug (or null).
 export async function getRoleDefinitionIdBySlug(
   slug: string,
 ): Promise<number | null> {
@@ -66,6 +81,7 @@ export async function getRoleDefinitionIdBySlug(
   return def?.id ?? null;
 }
 
+// Feature: resolve `AdminRoleDefinition` id by id (existence check).
 export async function getRoleDefinitionIdById(
   roleId: number,
 ): Promise<number | null> {
@@ -76,6 +92,7 @@ export async function getRoleDefinitionIdById(
   return def?.id ?? null;
 }
 
+// Guard: resolve active `AdminRoleDefinition` id or null when inactive/missing.
 export async function getActiveRoleDefinitionIdById(
   roleId: number,
 ): Promise<number | null> {

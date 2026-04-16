@@ -1,4 +1,4 @@
-import type { ReviewInput } from "@/shared/types/review";
+import type { ReviewInput } from "@/shared/types";
 
-/** Storefront POST review body (after auth). */
+// Feature: storefront POST review DTO (after auth).
 export type CreateReviewDto = ReviewInput;

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { categorySchema } from "@/shared/schema/category";
+import { categorySchema } from "../category";
 
 export const adminCategoryCreateBodySchema = categorySchema.extend({
   name: z.string().min(1).max(200),

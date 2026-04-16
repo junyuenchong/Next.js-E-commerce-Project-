@@ -1,11 +1,14 @@
+// Feature: Implements order persistence for paid-order creation, stock updates, and admin queries.
 import { Prisma, type OrderStatus } from "@prisma/client";
 import prisma from "@/backend/core/db/prisma";
-import type { CreatePaidOrderInput } from "@/shared/types/order";
+import type { CreatePaidOrderInput } from "@/shared/types";
 
+// Guard: persist paid order and optional stock decrement in single transaction.
 export async function createPaidOrderRepo(
   input: CreatePaidOrderInput,
   options?: { skipStockDecrement?: boolean },
 ) {
+  // Guard: one transaction keeps order row, coupon usage, and stock decrement consistent.
   const discount = input.discountAmount ?? 0;
 
   return prisma.$transaction(async (tx) => {
@@ -83,11 +86,30 @@ export async function createPaidOrderRepo(
       );
     }
 
+    const subtotal = input.lines.reduce(
+      (sum, line) => sum + line.unitPrice * line.quantity,
+      0,
+    );
+    const invoiceNumber = `INV-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${order.id}`;
+    await tx.invoice.create({
+      data: {
+        orderId: order.id,
+        invoiceNumber,
+        billedEmail: input.emailSnapshot,
+        currency: input.currency,
+        subtotal: new Prisma.Decimal(subtotal.toFixed(2)),
+        discount: new Prisma.Decimal(discount.toFixed(2)),
+        total: new Prisma.Decimal(Number(input.total).toFixed(2)),
+        couponCode: input.couponCodeSnapshot ?? undefined,
+        lineItems: input.lines,
+      },
+    });
+
     return order;
   });
 }
 
-/** Apply stock decrements (used when RabbitMQ is off, or as fallback if enqueue fails). */
+// Fallback: apply stock decrements when RabbitMQ is disabled or enqueue fails.
 export async function decrementStockForOrderLinesRepo(
   lines: { productId: number; quantity: number }[],
 ) {
@@ -106,11 +128,21 @@ export async function decrementStockForOrderLinesRepo(
 const DEFAULT_PAGE = 40;
 const MAX_PAGE = 100;
 
+// Note: shared cursor-page builder keeps list endpoint behavior consistent.
+function pageFromRows<T extends { id: number }>(rows: T[], limit: number) {
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const nextCursor = hasMore ? page[page.length - 1]!.id : null;
+  return { page, nextCursor };
+}
+
+// Feature: list user's orders using cursor pagination.
 export async function listOrdersForUserRepo(
   userId: number,
   cursorId?: number,
   take = DEFAULT_PAGE,
 ) {
+  // Guard: hard clamp protects API against abusive `take` values.
   const limit = Math.min(Math.max(1, take), MAX_PAGE);
   const rows = await prisma.order.findMany({
     where: {
@@ -128,12 +160,11 @@ export async function listOrdersForUserRepo(
       createdAt: true,
     },
   });
-  const hasMore = rows.length > limit;
-  const page = hasMore ? rows.slice(0, limit) : rows;
-  const nextCursor = hasMore ? page[page.length - 1]!.id : null;
+  const { page, nextCursor } = pageFromRows(rows, limit);
   return { orders: page, nextCursor };
 }
 
+// Feature: look up internal order id by PayPal order id.
 export async function findOrderByPayPalIdRepo(paypalOrderId: string) {
   return prisma.order.findUnique({
     where: { paypalOrderId },
@@ -141,6 +172,7 @@ export async function findOrderByPayPalIdRepo(paypalOrderId: string) {
   });
 }
 
+// Feature: fetch single user order including coupon and items.
 export async function findOrderForUserByIdRepo(
   userId: number,
   orderId: number,
@@ -152,6 +184,13 @@ export async function findOrderForUserByIdRepo(
     include: {
       coupon: { select: { code: true } },
       items: { orderBy: { id: "asc" } },
+      invoice: {
+        select: {
+          invoiceNumber: true,
+          issuedAt: true,
+          status: true,
+        },
+      },
     },
   });
 }
@@ -160,6 +199,7 @@ function orderAdminListWhere(
   cursorId?: number,
   q?: string,
 ): Prisma.OrderWhereInput {
+  // Feature: centralized admin-search predicate keeps list and count semantics aligned.
   const parts: Prisma.OrderWhereInput[] = [];
   if (cursorId != null) parts.push({ id: { lt: cursorId } });
   const trimmed = q?.trim() ?? "";
@@ -176,6 +216,7 @@ function orderAdminListWhere(
   return parts.length ? { AND: parts } : {};
 }
 
+// Feature: list admin dashboard orders with cursor pagination and optional search.
 export async function listAllOrdersAdminRepo(
   cursorId?: number,
   take = DEFAULT_PAGE,
@@ -191,22 +232,142 @@ export async function listAllOrdersAdminRepo(
       items: { take: 8 },
     },
   });
-  const hasMore = rows.length > limit;
-  const page = hasMore ? rows.slice(0, limit) : rows;
-  const nextCursor = hasMore ? page[page.length - 1]!.id : null;
+  const { page, nextCursor } = pageFromRows(rows, limit);
   return { orders: page, nextCursor };
 }
 
+// Feature: fetch single admin-view order including user and items.
 export async function findOrderAdminByIdRepo(id: number) {
   return prisma.order.findUnique({
     where: { id },
     include: {
       user: { select: { id: true, email: true, name: true } },
       items: { orderBy: { id: "asc" } },
+      invoice: {
+        select: {
+          id: true,
+          invoiceNumber: true,
+          issuedAt: true,
+          status: true,
+        },
+      },
     },
   });
 }
 
+export async function findInvoiceByUserAndOrderRepo(
+  userId: number,
+  orderId: number,
+) {
+  return prisma.invoice.findFirst({
+    where: { orderId, order: { userId } },
+    select: {
+      id: true,
+      invoiceNumber: true,
+      issuedAt: true,
+      billedEmail: true,
+      currency: true,
+      subtotal: true,
+      discount: true,
+      total: true,
+      couponCode: true,
+      lineItems: true,
+      status: true,
+      orderId: true,
+    },
+  });
+}
+
+export async function findInvoiceByOrderRepo(orderId: number) {
+  return prisma.invoice.findUnique({
+    where: { orderId },
+    select: {
+      id: true,
+      invoiceNumber: true,
+      issuedAt: true,
+      billedEmail: true,
+      currency: true,
+      subtotal: true,
+      discount: true,
+      total: true,
+      couponCode: true,
+      lineItems: true,
+      status: true,
+      orderId: true,
+    },
+  });
+}
+
+export async function ensureInvoiceForOrderRepo(orderId: number) {
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.invoice.findUnique({
+      where: { orderId },
+      select: {
+        id: true,
+        invoiceNumber: true,
+        issuedAt: true,
+        billedEmail: true,
+        currency: true,
+        subtotal: true,
+        discount: true,
+        total: true,
+        couponCode: true,
+        lineItems: true,
+        status: true,
+        orderId: true,
+      },
+    });
+    if (existing) return existing;
+
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: { items: { orderBy: { id: "asc" } } },
+    });
+    if (!order) return null;
+
+    const subtotal = order.items.reduce(
+      (sum, line) => sum + Number(line.unitPrice) * line.quantity,
+      0,
+    );
+    const invoiceNumber = `INV-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${order.id}`;
+    const created = await tx.invoice.create({
+      data: {
+        orderId: order.id,
+        invoiceNumber,
+        billedEmail: order.emailSnapshot ?? undefined,
+        currency: order.currency,
+        subtotal: new Prisma.Decimal(subtotal.toFixed(2)),
+        discount: order.discountAmount,
+        total: order.total,
+        couponCode: order.couponCodeSnapshot ?? undefined,
+        lineItems: order.items.map((line) => ({
+          productId: line.productId,
+          title: line.title,
+          quantity: line.quantity,
+          unitPrice: Number(line.unitPrice),
+          imageUrl: line.imageUrl,
+        })),
+      },
+      select: {
+        id: true,
+        invoiceNumber: true,
+        issuedAt: true,
+        billedEmail: true,
+        currency: true,
+        subtotal: true,
+        discount: true,
+        total: true,
+        couponCode: true,
+        lineItems: true,
+        status: true,
+        orderId: true,
+      },
+    });
+    return created;
+  });
+}
+
+// Feature: update order status field.
 export async function updateOrderStatusRepo(
   orderId: number,
   status: OrderStatus,
@@ -217,6 +378,7 @@ export async function updateOrderStatusRepo(
   });
 }
 
+// Feature: update order shipment/tracking fields.
 export async function updateOrderShipmentRepo(
   orderId: number,
   input: {
@@ -226,6 +388,7 @@ export async function updateOrderShipmentRepo(
     shippedAt?: Date | null;
   },
 ) {
+  // Note: `undefined` preserves DB values; null semantics are validated in service layer.
   return prisma.order.update({
     where: { id: orderId },
     data: {

@@ -1,4 +1,4 @@
-/** PATCH line quantity (cart API). */
+// Feature: cart DTO for PATCH line quantity (cart API).
 export type UpdateCartLineDto = {
   lineId: string;
   quantity: number;

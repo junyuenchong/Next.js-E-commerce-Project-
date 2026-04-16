@@ -242,7 +242,7 @@ async function seedDatabase() {
         },
       });
       console.log(
-        `\nSuper admin user ready: ${adminEmail} (sign in with email + password at /modules/user/auth/sign-in)`,
+        `\nSuper admin user ready: ${adminEmail} (sign in with email + password at /features/user/auth/sign-in)`,
       );
     } else {
       console.log(

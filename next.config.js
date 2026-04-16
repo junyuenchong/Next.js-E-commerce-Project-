@@ -6,12 +6,12 @@ const nextConfig = {
     return [
       {
         source: "/admin",
-        destination: "/modules/admin",
+        destination: "/features/admin",
         permanent: false,
       },
       {
         source: "/admin/:path*",
-        destination: "/modules/admin/:path*",
+        destination: "/features/admin/:path*",
         permanent: false,
       },
     ];
@@ -21,7 +21,7 @@ const nextConfig = {
     return [
       {
         source: "/api/auth/:path*",
-        destination: "/modules/user/api/auth/:path*",
+        destination: "/features/user/api/auth/:path*",
       },
     ];
   },

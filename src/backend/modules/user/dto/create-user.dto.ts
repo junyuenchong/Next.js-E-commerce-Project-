@@ -1,7 +1,4 @@
-/**
- * Credential sign-up payload (API / server boundary).
- * Validation lives in route handlers or auth flows; this type documents the contract.
- */
+// Feature: credential sign-up DTO (API/server boundary; validation lives in routes/auth flows).
 export type CreateUserDto = {
   email: string;
   password: string;

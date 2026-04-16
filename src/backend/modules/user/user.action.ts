@@ -1,14 +1,14 @@
+// Feature: Implements user account actions for authentication, password resets, and profile access.
 "use server";
 
 import { cookies } from "next/headers";
-import { UserRole } from "@prisma/client";
 import { getSiteUrl } from "@/app/lib/site-url";
 import {
   hashPasswordUserService,
   registerUserUserService,
   verifyPasswordUserService,
 } from "./user.service";
-export type { AuthResult } from "@/shared/types/user";
+export type { AuthResult } from "@/shared/types";
 
 export const hashPasswordUserAction = hashPasswordUserService;
 export const verifyPasswordUserAction = verifyPasswordUserService;
@@ -18,8 +18,9 @@ export const hashPassword = hashPasswordUserAction;
 export const verifyPassword = verifyPasswordUserAction;
 export const registerUser = registerUserUserAction;
 
-// --- Admin mutations (invoked from admin UI server actions) ---
+// Note: admin mutations invoked from admin UI server actions.
 async function cookieHeader(): Promise<string> {
+  // Guard: forward current request cookies so admin API keeps same session context.
   const c = await cookies();
   return c
     .getAll()
@@ -27,8 +28,13 @@ async function cookieHeader(): Promise<string> {
     .join("; ");
 }
 
+function adminUsersApiUrl() {
+  return `${getSiteUrl()}/features/admin/api/users`;
+}
+
 async function patchUsers(body: unknown) {
-  const res = await fetch(`${getSiteUrl()}/modules/admin/api/users`, {
+  // Feature: use internal API so server actions and route handlers share one RBAC path.
+  const res = await fetch(adminUsersApiUrl(), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -40,21 +46,20 @@ async function patchUsers(body: unknown) {
   return { ok: res.ok, error: data.error };
 }
 
+// Feature: activate/deactivate user via RBAC-protected admin users API.
 export async function setUserActiveAction(userId: number, isActive: boolean) {
+  // Feature: toggle team account active state via shared admin users API.
   const { ok } = await patchUsers({ action: "active", userId, isActive });
   return { ok };
 }
 
-export async function setUserRoleAction(userId: number, role: UserRole) {
-  const { ok } = await patchUsers({ action: "role", userId, role });
-  return { ok };
-}
-
+// Feature: update user email/name via RBAC-protected admin users API.
 export async function updateUserProfileAdminAction(
   userId: number,
   email: string,
   name: string,
 ) {
+  // Note: normalize profile fields before forwarding to admin users API.
   return patchUsers({
     action: "profile",
     userId,

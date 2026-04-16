@@ -1,7 +1,8 @@
+// Feature: Implements cart business rules for item updates, pricing, and checkout preparation.
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { moneyToNumber } from "@/backend/core/money";
-import { authOptions } from "@/app/utils/auth";
+import { authOptions } from "@/backend/modules/auth";
 import { randomUUID } from "crypto";
 import {
   assignGuestCartToUser,
@@ -20,10 +21,10 @@ import {
   updateCartLineItemQuantity,
 } from "./cart.repo";
 
-/** Thrown when cart mutations cannot satisfy quantity vs live stock (API maps to 409). */
+// Note: thrown when cart mutations cannot satisfy quantity vs live stock (API maps to 409).
 export const CART_OUT_OF_STOCK = "OUT_OF_STOCK";
 export const CART_PRODUCT_UNAVAILABLE = "PRODUCT_UNAVAILABLE";
-/** Unknown product id (API maps to 404). */
+// Note: unknown product id (API maps to 404).
 export const CART_PRODUCT_NOT_FOUND = "PRODUCT_NOT_FOUND";
 
 type SessionUser = {
@@ -32,6 +33,7 @@ type SessionUser = {
 };
 
 function resolveUserIdFromSessionUser(user?: SessionUser): number | undefined {
+  // Guard: accept both `id` and `sub` to handle provider/session shape differences.
   if (!user) return undefined;
   if (typeof user.id === "string" && !isNaN(Number(user.id)))
     return Number(user.id);
@@ -41,6 +43,7 @@ function resolveUserIdFromSessionUser(user?: SessionUser): number | undefined {
 }
 
 async function getUserAndGuestContext() {
+  // Feature: centralized context helper for identical session/cookie resolution.
   const session = await getServerSession(authOptions);
   const user = session?.user as SessionUser | undefined;
   const userId = resolveUserIdFromSessionUser(user);
@@ -49,10 +52,12 @@ async function getUserAndGuestContext() {
   return { userId, cookieStore, guestCartId };
 }
 
+// Feature: get or create current session cart (user or guest).
 export async function getOrCreateCartService() {
   const { userId, cookieStore, guestCartId } = await getUserAndGuestContext();
 
   if (userId) {
+    // Guard: authenticated path always prefers stable user cart.
     const cart = await findUserCart(userId);
     if (cart) return cart;
     return createUserCart(userId);
@@ -60,6 +65,7 @@ export async function getOrCreateCartService() {
 
   let gid = guestCartId;
   if (!gid) {
+    // Feature: guest carts get a long-lived UUID cookie for anonymous persistence.
     gid = randomUUID();
     cookieStore.set("guestCartId", gid, {
       path: "/",
@@ -71,6 +77,7 @@ export async function getOrCreateCartService() {
   return createGuestCart(gid);
 }
 
+// Feature: fetch current session cart without creating one.
 export async function getCartService() {
   const { userId, guestCartId } = await getUserAndGuestContext();
   if (userId) return findUserCart(userId);
@@ -78,7 +85,9 @@ export async function getCartService() {
   return null;
 }
 
+// Guard: add product quantity with live stock checks.
 export async function addToCartService(productId: number, quantity = 1) {
+  // Guard: validate product availability against live snapshot before mutating cart.
   const product = await getProductSnapshot(productId);
   if (!product) throw new Error(CART_PRODUCT_NOT_FOUND);
   if (!product.isActive) throw new Error(CART_PRODUCT_UNAVAILABLE);
@@ -88,6 +97,7 @@ export async function addToCartService(productId: number, quantity = 1) {
   const existing = cart.items.find((item) => item.productId === productId);
   const addQty = Math.max(1, quantity);
   if (existing) {
+    // Guard: existing line is incremented but capped by live stock.
     const next = existing.quantity + addQty;
     const capped = Math.min(next, product.stock);
     if (capped < 1) throw new Error(CART_OUT_OF_STOCK);
@@ -109,6 +119,7 @@ export async function addToCartService(productId: number, quantity = 1) {
   return getOrCreateCartService();
 }
 
+// Feature: remove product line from current session cart when present.
 export async function removeFromCartService(productId: number) {
   const cart = await getOrCreateCartService();
   const existing = cart.items.find((item) => item.productId === productId);
@@ -118,6 +129,7 @@ export async function removeFromCartService(productId: number) {
   return getOrCreateCartService();
 }
 
+// Guard: update cart line quantity with stock clamping.
 export async function updateCartItemService(
   productId: number,
   quantity: number,
@@ -128,6 +140,7 @@ export async function updateCartItemService(
 
   const product = await getProductSnapshot(productId);
   if (!product || !product.isActive || product.stock < 1) {
+    // Fallback: remove stale/unavailable items instead of keeping broken cart lines.
     await deleteCartLineItem(existing.id);
     return getOrCreateCartService();
   }
@@ -138,12 +151,14 @@ export async function updateCartItemService(
   return getOrCreateCartService();
 }
 
+// Feature: delete all line items from current session cart.
 export async function clearCartService() {
   const cart = await getOrCreateCartService();
   await clearCartLineItems(cart.id);
   return getOrCreateCartService();
 }
 
+// Feature: merge anonymous cart into authenticated cart and clear guest cookie.
 export async function mergeGuestCartToUserService() {
   const { userId, guestCartId, cookieStore } = await getUserAndGuestContext();
   if (!userId || !guestCartId) return null;
@@ -151,8 +166,10 @@ export async function mergeGuestCartToUserService() {
   const userCart = await findUserCart(userId);
   let merged = null;
   if (!userCart) {
+    // Feature: fast path claims guest cart directly when user has no cart yet.
     merged = await assignGuestCartToUser(guestCartId, userId);
   } else {
+    // Feature: merge path combines line quantities and resolves stock constraints.
     merged = await mergeGuestIntoUserCart(guestCartId, userId);
   }
 
@@ -165,6 +182,7 @@ export async function mergeGuestCartToUserService() {
   return merged;
 }
 
+// Feature: return hydrated cart with latest product snapshot per item.
 export async function getCartWithLiveProductsService() {
   const { userId, guestCartId } = await getUserAndGuestContext();
   const cart = userId
@@ -174,6 +192,7 @@ export async function getCartWithLiveProductsService() {
       : null;
   if (!cart) return null;
 
+  // Note: expose product snapshot under `liveProduct` to keep frontend contract explicit.
   return {
     ...cart,
     items: cart.items.map(({ product, ...item }) => ({

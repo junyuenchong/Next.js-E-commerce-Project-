@@ -1,9 +1,11 @@
+// Feature: Provides category persistence for hierarchical catalog structures and lookup helpers.
 import prisma from "@/app/lib/prisma";
 
 export async function findCategoryBySlug(
   slug: string,
   opts?: { activeOnly?: boolean },
 ) {
+  // Default to active categories so storefront callers stay safe by default.
   const activeOnly = opts?.activeOnly !== false;
   return prisma.category.findFirst({
     where: { slug, ...(activeOnly ? { isActive: true } : {}) },
@@ -14,7 +16,7 @@ export async function findCategoryById(id: number) {
   return prisma.category.findUnique({ where: { id } });
 }
 
-/** Storefront / nav: active categories only. */
+// Guard: storefront/nav category lists return active categories only.
 export async function listCategoriesActive() {
   return prisma.category.findMany({
     where: { isActive: true },
@@ -27,6 +29,7 @@ export async function findProductsByCategorySlug(params: {
   take?: number;
   skip?: number;
 }) {
+  // Category + product both must be active to avoid surfacing soft-removed catalog data.
   return prisma.product.findMany({
     where: {
       isActive: true,
@@ -64,6 +67,7 @@ export async function findProductsByCategorySlugCursor(params: {
   take?: number;
   cursorId?: number;
 }) {
+  // Cursor pagination mirrors list query fields so API responses stay shape-compatible.
   return prisma.product.findMany({
     where: {
       isActive: true,
@@ -116,6 +120,7 @@ export async function updateCategoryRecord(
 }
 
 export async function softDeactivateCategoryRecord(id: number) {
+  // Soft-delete keeps FK references intact (orders/products history).
   return prisma.category.update({
     where: { id },
     data: { isActive: false },
@@ -133,6 +138,7 @@ export async function searchCategoriesByName(query: string) {
 }
 
 export async function categorySlugExists(slug: string) {
+  // Existence check is used by service layer before create/update writes.
   const category = await prisma.category.findUnique({
     where: { slug },
     select: { id: true },

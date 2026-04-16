@@ -19,17 +19,7 @@ const ADMIN_PERMISSION_SEED_ROWS: {
   { key: "product.delete", label: "Delete products", sortOrder: 8 },
   { key: "coupon.read", label: "View coupons", sortOrder: 9 },
   { key: "coupon.manage", label: "Create & edit coupons", sortOrder: 10 },
-  {
-    key: "role.profile.delete",
-    label: "Remove permission profiles",
-    sortOrder: 11,
-  },
-  {
-    key: "role.profile.update",
-    label: "Edit permission profiles",
-    sortOrder: 12,
-  },
-  { key: "audit.read", label: "View admin audit log", sortOrder: 13 },
+  { key: "audit.read", label: "View admin audit log", sortOrder: 11 },
   { key: "*", label: "Full access (all permissions)", sortOrder: 100 },
 ];
 
@@ -50,7 +40,6 @@ const BUILTIN_ROLE_GRANTS: Record<
     "product.delete",
     "coupon.read",
     "coupon.manage",
-    "role.profile.update",
     "audit.read",
   ],
   staff: ["user.read", "order.read", "coupon.read", "audit.read"],
@@ -86,7 +75,7 @@ const DEMO_PERMISSION_PROFILES: {
     slug: "profile_curator",
     name: "Profile curator",
     sortOrder: 21,
-    permissionKeys: ["user.read", "role.profile.update", "role.profile.delete"],
+    permissionKeys: ["user.read", "user.update"],
   },
   {
     slug: "support_l1",
@@ -274,6 +263,29 @@ async function clearInvalidUserAdminPermissionProfiles(prisma: PrismaClient) {
   }
 }
 
+/** Remove legacy permission keys that are no longer used by RBAC rules. */
+async function removeLegacyRoleProfilePermissions(prisma: PrismaClient) {
+  const legacyKeys = ["role.profile.update", "role.profile.delete"];
+  const legacy = await prisma.adminPermission.findMany({
+    where: { key: { in: legacyKeys } },
+    select: { id: true, key: true },
+  });
+  if (legacy.length === 0) return;
+
+  const legacyIds = legacy.map((p) => p.id);
+  await prisma.$transaction([
+    prisma.adminRolePermission.deleteMany({
+      where: { permissionId: { in: legacyIds } },
+    }),
+    prisma.adminPermission.deleteMany({
+      where: { id: { in: legacyIds } },
+    }),
+  ]);
+  console.log(
+    `[seed] Removed legacy permission keys: ${legacy.map((p) => p.key).join(", ")}`,
+  );
+}
+
 /** Syncs permission catalog, built-ins, demo profiles, and user↔RBAC invariants (expects migrated schema). */
 /** Grant new catalog keys to built-in admin/staff when permissions were added after first install. */
 async function ensureCouponGrantsForBuiltins(prisma: PrismaClient) {
@@ -316,6 +328,7 @@ export async function seedAdminPermissionData(
   prisma: PrismaClient,
 ): Promise<void> {
   await ensureBuiltinAdminPermissionProfiles(prisma);
+  await removeLegacyRoleProfilePermissions(prisma);
   await ensureCouponGrantsForBuiltins(prisma);
   await seedDemoPermissionProfiles(prisma);
   await clearInvalidUserAdminPermissionProfiles(prisma);

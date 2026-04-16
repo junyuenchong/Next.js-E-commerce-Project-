@@ -1,3 +1,4 @@
+// Feature: NextAuth configuration for providers, sessions, and user auth flow.
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -7,7 +8,9 @@ import type { UserRole } from "@prisma/client";
 import prisma from "@/backend/core/db/prisma";
 import { verifyPasswordUserService } from "@/backend/modules/user/user.service";
 import { loginProvidersFromRow } from "./dto/login-providers.dto";
+import { normalizeAdminLoginIdentifier } from "./auth.service";
 
+// Note: minimal user fields fetched during auth hydration.
 const userAuthSelect = {
   id: true,
   role: true,
@@ -17,6 +20,7 @@ const userAuthSelect = {
   accounts: { select: { provider: true } },
 } as const;
 
+// Fallback: parse login providers JSON, return [] on malformed input.
 function loginProvidersFromJson(
   json: unknown,
 ): ("local" | "google" | "facebook")[] {
@@ -28,29 +32,99 @@ function loginProvidersFromJson(
   }
 }
 
+function toNumericId(value: unknown): number | null {
+  const n = typeof value === "number" ? value : Number(String(value));
+  return Number.isFinite(n) ? n : null;
+}
+
+async function loadAuthUserById(numericId: number) {
+  return prisma.user.findUnique({
+    where: { id: numericId },
+    select: userAuthSelect,
+  });
+}
+
+function applyDbUserToToken(
+  token: Record<string, unknown>,
+  db: {
+    role: unknown;
+    isActive: boolean;
+    email: string | null;
+    passwordHash: string | null;
+    accounts: { provider: string }[];
+  },
+) {
+  token.role = db.role;
+  token.isActive = db.isActive;
+  if (db.email) token.email = db.email;
+  token.loginProvidersJson = JSON.stringify(
+    loginProvidersFromRow(db.passwordHash, db.accounts),
+  );
+}
+
+function applyAuthUserToToken(
+  token: Record<string, unknown>,
+  user: {
+    id: unknown;
+    email?: string | null;
+    name?: string | null;
+    image?: string | null;
+  },
+) {
+  token.sub = String(user.id);
+  if (user.email) token.email = user.email;
+  if (user.name) token.name = user.name;
+  if (user.image) token.picture = user.image;
+}
+
+function setSessionUserFromToken(params: {
+  session: { user?: Record<string, unknown> };
+  token: Record<string, unknown>;
+}) {
+  const { session, token } = params;
+  if (!session.user) return;
+
+  session.user.id = String(token.sub ?? "");
+  if (token.role != null) session.user.role = token.role as UserRole;
+  session.user.isActive = token.isActive !== false;
+  session.user.email =
+    (token.email as string | undefined) ??
+    (session.user.email as string | undefined) ??
+    "";
+  if (token.name != null) session.user.name = token.name as string;
+  if (token.picture != null) session.user.image = token.picture as string;
+  session.user.loginProviders = loginProvidersFromJson(
+    token.loginProvidersJson,
+  );
+}
+
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   pages: {
-    signIn: "/modules/user/auth/sign-in",
+    signIn: "/features/user/auth/sign-in",
   },
   providers: [
+    // Feature: enable Google login provider.
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
+    // Feature: enable Facebook login provider.
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID!,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
+    // Feature: local credentials login (email/password).
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email or username", type: "text" },
         password: { label: "Password", type: "password" },
       },
+      // Guard: check username/password only for local-provider users.
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        const email = credentials.email.trim();
+        const email = normalizeAdminLoginIdentifier(credentials.email);
         const user = await prisma.user.findFirst({
           where: { email: { equals: email, mode: "insensitive" } },
         });
@@ -66,38 +140,26 @@ export const authOptions: AuthOptions = {
     }),
   ],
   session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60,
-    updateAge: 24 * 60 * 60,
+    strategy: "jwt", // Note: store session state in JWT token.
+    maxAge: 30 * 24 * 60 * 60, // Note: session validity window is 30 days.
+    updateAge: 24 * 60 * 60, // Note: refresh JWT token state every 24 hours.
   },
   secret: process.env.NEXTAUTH_SECRET,
   debug: false,
   callbacks: {
+    // Feature: each JWT issuance refreshes token with DB-backed role/provider data.
     async jwt({ token, user }) {
       if (user) {
-        token.sub = String(user.id);
-        if (user.email) token.email = user.email;
-        if (user.name) token.name = user.name;
-        if (user.image) token.picture = user.image;
-
-        const numericId = Number(user.id);
-        if (Number.isFinite(numericId)) {
-          const db = await prisma.user.findUnique({
-            where: { id: numericId },
-            select: userAuthSelect,
-          });
-          if (db) {
-            token.role = db.role;
-            token.isActive = db.isActive;
-            if (db.email) token.email = db.email;
-            token.loginProvidersJson = JSON.stringify(
-              loginProvidersFromRow(db.passwordHash, db.accounts),
-            );
-          }
+        applyAuthUserToToken(token as Record<string, unknown>, user);
+        const numericId = toNumericId(user.id);
+        if (numericId != null) {
+          const db = await loadAuthUserById(numericId);
+          if (db) applyDbUserToToken(token as Record<string, unknown>, db);
         }
       }
       return token;
     },
+    // Guard: block inactive users from completing sign-in.
     async signIn({ user }) {
       const email = user?.email?.trim().toLowerCase();
       if (!email) return true;
@@ -115,30 +177,17 @@ export const authOptions: AuthOptions = {
       if (!session.user || !idStr) return session;
 
       if (token.role != null) {
-        session.user.id = String(token.sub);
-        session.user.role = token.role as UserRole;
-        session.user.isActive = token.isActive !== false;
-        session.user.email =
-          (token.email as string | undefined) ?? session.user.email ?? "";
-        session.user.name =
-          (token.name as string | undefined) ?? session.user.name;
-        session.user.image =
-          (token.picture as string | undefined) ??
-          session.user.image ??
-          undefined;
-        session.user.loginProviders = loginProvidersFromJson(
-          token.loginProvidersJson,
-        );
+        setSessionUserFromToken({
+          session: session as { user?: Record<string, unknown> },
+          token: token as Record<string, unknown>,
+        });
         return session;
       }
 
-      const numericId = Number(idStr);
-      if (Number.isNaN(numericId)) return session;
+      const numericId = toNumericId(idStr);
+      if (numericId == null) return session;
 
-      const db = await prisma.user.findUnique({
-        where: { id: numericId },
-        select: userAuthSelect,
-      });
+      const db = await loadAuthUserById(numericId);
       session.user.id = String(db?.id ?? idStr);
       session.user.role = (db?.role ?? "USER") as UserRole;
       session.user.isActive = db?.isActive ?? true;
@@ -149,10 +198,11 @@ export const authOptions: AuthOptions = {
       if (email) session.user.email = email;
       return session;
     },
+    // Guard: allow only same-origin/safe redirects after login.
     async redirect({ url, baseUrl }) {
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       if (new URL(url).origin === baseUrl) return url;
-      return `${baseUrl}/modules/user/auth/post-login`;
+      return `${baseUrl}/features/user/auth/post-login`;
     },
   },
 };

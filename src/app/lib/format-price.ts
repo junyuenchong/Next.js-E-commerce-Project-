@@ -23,3 +23,37 @@ export function discountPercentFromCompareAt(
   }
   return Math.round((1 - p / c) * 100);
 }
+
+/** Normalize product pricing for consistent UI (card/PDP/admin). */
+export function resolveSalePricing(
+  compareAt: unknown,
+  salePrice: unknown,
+): {
+  salePriceNumber: number;
+  compareAtPriceNumber: number | null;
+  discountPercent: number | null;
+  hasDiscount: boolean;
+} {
+  const salePriceNumber = moneyToNumber(salePrice);
+  // Guard: keep "unset" compare-at as null (avoid treating null/"" as 0).
+  const compareAtPriceNumber =
+    compareAt === null || compareAt === undefined || compareAt === ""
+      ? null
+      : (() => {
+          const n = moneyToNumber(compareAt);
+          return Number.isFinite(n) ? n : null;
+        })();
+  const discountPercent = discountPercentFromCompareAt(
+    compareAtPriceNumber,
+    salePriceNumber,
+  );
+  const hasDiscount =
+    compareAtPriceNumber != null && compareAtPriceNumber > salePriceNumber;
+
+  return {
+    salePriceNumber,
+    compareAtPriceNumber,
+    discountPercent,
+    hasDiscount,
+  };
+}

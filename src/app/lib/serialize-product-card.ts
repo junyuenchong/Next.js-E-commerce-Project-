@@ -1,4 +1,4 @@
-import type { ProductCardProduct } from "@/app/modules/user/types";
+import type { ProductCardProduct } from "@/app/features/user/types";
 import { moneyToNumber } from "@/backend/core/money";
 
 function toIso(d: unknown): string {

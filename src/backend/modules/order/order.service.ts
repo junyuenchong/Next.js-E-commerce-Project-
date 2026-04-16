@@ -1,6 +1,8 @@
+// Feature: Encapsulates order lifecycle services for checkout conversion, stock updates, and admin views.
 import type { OrderStatus } from "@prisma/client";
 import { publishAdminOrderEvent } from "@/backend/modules/admin-events";
 import {
+  ensureInvoiceForOrderRepo,
   createPaidOrderRepo,
   decrementStockForOrderLinesRepo,
   findOrderAdminByIdRepo,
@@ -10,9 +12,11 @@ import {
   listOrdersForUserRepo,
   updateOrderShipmentRepo,
   updateOrderStatusRepo,
+  findInvoiceByOrderRepo,
+  findInvoiceByUserAndOrderRepo,
 } from "./order.repo";
 import { moneyToNumber } from "@/backend/core/money";
-import type { CreatePaidOrderInput } from "@/shared/types/order";
+import type { CreatePaidOrderInput } from "@/shared/types";
 
 type CartLineWithProduct = {
   productId: number;
@@ -26,11 +30,12 @@ type CartLineWithProduct = {
     price: number;
     imageUrl: string | null;
   } | null;
-  /** Same relation as `product` from getCartWithLiveProductsService (alias for UI). */
+  // Note: same relation as `product` from getCartWithLiveProductsService (alias for UI).
   liveProduct?: { stock?: number } | null;
 };
 
 function lineStock(item: CartLineWithProduct): number | undefined {
+  // Guard: support both `product` and legacy `liveProduct` shapes during migration.
   const p = item.product ?? item.liveProduct;
   const s = p?.stock;
   return typeof s === "number" ? s : undefined;
@@ -39,6 +44,7 @@ function lineStock(item: CartLineWithProduct): number | undefined {
 export function validateCartStockForOrder(
   items: CartLineWithProduct[],
 ): { ok: true } | { ok: false; productId: number } {
+  // Guard: fail fast on first insufficient item for actionable productId errors.
   for (const item of items) {
     const stock = lineStock(item);
     if (stock === undefined || stock < item.quantity) {
@@ -51,6 +57,7 @@ export function validateCartStockForOrder(
 export function buildPaidOrderLinesFromCart(
   items: CartLineWithProduct[],
 ): CreatePaidOrderInput["lines"] {
+  // Feature: normalize cart snapshot into immutable order-line persistence records.
   return items.map((item) => {
     const p = item.product;
     const unitPrice = moneyToNumber(p?.price ?? item.price ?? 0);
@@ -66,22 +73,26 @@ export function buildPaidOrderLinesFromCart(
   });
 }
 
+// Feature: create paid order record after successful payment capture.
 export async function createPaidOrderAfterCaptureService(
   input: CreatePaidOrderInput,
   options?: { skipStockDecrement?: boolean },
 ) {
+  // Guard: persistence layer assumes at least one order line exists.
   if (!input.lines.length) {
     throw new Error("Order must contain at least one line.");
   }
   return createPaidOrderRepo(input, options);
 }
 
+// Feature: decrement product stock for purchased order lines.
 export async function decrementStockForOrderLinesService(
   lines: { productId: number; quantity: number }[],
 ) {
   return decrementStockForOrderLinesRepo(lines);
 }
 
+// Feature: list user orders with cursor pagination.
 export async function listOrdersForUserService(
   userId: number,
   cursorId?: number,
@@ -90,6 +101,7 @@ export async function listOrdersForUserService(
   return listOrdersForUserRepo(userId, cursorId, take);
 }
 
+// Feature: resolve internal order id from PayPal order id.
 export async function getOrderIdByPayPalOrderIdService(
   paypalOrderId: string,
 ): Promise<number | null> {
@@ -97,6 +109,7 @@ export async function getOrderIdByPayPalOrderIdService(
   return row?.id ?? null;
 }
 
+// Feature: list admin dashboard orders with optional search.
 export async function listAllOrdersAdminService(
   cursorId?: number,
   take?: number,
@@ -105,15 +118,19 @@ export async function listAllOrdersAdminService(
   return listAllOrdersAdminRepo(cursorId, take, q);
 }
 
+// Guard: fetch single admin-view order and return null for invalid ids.
 export async function getOrderAdminByIdService(id: number) {
+  // Guard: reject invalid numeric ids early to avoid unnecessary DB queries.
   if (!Number.isFinite(id) || id < 1) return null;
   return findOrderAdminByIdRepo(id);
 }
 
+// Feature: update order status and publish admin realtime event.
 export async function updateOrderStatusAdminService(
   orderId: number,
   status: OrderStatus,
 ) {
+  // Feature: always emit admin event so dashboard/list views stay realtime.
   const order = await updateOrderStatusRepo(orderId, status);
   await publishAdminOrderEvent({
     kind: "updated",
@@ -123,6 +140,7 @@ export async function updateOrderStatusAdminService(
   return order;
 }
 
+// Feature: update shipment fields and publish admin realtime event.
 export async function updateOrderShipmentAdminService(
   orderId: number,
   input: {
@@ -131,6 +149,7 @@ export async function updateOrderShipmentAdminService(
     trackingUrl?: string | null;
   },
 ) {
+  // Guard: any non-empty shipment metadata implies shipment start timestamp.
   const shippedAt =
     (input.trackingNumber && input.trackingNumber.trim()) ||
     (input.trackingUrl && input.trackingUrl.trim()) ||
@@ -144,6 +163,7 @@ export async function updateOrderShipmentAdminService(
   });
 
   if (shippedAt && order.status !== "cancelled" && order.status !== "shipped") {
+    // Feature: auto-promote non-cancelled orders to shipped when shipment data saves.
     await updateOrderStatusAdminService(orderId, "shipped");
   }
 
@@ -155,9 +175,25 @@ export async function updateOrderShipmentAdminService(
   return order;
 }
 
+// Feature: fetch single user order including line items.
 export async function getOrderForUserByIdService(
   userId: number,
   orderId: number,
 ) {
   return findOrderForUserByIdRepo(userId, orderId);
+}
+
+export async function getInvoiceForUserByOrderIdService(
+  userId: number,
+  orderId: number,
+) {
+  return findInvoiceByUserAndOrderRepo(userId, orderId);
+}
+
+export async function getInvoiceByOrderIdService(orderId: number) {
+  return findInvoiceByOrderRepo(orderId);
+}
+
+export async function getOrCreateInvoiceByOrderIdService(orderId: number) {
+  return ensureInvoiceForOrderRepo(orderId);
 }

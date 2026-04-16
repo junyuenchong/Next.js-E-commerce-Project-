@@ -18,9 +18,10 @@ export const productSchema = z
     (d) =>
       d.compareAtPrice == null ||
       !Number.isFinite(d.compareAtPrice) ||
-      d.compareAtPrice >= d.price,
+      // Guard: compare-at must be strictly above sale price to represent a real discount.
+      d.compareAtPrice > d.price,
     {
-      message: "Compare-at price must be greater than or equal to sale price",
+      message: "Compare-at price must be greater than sale price",
       path: ["compareAtPrice"],
     },
   );

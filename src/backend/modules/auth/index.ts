@@ -1,3 +1,4 @@
+// Feature: Auth — NextAuth config, admin session JWT, and auth utilities.
 export * from "./auth.action";
 export {
   canAccessAdminPanel,
@@ -9,4 +10,4 @@ export * from "./admin-session";
 export * from "./next-auth-cookies";
 export * from "./auth-options";
 export * from "./dto/login-providers.dto";
-export * from "@/shared/types/auth";
+export * from "@/shared/types";

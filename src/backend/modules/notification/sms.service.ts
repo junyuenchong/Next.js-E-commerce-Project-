@@ -1,7 +1,9 @@
+// Feature: Sends transactional SMS messages through Twilio and normalizes provider error outcomes.
 export type SendSmsResult =
   | { ok: true; sid: string }
   | { ok: false; error: string; status?: number };
 
+// Send an SMS via Twilio, returning a structured provider result.
 export async function sendTwilioSms(params: {
   to: string;
   body: string;
@@ -14,6 +16,7 @@ export async function sendTwilioSms(params: {
     process.env.TWILIO_FROM?.trim() || process.env.TWILIO_FROM_NUMBER?.trim();
 
   if (!sid || !token || !from) {
+    // SMS is optional; return structured error so caller can continue gracefully.
     return { ok: false, error: "twilio_unconfigured" };
   }
 
@@ -41,6 +44,7 @@ export async function sendTwilioSms(params: {
   };
 
   if (!res.ok) {
+    // Preserve provider message/status for observability and caller-level handling.
     return {
       ok: false,
       status: res.status,

@@ -43,7 +43,7 @@ export default function AdminProviders({ children }: { children: ReactNode }) {
 
     const checkAdminSession = async () => {
       try {
-        const res = await fetch("/modules/admin/api/auth/session", {
+        const res = await fetch("/features/admin/api/auth/session", {
           method: "GET",
           credentials: "include",
           cache: "no-store",
@@ -53,9 +53,9 @@ export default function AdminProviders({ children }: { children: ReactNode }) {
         } | null;
         if (cancelled) return;
         if (!json?.authenticated) {
-          const returnUrl = pathname || "/modules/admin/dashboard";
+          const returnUrl = pathname || "/features/admin/dashboard";
           router.replace(
-            `/modules/admin/auth/sign-in?returnUrl=${encodeURIComponent(returnUrl)}`,
+            `/features/admin/auth/sign-in?returnUrl=${encodeURIComponent(returnUrl)}`,
           );
           router.refresh();
         }

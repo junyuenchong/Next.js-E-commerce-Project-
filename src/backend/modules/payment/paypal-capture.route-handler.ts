@@ -1,3 +1,4 @@
+// Feature: Handles PayPal capture webhook-like route flow with auth, validation, and order finalization.
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/backend/modules/auth";
@@ -9,7 +10,7 @@ import { summarizeCartLines } from "@/app/lib/cart";
 import { getCartWithLiveProductsService } from "@/backend/modules/cart/cart.service";
 import { clearCart } from "@/backend/modules/cart";
 import { resolveCheckoutCouponPricing } from "@/backend/modules/coupon/coupon.service";
-import type { CartItemRowData } from "@/app/modules/user/types";
+import type { CartItemRowData } from "@/app/features/user/types";
 import {
   paypalCaptureOrder,
   paypalExtractCaptureId,
@@ -21,14 +22,16 @@ import { sendTwilioSms } from "@/backend/modules/notification";
 import { publishAdminOrderEvent } from "@/backend/modules/admin-events";
 import { bustAdminAnalyticsCache } from "@/backend/modules/admin-cache";
 import {
+  enqueueOrderAnalyticsJob,
   enqueueOrderEmailJob,
-  enqueueOrderInventoryJob,
+  enqueueOrderPaymentJob,
 } from "@/backend/modules/messaging";
 import {
   buildPaidOrderLinesFromCart,
   createPaidOrderAfterCaptureService,
   decrementStockForOrderLinesService,
   getOrderIdByPayPalOrderIdService,
+  getInvoiceByOrderIdService,
   validateCartStockForOrder,
 } from "@/backend/modules/order/order.service";
 import { resolveUserId } from "@/backend/core/session";
@@ -50,6 +53,7 @@ function parseCaptureBody(raw: string): {
   };
 } {
   try {
+    // Guard: accept optional payload so capture still works with empty body.
     if (!raw.trim()) return { smsTo: "", shipping: {} };
     const j = JSON.parse(raw) as Record<string, unknown>;
     const smsTo = typeof j.smsTo === "string" ? j.smsTo.trim() : "";
@@ -68,20 +72,279 @@ function parseCaptureBody(raw: string): {
 }
 
 function amountsMatch(a: string, b: string): boolean {
+  // Guard: decimal-safe equality check for money values represented as strings.
   return Math.abs(Number(a) - Number(b)) < 0.0001;
 }
 
+function jsonError(status: number, body: Record<string, unknown>) {
+  // Feature: normalized JSON error helper for all early-return guards.
+  return NextResponse.json(body, { status });
+}
+
+async function resolveCartOrError() {
+  // Guard: capture requires a non-empty cart snapshot from current session.
+  const cart = await getCartWithLiveProductsService();
+  if (!cart?.items?.length) {
+    return {
+      ok: false as const,
+      response: jsonError(400, { error: "empty_cart" }),
+    };
+  }
+  return { ok: true as const, cart };
+}
+
+function validateCartStockOrError(cartItems: unknown) {
+  // Guard: block capture when any item stock is stale/insufficient before charge.
+  const cartLines = cartItems as Parameters<
+    typeof validateCartStockForOrder
+  >[0];
+  const stockCheck = validateCartStockForOrder(cartLines);
+  if (!stockCheck.ok) {
+    return {
+      ok: false as const,
+      response: jsonError(409, {
+        error: "insufficient_stock",
+        productId: stockCheck.productId,
+      }),
+    };
+  }
+  return { ok: true as const, cartLines };
+}
+
+async function resolveExpectedTotalOrError(params: {
+  cartItems: CartItemRowData[];
+  resolvedUserId: number | null;
+}) {
+  // Guard: recompute totals server-side so coupon/subtotal are authoritative.
+  const { totalPrice } = summarizeCartLines(params.cartItems);
+  const couponCode = await readCheckoutCouponCode();
+  const priced = await resolveCheckoutCouponPricing({
+    subtotal: totalPrice,
+    couponCode,
+    userId: params.resolvedUserId,
+  });
+  if (!priced.ok) {
+    return {
+      ok: false as const,
+      response: jsonError(400, { error: priced.error }),
+    };
+  }
+  return { ok: true as const, priced, expectedValue: priced.total.toFixed(2) };
+}
+
+async function verifyRemoteAmountOrError(params: {
+  orderId: string;
+  expectedValue: string;
+}) {
+  // Guard: compare PayPal amount with local pricing to prevent amount drift.
+  const remote = await paypalGetOrder(params.orderId);
+  const remoteAmt = paypalOrderAmount(remote);
+  if (
+    !remoteAmt ||
+    remoteAmt.currencyCode.toUpperCase() !== DEFAULT_CURRENCY.toUpperCase() ||
+    !amountsMatch(remoteAmt.value, params.expectedValue)
+  ) {
+    return {
+      ok: false as const,
+      response: jsonError(409, { error: "cart_amount_mismatch_refresh_cart" }),
+    };
+  }
+  return { ok: true as const, remote };
+}
+
+async function capturePayPalOrError(orderId: string) {
+  // Guard: perform PayPal capture only after all local preconditions succeed.
+  const { ok, json } = await paypalCaptureOrder(orderId);
+  if (!ok) {
+    return {
+      ok: false as const,
+      response: jsonError(502, { error: "capture_failed", details: json }),
+    };
+  }
+  return { ok: true as const, json };
+}
+
+async function persistPaidOrderOrError(params: {
+  orderId: string;
+  paypalCaptureId: string | null;
+  lines: ReturnType<typeof buildPaidOrderLinesFromCart>;
+  priced: Awaited<ReturnType<typeof resolveCheckoutCouponPricing>> & {
+    ok: true;
+  };
+  expectedValue: string;
+  resolvedUserId: number | null;
+  sessionEmail: string | null;
+  shipping: {
+    line1?: string | null;
+    city?: string | null;
+    postcode?: string | null;
+    country?: string | null;
+    method?: string | null;
+  };
+  useAsyncFulfillment: boolean;
+}) {
+  try {
+    // Guard: persist order and coupon consumption atomically via service/repo transaction.
+    const orderRow = await createPaidOrderAfterCaptureService(
+      {
+        userId: params.resolvedUserId,
+        emailSnapshot: params.sessionEmail,
+        currency: DEFAULT_CURRENCY,
+        total: Number(params.expectedValue),
+        paypalOrderId: params.orderId,
+        paypalCaptureId: params.paypalCaptureId,
+        lines: params.lines,
+        couponId: params.priced.couponId,
+        couponCodeSnapshot: params.priced.codeSnapshot,
+        discountAmount: params.priced.discountAmount,
+        shippingLine1: params.shipping.line1,
+        shippingCity: params.shipping.city,
+        shippingPostcode: params.shipping.postcode,
+        shippingCountry: params.shipping.country,
+        shippingMethod: params.shipping.method,
+      },
+      { skipStockDecrement: params.useAsyncFulfillment },
+    );
+    const dbOrderId = orderRow.id;
+    return { ok: true as const, dbOrderId };
+  } catch (e) {
+    console.error("[paypal/capture] persist order failed after PayPal OK", e);
+    return {
+      ok: false as const,
+      response: jsonError(500, {
+        error: "order_persist_failed",
+        hint: "Payment may have succeeded; contact support with PayPal order id.",
+      }),
+    };
+  }
+}
+
+function resolveSessionEmail(
+  session: Awaited<ReturnType<typeof getServerSession>>,
+): string | null {
+  // Note: email is optional; notifications are best-effort, not payment-critical.
+  const sessionUser =
+    (session as { user?: { email?: string | null } } | null)?.user ?? null;
+  return sessionUser?.email?.trim() ?? null;
+}
+
+function paymentReceivedText(params: {
+  dbOrderId: number;
+  invoiceNumber: string | null;
+  orderId: string;
+  currency: string;
+  expectedValue: string;
+  linesText: string;
+}) {
+  return `Thank you. Your order is recorded.\n\nOrder #${params.dbOrderId}\nInvoice: ${params.invoiceNumber ?? "-"}\nPayPal: ${params.orderId}\nTotal: ${params.currency} ${params.expectedValue}\n\n${params.linesText}`;
+}
+
+async function runFulfillmentFlow(params: {
+  useAsyncFulfillment: boolean;
+  dbOrderId: number;
+  inventoryLines: { productId: number; quantity: number }[];
+  sessionEmail: string | null;
+  orderId: string;
+  expectedValue: string;
+  linesText: string;
+  invoiceNumber: string | null;
+}) {
+  const emailText = paymentReceivedText({
+    dbOrderId: params.dbOrderId,
+    invoiceNumber: params.invoiceNumber,
+    orderId: params.orderId,
+    currency: DEFAULT_CURRENCY,
+    expectedValue: params.expectedValue,
+    linesText: params.linesText,
+  });
+
+  if (params.useAsyncFulfillment) {
+    // Feature: prefer async fulfillment when MQ is enabled for faster capture responses.
+    let paymentEnqueued = false;
+    let emailEnqueued = false;
+    let analyticsEnqueued = false;
+    try {
+      await enqueueOrderPaymentJob({
+        v: 1,
+        orderId: params.dbOrderId,
+        lines: params.inventoryLines,
+      });
+      paymentEnqueued = true;
+
+      await enqueueOrderAnalyticsJob({
+        v: 1,
+        orderId: params.dbOrderId,
+        status: "paid",
+      });
+      analyticsEnqueued = true;
+
+      if (params.sessionEmail) {
+        await enqueueOrderEmailJob({
+          v: 1,
+          orderId: params.dbOrderId,
+          to: params.sessionEmail,
+          subject: `Order #${params.dbOrderId} — payment received`,
+          text: emailText,
+        });
+        emailEnqueued = true;
+      }
+    } catch (e) {
+      // Fallback: keep order consistency if queue writes fail.
+      console.error(
+        "[paypal/capture] RabbitMQ enqueue failed; applying sync payment + analytics + email",
+        e,
+      );
+      if (!paymentEnqueued) {
+        await decrementStockForOrderLinesService(params.inventoryLines);
+      }
+      if (!analyticsEnqueued) {
+        await bustAdminAnalyticsCache();
+        await publishAdminOrderEvent({
+          kind: "updated",
+          id: params.dbOrderId,
+          status: "paid",
+        });
+      }
+      if (params.sessionEmail && !emailEnqueued) {
+        await sendTransactionalEmail({
+          to: params.sessionEmail,
+          subject: `Order #${params.dbOrderId} — payment received`,
+          text: emailText,
+        });
+      }
+    }
+    return;
+  }
+
+  await bustAdminAnalyticsCache();
+  await publishAdminOrderEvent({
+    kind: "updated",
+    id: params.dbOrderId,
+    status: "paid",
+  });
+  await decrementStockForOrderLinesService(params.inventoryLines);
+  if (params.sessionEmail) {
+    await sendTransactionalEmail({
+      to: params.sessionEmail,
+      subject: `Order #${params.dbOrderId} — payment received`,
+      text: emailText,
+    });
+  }
+}
+
+// Handle PayPal capture: validate cart/totals, capture payment, persist order, and fulfill.
 export async function postPayPalCaptureRoute(
   req: Request,
   ctx: { params: Promise<{ orderId: string }> },
 ) {
+  // Feature: guard-style early returns keep capture error mapping deterministic.
   const rawBody = await req.text().catch(() => "");
   const { smsTo, shipping } = parseCaptureBody(rawBody);
 
   try {
     const { orderId } = await ctx.params;
     if (!orderId) {
-      return NextResponse.json({ error: "missing_order" }, { status: 400 });
+      return jsonError(400, { error: "missing_order" });
     }
 
     const existingId = await getOrderIdByPayPalOrderIdService(orderId);
@@ -97,104 +360,52 @@ export async function postPayPalCaptureRoute(
 
     const resolvedUserId = await resolveUserId();
     const session = await getServerSession(authOptions);
-    const sessionUser = session?.user as { email?: string | null } | undefined;
-    const sessionEmail =
-      sessionUser?.email?.trim() ||
-      (session?.user as { email?: string } | undefined)?.email?.trim() ||
-      null;
+    const sessionEmail = resolveSessionEmail(session);
 
-    const cart = await getCartWithLiveProductsService();
-    if (!cart?.items?.length) {
-      return NextResponse.json({ error: "empty_cart" }, { status: 400 });
-    }
+    // Guard: keep chain linear so each failure returns the most specific HTTP error.
+    const cartResolved = await resolveCartOrError();
+    if (!cartResolved.ok) return cartResolved.response;
+    const cart = cartResolved.cart;
 
-    const cartLines = cart.items as Parameters<
-      typeof validateCartStockForOrder
-    >[0];
-    const stockCheck = validateCartStockForOrder(cartLines);
-    if (!stockCheck.ok) {
-      return NextResponse.json(
-        { error: "insufficient_stock", productId: stockCheck.productId },
-        { status: 409 },
-      );
-    }
+    const stockResolved = validateCartStockOrError(cart.items);
+    if (!stockResolved.ok) return stockResolved.response;
+    const cartLines = stockResolved.cartLines;
 
-    const { totalPrice } = summarizeCartLines(cart.items as CartItemRowData[]);
-    const couponCode = await readCheckoutCouponCode();
-    const priced = await resolveCheckoutCouponPricing({
-      subtotal: totalPrice,
-      couponCode,
-      userId: resolvedUserId,
+    const expectedResolved = await resolveExpectedTotalOrError({
+      cartItems: cart.items as CartItemRowData[],
+      resolvedUserId,
     });
-    if (!priced.ok) {
-      return NextResponse.json({ error: priced.error }, { status: 400 });
-    }
-    const expectedValue = priced.total.toFixed(2);
+    if (!expectedResolved.ok) return expectedResolved.response;
+    const { priced, expectedValue } = expectedResolved;
 
-    const remote = await paypalGetOrder(orderId);
-    const remoteAmt = paypalOrderAmount(remote);
-    if (
-      !remoteAmt ||
-      remoteAmt.currencyCode.toUpperCase() !== DEFAULT_CURRENCY.toUpperCase() ||
-      !amountsMatch(remoteAmt.value, expectedValue)
-    ) {
-      return NextResponse.json(
-        { error: "cart_amount_mismatch_refresh_cart" },
-        { status: 409 },
-      );
-    }
+    const remoteOk = await verifyRemoteAmountOrError({
+      orderId,
+      expectedValue,
+    });
+    if (!remoteOk.ok) return remoteOk.response;
 
-    const { ok, json } = await paypalCaptureOrder(orderId);
-    if (!ok) {
-      return NextResponse.json(
-        { error: "capture_failed", details: json },
-        { status: 502 },
-      );
-    }
+    const captureOk = await capturePayPalOrError(orderId);
+    if (!captureOk.ok) return captureOk.response;
+    const json = captureOk.json;
 
     const paypalCaptureId = paypalExtractCaptureId(json);
     const lines = buildPaidOrderLinesFromCart(cartLines);
     const useAsyncFulfillment = Boolean(process.env.RABBITMQ_URL?.trim());
 
-    let dbOrderId: number;
-    try {
-      const orderRow = await createPaidOrderAfterCaptureService(
-        {
-          userId: resolvedUserId,
-          emailSnapshot: sessionEmail,
-          currency: DEFAULT_CURRENCY,
-          total: Number(expectedValue),
-          paypalOrderId: orderId,
-          paypalCaptureId,
-          lines,
-          couponId: priced.couponId,
-          couponCodeSnapshot: priced.codeSnapshot,
-          discountAmount: priced.discountAmount,
-          shippingLine1: shipping.line1,
-          shippingCity: shipping.city,
-          shippingPostcode: shipping.postcode,
-          shippingCountry: shipping.country,
-          shippingMethod: shipping.method,
-        },
-        { skipStockDecrement: useAsyncFulfillment },
-      );
-      dbOrderId = orderRow.id;
-      void publishAdminOrderEvent({
-        kind: "updated",
-        id: dbOrderId,
-        status: "paid",
-      });
-      void bustAdminAnalyticsCache();
-    } catch (e) {
-      console.error("[paypal/capture] persist order failed after PayPal OK", e);
-      return NextResponse.json(
-        {
-          error: "order_persist_failed",
-          hint: "Payment may have succeeded; contact support with PayPal order id.",
-        },
-        { status: 500 },
-      );
-    }
+    const persisted = await persistPaidOrderOrError({
+      orderId,
+      paypalCaptureId,
+      lines,
+      priced,
+      expectedValue,
+      resolvedUserId,
+      sessionEmail,
+      shipping,
+      useAsyncFulfillment,
+    });
+    if (!persisted.ok) return persisted.response;
+    const { dbOrderId } = persisted;
+    const invoice = await getInvoiceByOrderIdService(dbOrderId);
 
     await clearCart();
 
@@ -207,49 +418,16 @@ export async function postPayPalCaptureRoute(
       quantity: l.quantity,
     }));
 
-    if (useAsyncFulfillment) {
-      let inventoryEnqueued = false;
-      let emailEnqueued = false;
-      try {
-        await enqueueOrderInventoryJob({
-          v: 1,
-          orderId: dbOrderId,
-          lines: inventoryLines,
-        });
-        inventoryEnqueued = true;
-        if (sessionEmail) {
-          await enqueueOrderEmailJob({
-            v: 1,
-            orderId: dbOrderId,
-            to: sessionEmail,
-            subject: `Order #${dbOrderId} — payment received`,
-            text: `Thank you. Your order is recorded.\n\nOrder #${dbOrderId}\nPayPal: ${orderId}\nTotal: ${DEFAULT_CURRENCY} ${expectedValue}\n\n${linesText}`,
-          });
-          emailEnqueued = true;
-        }
-      } catch (e) {
-        console.error(
-          "[paypal/capture] RabbitMQ enqueue failed; applying sync inventory + email",
-          e,
-        );
-        if (!inventoryEnqueued) {
-          await decrementStockForOrderLinesService(inventoryLines);
-        }
-        if (sessionEmail && !emailEnqueued) {
-          await sendTransactionalEmail({
-            to: sessionEmail,
-            subject: `Order #${dbOrderId} — payment received`,
-            text: `Thank you. Your order is recorded.\n\nOrder #${dbOrderId}\nPayPal: ${orderId}\nTotal: ${DEFAULT_CURRENCY} ${expectedValue}\n\n${linesText}`,
-          });
-        }
-      }
-    } else if (sessionEmail) {
-      await sendTransactionalEmail({
-        to: sessionEmail,
-        subject: `Order #${dbOrderId} — payment received`,
-        text: `Thank you. Your order is recorded.\n\nOrder #${dbOrderId}\nPayPal: ${orderId}\nTotal: ${DEFAULT_CURRENCY} ${expectedValue}\n\n${linesText}`,
-      });
-    }
+    await runFulfillmentFlow({
+      useAsyncFulfillment,
+      dbOrderId,
+      inventoryLines,
+      sessionEmail,
+      orderId,
+      expectedValue,
+      linesText,
+      invoiceNumber: invoice?.invoiceNumber ?? null,
+    });
 
     if (smsTo) {
       await sendTwilioSms({
@@ -267,6 +445,6 @@ export async function postPayPalCaptureRoute(
     return okRes;
   } catch (e) {
     console.error("[paypal/capture]", e);
-    return NextResponse.json({ error: "server_error" }, { status: 500 });
+    return jsonError(500, { error: "server_error" });
   }
 }

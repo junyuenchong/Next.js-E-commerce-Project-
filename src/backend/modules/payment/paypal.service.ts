@@ -1,3 +1,5 @@
+// Feature: Wraps PayPal API token, order, and capture operations for checkout integrations.
+
 type PayPalTokenResponse = {
   access_token: string;
   expires_in: number;
@@ -5,6 +7,7 @@ type PayPalTokenResponse = {
 
 let cachedToken: { value: string; expiresAtMs: number } | null = null;
 
+// Feature: resolve PayPal API base URL, preferring env override.
 export function getPayPalApiBase(): string {
   const explicit = process.env.PAYPAL_API_BASE?.trim();
   if (explicit) return explicit.replace(/\/$/, "");
@@ -13,6 +16,7 @@ export function getPayPalApiBase(): string {
   return "https://api-m.sandbox.paypal.com";
 }
 
+// Guard: read PayPal credentials from env vars, or null when unavailable.
 function getClientCredentials(): { id: string; secret: string } | null {
   const id =
     process.env.PAYPAL_CLIENT_ID?.trim() ||
@@ -24,11 +28,13 @@ function getClientCredentials(): { id: string; secret: string } | null {
   return { id, secret };
 }
 
+// Feature: retrieve and cache PayPal access token.
 export async function getPayPalAccessToken(): Promise<string | null> {
   const creds = getClientCredentials();
   if (!creds) return null;
 
   const now = Date.now();
+  // Feature: reuse token until near expiry to reduce auth round-trips.
   if (cachedToken && cachedToken.expiresAtMs > now + 30_000) {
     return cachedToken.value;
   }
@@ -57,10 +63,12 @@ export async function getPayPalAccessToken(): Promise<string | null> {
   return data.access_token;
 }
 
+// Feature: create PayPal order.
 export async function paypalCreateOrder(body: {
   currencyCode: string;
   value: string;
 }): Promise<{ id: string } | null> {
+  // Note: order creation only sends amount fields; detail persistence happens after capture.
   const token = await getPayPalAccessToken();
   if (!token) return null;
 
@@ -94,6 +102,7 @@ export async function paypalCreateOrder(body: {
   return data.id ? { id: data.id } : null;
 }
 
+// Feature: fetch order details from PayPal.
 export async function paypalGetOrder(orderId: string): Promise<unknown | null> {
   const token = await getPayPalAccessToken();
   if (!token) return null;
@@ -108,6 +117,7 @@ export async function paypalGetOrder(orderId: string): Promise<unknown | null> {
   return res.json();
 }
 
+// Guard: extract order amount/currency from PayPal order payload.
 export function paypalOrderAmount(
   order: unknown,
 ): { currencyCode: string; value: string } | null {
@@ -120,6 +130,7 @@ export function paypalOrderAmount(
   return { currencyCode: amt.currency_code, value: amt.value };
 }
 
+// Guard: extract first capture id from PayPal capture payload.
 export function paypalExtractCaptureId(captureJson: unknown): string | null {
   if (!captureJson || typeof captureJson !== "object") return null;
   const pu = (captureJson as { purchase_units?: unknown[] })
@@ -131,9 +142,11 @@ export function paypalExtractCaptureId(captureJson: unknown): string | null {
   return typeof id === "string" ? id : null;
 }
 
+// Feature: capture PayPal order payment.
 export async function paypalCaptureOrder(
   orderId: string,
 ): Promise<{ ok: boolean; json: unknown }> {
+  // Fallback: return capture response body for audit/debug when failures happen.
   const token = await getPayPalAccessToken();
   if (!token) return { ok: false, json: { error: "paypal_unconfigured" } };
 

@@ -6,10 +6,10 @@ A full‑stack shop with a **customer storefront** and an **admin dashboard**. T
 
 ## Try the live site
 
-| Area  | Link                                                                            |
-| ----- | ------------------------------------------------------------------------------- |
-| Store | [Open storefront](https://next-js-e-commerce-project.onrender.com/modules/user) |
-| Admin | [Open admin](https://next-js-e-commerce-project.onrender.com/modules/admin)     |
+| Area  | Link                                                                             |
+| ----- | -------------------------------------------------------------------------------- |
+| Store | [Open storefront](https://next-js-e-commerce-project.onrender.com/features/user) |
+| Admin | [Open admin](https://next-js-e-commerce-project.onrender.com/features/admin)     |
 
 _(Replace with your own domain when you deploy.)_
 
@@ -31,7 +31,7 @@ _(Replace with your own domain when you deploy.)_
 | **PayPal**                       | Checkout / order payment integration                 |
 | **SSE (Server-Sent Events)**     | “Realtime” updates for some lists (events endpoints) |
 | **Redis (optional)**             | Caching / speed-ups when configured                  |
-| **RabbitMQ (optional)**          | Background jobs (email + inventory after payment)    |
+| **RabbitMQ (optional)**          | Background jobs (payment, email, analytics workers)  |
 | **Cloudinary (optional)**        | Image hosting for uploads                            |
 | **Node.js 20+**                  | Runtime (local + deployment)                         |
 
@@ -41,32 +41,30 @@ _(Replace with your own domain when you deploy.)_
 
 **Frontend** lives under `src/app/`.
 
-- **`modules/user/`** — Everything for shoppers: pages, UI, and APIs under `/modules/user/...`.
-- **`modules/admin/`** — Same idea for staff: dashboard and APIs under `/modules/admin/...`.
+- **`modules/user/`** — Everything for shoppers: pages, UI, and APIs under `/features/user/...`.
+- **`modules/admin/`** — Same idea for staff: dashboard and APIs under `/features/admin/...`.
 
 Inside each module, roughly:
 
-| Folder        | Purpose                                                     |
-| ------------- | ----------------------------------------------------------- |
-| `(routes)/`   | Page components                                             |
-| `api/`        | Server routes (REST handlers)                               |
-| `client/`     | Browser code that calls those APIs (+ auth session wrapper) |
-| `domain/`     | Plain rules (calculations, mapping) with no UI              |
-| `components/` | React UI                                                    |
-| `hooks/`      | Reusable React logic                                        |
-| `lib/`        | Small helpers for that module                               |
+| Folder        | Purpose                                                           |
+| ------------- | ----------------------------------------------------------------- |
+| `(routes)/`   | Page components                                                   |
+| `api/`        | Server routes (REST handlers)                                     |
+| `components/` | React UI (split into `components/client` and `components/server`) |
+| `hooks/`      | Reusable React logic                                              |
+| `lib/`        | Small helpers for that module                                     |
 
-Shared code used by both modules is in **`src/app/lib/`** (with compatibility aliases under **`src/app/utils/`**). Cart state is in **`src/app/redux/`**.
+Shared code used by both modules is in **`src/app/utils/`** and **`src/app/providers/`**. Cart state is in **`src/app/redux/`**.
 
-**Backend** logic (database access, business rules) is in **`src/backend/modules/`** — separate from the React tree. New imports should prefer **`src/backend/core/`** aliases; legacy **`src/backend/lib/`** paths are still available for compatibility.
+**Backend** logic (database access + business rules) is in **`src/backend/features/`** — separate from the React tree.
 
 **`src/middleware.ts`** — Runs on requests first (session cookie refresh and security checks).
 
 ### Import conventions
 
-- Prefer **`@/app/utils/*`** for shared app-layer helpers (HTTP/auth/query aliases).
-- Prefer **`@/backend/core/*`** for backend shared utilities (session, money, guards, auth aliases).
-- Keep **`@/app/lib/*`** and **`@/backend/lib/*`** only for backward compatibility while migrating older files.
+- Prefer **`@/app/utils/*`** and **`@/app/providers/*`** for app-layer helpers (HTTP, auth helpers, realtime query helpers).
+- Prefer **`@/backend/features/<module>`** entrypoints for backend features (do not deep-import `.service/.repo` from API routes).
+- Shared contracts (types + schemas) live in **`src/shared/`** and should be imported via `@/shared/...`.
 
 Examples:
 
@@ -75,6 +73,7 @@ import http from "@/app/utils/http";
 import { authOptions } from "@/app/utils/auth";
 import { resolveUserId } from "@/backend/core/session";
 import { moneyToNumber } from "@/backend/core/money";
+import { updateOrderShipmentSchema } from "@/shared/schema/order";
 ```
 
 ### Frontend → Backend Workflow (Basic Flow)
@@ -82,15 +81,11 @@ import { moneyToNumber } from "@/backend/core/money";
 ```
 Browser UI
   ↓
-Client HTTP Wrappers
-  ↓
 App Utils HTTP Layer
   ↓
 Next.js Route Handlers
   ↓
-Backend Services
-  ↓
-Backend Repositories
+Backend Module Actions/Services
   ↓
 Prisma
   ↓
@@ -111,21 +106,41 @@ Notes:
 ```txt
 src/app/
 ├─ providers/     # QueryProvider + ReduxProvider
-├─ lib/           # shared helpers, HTTP client, validators
-├─ utils/         # compatibility aliases that mirror lib/
+├─ utils/         # app-layer helpers (http, auth, realtime query, etc.)
 ├─ modules/
-│  ├─ user/       # storefront: (routes)/, api/, client/, domain/, …
+│  ├─ user/       # storefront: (routes)/, api/, components/{client,server}, …
 │  └─ admin/      # dashboard: same pattern
 ├─ redux/         # cart store
 └─ layout.tsx     # root layout
 
 src/backend/
-├─ core/          # canonical alias entrypoints (preferred import path)
-├─ lib/           # legacy paths kept for compatibility
 └─ modules/       # features: services, repos, actions
+
+src/shared/
+├─ schema/         # zod validation contracts
+└─ types/          # TypeScript contracts
 ```
 
 </details>
+
+---
+
+## Backend module template (strict)
+
+Business modules under `src/backend/features/<module>/` follow a consistent layout:
+
+```txt
+<module>/
+├─ <module>.action.ts   # use-cases / entrypoints for routes
+├─ <module>.service.ts  # orchestration / business logic
+├─ <module>.repo.ts     # data access (Prisma)
+├─ dto/                 # request/response DTOs
+└─ index.ts             # public module entrypoint (preferred imports)
+```
+
+Rule of thumb:
+
+- `src/app/**/api/**` should import backend logic from **`@/backend/features/<module>`**, not deep paths like `.../<module>.service` or `.../<module>.repo`.
 
 ---
 
@@ -173,10 +188,13 @@ SMTP_PORT="465"
 SMTP_SECURE="1"
 
 REDIS_URL="redis://..."
-# RabbitMQ (optional): PayPal capture posts to two durable queues — receipt email + inventory.
-# If unset, email + stock decrement run inline in the API route.
+# RabbitMQ (optional): PayPal capture publishes durable jobs for payment/email/analytics workers.
+# If unset, payment-side effects run inline in the API route.
 RABBITMQ_URL="amqp://..."
 RABBITMQ_QUEUE_ORDER_EMAIL="order.email"
+RABBITMQ_QUEUE_ORDER_PAYMENT="order.payment"
+RABBITMQ_QUEUE_ORDER_ANALYTICS="order.analytics"
+# Backward-compat alias (optional): if payment queue var above is not set.
 RABBITMQ_QUEUE_ORDER_INVENTORY="order.inventory"
 CLOUDINARY_CLOUD_NAME=""
 CLOUDINARY_API_KEY=""
@@ -185,22 +203,99 @@ CLOUDINARY_API_SECRET=""
 
 **On Render:** copy the same keys into the dashboard. Set **`NEXTAUTH_URL`** to your production URL. Add OAuth redirect URLs in Google/Facebook (see below).
 
-### RabbitMQ (optional) — paid orders
+### RabbitMQ (optional) — paid orders workflow
 
-When **`RABBITMQ_URL`** is set, the PayPal **capture** route creates the DB order **without** decrementing stock, then enqueues:
+When **`RABBITMQ_URL`** is set, payment follows this pipeline:
 
-| Queue (default name) | Purpose                                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------------------------------- |
-| `order.email`        | Send receipt email (same content as sync path; worker should use your SMTP / `sendTransactionalEmail`). |
-| `order.inventory`    | Decrement `Product.stock` per line (mirror `decrementStockForOrderLinesRepo` in `order.repo.ts`).       |
+```txt
+[API]
+  ↓
+[Order Service]
+  ↓ (publish event)
+[RabbitMQ]
+  ↓↓↓
+[Payment Worker]
+[Email Worker]
+[Analytics Worker]
+```
 
-Message body is JSON with `v: 1`. **Email:** `{ v, orderId, to, subject, text }`. **Inventory:** `{ v, orderId, lines: [{ productId, quantity }] }`.
+- API route validates/captures payment and persists order through Order Service.
+- API publishes queue events (does not run all side effects inline).
+- Workers consume jobs independently.
 
-If enqueue fails (broker down), the API **falls back** to synchronous stock decrement + email so the customer is not left with wrong inventory.
+Default queues and responsibilities:
 
-Without **`RABBITMQ_URL`**, behavior stays fully synchronous (email + inventory in the request).
+| Queue (default name) | Worker           | Purpose                                                   |
+| -------------------- | ---------------- | --------------------------------------------------------- |
+| `order.payment`      | Payment Worker   | Decrement `Product.stock` per order lines                 |
+| `order.email`        | Email Worker     | Send receipt email                                        |
+| `order.analytics`    | Analytics Worker | Bust analytics cache + publish admin order realtime event |
 
-**Later:** you can add separate queues for payment webhooks or analytics the same way (e.g. `order.payment`, `order.analytics`).
+Message body is JSON with `v: 1`:
+
+- **Payment:** `{ v, orderId, lines: [{ productId, quantity }] }`
+- **Email:** `{ v, orderId, to, subject, text }`
+- **Analytics:** `{ v, orderId, status? }`
+
+Fallback behavior:
+
+- If enqueue fails, API falls back to synchronous handling for correctness (stock/email/analytics updates).
+- Without **`RABBITMQ_URL`**, the flow remains synchronous in request lifecycle.
+
+> **Important (async required):**
+> If `RABBITMQ_URL` is configured, you **must run async workers** (`payment`, `email`, `analytics`).
+> Otherwise jobs will stay in queues and side effects (stock update, receipt email, analytics refresh) will not be applied until workers are started.
+
+Local async worker startup example:
+
+```bash
+# terminal 1
+npm run dev
+
+# terminal 2
+npm run worker:payment
+
+# terminal 3
+npm run worker:email
+
+# terminal 4
+npm run worker:analytics
+```
+
+Production minimum checklist (async workers):
+
+- Ensure all three workers are running continuously:
+  - `worker:payment`
+  - `worker:email`
+  - `worker:analytics`
+- Ensure queue depth is monitored (`order.payment`, `order.email`, `order.analytics`).
+- Alert when queue backlog grows continuously (workers down/slow).
+- Alert when worker process exits unexpectedly (restart policy required).
+- Keep API fallback path enabled to avoid data inconsistency during broker incidents.
+- Keep SMTP and Redis credentials valid, otherwise email/analytics workers will retry/fail jobs.
+
+Suggested alert thresholds:
+
+- Queue depth warning: `> 100` messages for 5 minutes.
+- Queue depth critical: `> 1000` messages for 5 minutes.
+- Oldest message age warning: `> 120s`.
+- Oldest message age critical: `> 600s`.
+- Worker restart alert: more than 3 restarts in 10 minutes.
+
+Incident runbook (queue backlog / worker down):
+
+1. Check worker process status (`payment`, `email`, `analytics`).
+2. Check RabbitMQ connectivity from worker runtime.
+3. Check dependency health:
+   - Payment worker -> database reachable
+   - Email worker -> SMTP reachable
+   - Analytics worker -> Redis reachable
+4. Restart failed worker(s) and confirm queue depth starts decreasing.
+5. If backlog keeps growing, scale worker replicas horizontally.
+6. Verify business effects after recovery:
+   - stock decreased for new paid orders
+   - receipt emails sent
+   - admin analytics/orders views refreshed
 
 ---
 
@@ -242,13 +337,16 @@ npm start
 
 **Other scripts:**
 
-| Command             | Meaning                          |
-| ------------------- | -------------------------------- |
-| `npm run lint`      | Check code style                 |
-| `npm run lint:fix`  | Fix style in `src/`              |
-| `npm run format`    | Format with Prettier             |
-| `npm run clean`     | Delete `.next` (safe on Windows) |
-| `npm run dev:clean` | Clean then start dev             |
+| Command                    | Meaning                          |
+| -------------------------- | -------------------------------- |
+| `npm run lint`             | Check code style                 |
+| `npm run lint:fix`         | Fix style in `src/`              |
+| `npm run format`           | Format with Prettier             |
+| `npm run clean`            | Delete `.next` (safe on Windows) |
+| `npm run dev:clean`        | Clean then start dev             |
+| `npm run worker:payment`   | Start payment worker             |
+| `npm run worker:email`     | Start email worker               |
+| `npm run worker:analytics` | Start analytics worker           |
 
 **Helpers:**
 
@@ -263,8 +361,8 @@ Lists use **cursor pagination** (by product id) so “Load more” stays fast an
 
 Example endpoints:
 
-- Store: `GET /modules/user/api/products?limit=10&cursor=<lastId>`
-- Admin: `GET /modules/admin/api/products?limit=20&cursor=<lastId>`
+- Store: `GET /features/user/api/products?limit=10&cursor=<lastId>`
+- Admin: `GET /features/admin/api/products?limit=20&cursor=<lastId>`
 
 Response shape includes items and a `nextCursor` when more pages exist.
 
@@ -272,21 +370,27 @@ Response shape includes items and a `nextCursor` when more pages exist.
 
 ## Live updates (SSE)
 
-The admin area can open **SSE** streams under `/modules/admin/api/events/...` so lists refresh when data changes elsewhere. If SSE fails, the UI falls back to polling. The storefront uses a similar pattern where needed.
+The admin area can open **SSE** streams under `/features/admin/api/events/...` so lists refresh when data changes elsewhere. If SSE fails, the UI falls back to polling. The storefront uses a similar pattern where needed.
+
+Currently supported admin streams:
+
+- Products: `/features/admin/api/events/products`
+- Categories: `/features/admin/api/events/categories`
+- Orders: `/features/admin/api/events/orders`
 
 ---
 
 ## Support chat (Amazon-style, no websocket)
 
-- **User page**: `GET /modules/user/support/chat` (polling)
-- **Admin page**: `GET /modules/admin/support/chats` (polling)
+- **User page**: `GET /features/user/support/chat` (polling)
+- **Admin page**: `GET /features/admin/support/chats` (polling)
 
 APIs:
 
-- User: `GET/POST /modules/user/api/support/conversations`
-- User: `GET/POST /modules/user/api/support/conversations/[id]/messages`
-- Admin: `GET /modules/admin/api/support/conversations`
-- Admin: `GET/POST /modules/admin/api/support/conversations/[id]/messages`
+- User: `GET/POST /features/user/api/support/conversations`
+- User: `GET/POST /features/user/api/support/conversations/[id]/messages`
+- Admin: `GET /features/admin/api/support/conversations`
+- Admin: `GET/POST /features/admin/api/support/conversations/[id]/messages`
 
 ---
 
@@ -297,14 +401,18 @@ Supports Amazon-style vouchers:
 - **Public vouchers**: can be shown on storefront and used by anyone.
 - **Targeted vouchers**: require sign-in and must be assigned to selected users (bulk assign from admin users page).
 
-Storefront vouchers API: `GET /modules/user/api/coupons/vouchers`
+Storefront vouchers API: `GET /features/user/api/coupons/vouchers`
 
 ---
 
 ## Orders
 
-- User order list: `/modules/user/orders`
-- User order detail: `/modules/user/orders/[id]` (items + images, shipping snapshot, PayPal ids, receipt email snapshot)
+- User order list: `/features/user/orders`
+- User order detail: `/features/user/orders/[id]` (items + images, shipping snapshot, PayPal ids, receipt email snapshot)
+
+### Admin analytics note
+
+Admin dashboard analytics (revenue, order count, units sold) **exclude** `pending` and `cancelled` orders.
 
 ---
 
@@ -338,10 +446,10 @@ Use these **redirect URLs** in the provider consoles (adjust the domain if you s
 
 1. [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials.
 2. Add authorized redirect URI:  
-   `https://next-js-e-commerce-project.onrender.com/modules/user/api/auth/callback/google`
+   `https://next-js-e-commerce-project.onrender.com/features/user/api/auth/callback/google`
 
 **Facebook**
 
 1. [Facebook Developers](https://developers.facebook.com/) → your app → Facebook Login.
 2. Add redirect URI:  
-   `https://next-js-e-commerce-project.onrender.com/modules/user/api/auth/callback/facebook`
+   `https://next-js-e-commerce-project.onrender.com/features/user/api/auth/callback/facebook`

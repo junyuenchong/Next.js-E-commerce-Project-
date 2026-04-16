@@ -1,13 +1,12 @@
+// Feature: Provides schema-capability probes for review tables (migration-safe branching).
 import prisma from "@/app/lib/prisma";
 
-/** When true, column is present — safe to cache forever. When false, we re-check each call until a migration adds the column. */
+// Note: `true` is cached permanently; `false` is re-checked until migration adds the column.
 let cachedProductReviewHasIsActive: true | null = null;
 
-/**
- * True when the live DB has `ProductReview.isActive` (migration applied).
- * Positive result is cached; negative is not, so adding the column without restarting the app is detected.
- */
+// Guard: returns true when live DB has `ProductReview.isActive`; positives are cached, negatives re-checked.
 export async function productReviewHasIsActiveColumn(): Promise<boolean> {
+  // Guard: check live schema for soft-delete support; cache positive results permanently.
   if (cachedProductReviewHasIsActive === true) return true;
   try {
     const rows = await prisma.$queryRaw<{ c: bigint }[]>`
@@ -26,5 +25,6 @@ export async function productReviewHasIsActiveColumn(): Promise<boolean> {
 }
 
 export function resetProductReviewIsActiveCache() {
+  // Note: manual reset is used in tests or hot-reloaded schema migrations.
   cachedProductReviewHasIsActive = null;
 }

@@ -1,3 +1,4 @@
+// Feature: Resolves effective admin permissions and catalog access checks from role configuration.
 import type { AdminSessionUser } from "@/backend/modules/auth/session";
 import { permissionAppRoleFromUserRole } from "@/backend/modules/auth/auth.service";
 import {
@@ -7,13 +8,11 @@ import {
   getRoleDefinitionIdById,
   getRoleDefinitionIdBySlug,
 } from "@/backend/modules/access-control/access-control.repo";
-import type {
-  AppPermissionRole,
-  Permission,
-} from "@/shared/types/access-control";
+import type { AppPermissionRole, Permission } from "@/shared/types";
 
+// Note: map each app permission role to its permission key list.
 export const rolePermissions: Record<AppPermissionRole, string[]> = {
-  super_admin: ["*"],
+  super_admin: ["*"], // Note: `*` means all permissions.
   admin: [
     "user.read",
     "user.update",
@@ -26,12 +25,12 @@ export const rolePermissions: Record<AppPermissionRole, string[]> = {
     "product.delete",
     "coupon.read",
     "coupon.manage",
-    "role.profile.update",
     "audit.read",
   ],
   staff: ["user.read", "order.read", "coupon.read", "audit.read"],
 };
 
+// Note: canonical list of admin permission keys (read-only).
 export const ALL_ADMIN_PERMISSIONS: readonly Permission[] = [
   "user.read",
   "user.update",
@@ -44,11 +43,10 @@ export const ALL_ADMIN_PERMISSIONS: readonly Permission[] = [
   "product.delete",
   "coupon.read",
   "coupon.manage",
-  "role.profile.update",
-  "role.profile.delete",
   "audit.read",
 ] as const;
 
+// Note: human-readable label map for each permission key.
 export const PERMISSION_LABELS: Record<Permission, string> = {
   "user.read": "View users",
   "user.update": "Edit users (role, profile)",
@@ -61,45 +59,48 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "product.delete": "Delete products",
   "coupon.read": "View coupons",
   "coupon.manage": "Create & edit coupons",
-  "role.profile.update": "Edit permission profiles",
-  "role.profile.delete": "Remove permission profiles",
   "audit.read": "View admin audit log",
 };
 
+// Guard: permission keys that grant catalog access.
 const CATALOG_PERMISSION_KEYS = [
   "product.create",
   "product.update",
   "product.delete",
 ] as const;
 
+// Guard: check whether a permission role grants the target permission key.
 export function roleHasPermission(
   role: AppPermissionRole,
   permission: Permission,
 ): boolean {
   const list = rolePermissions[role];
-  if (list.includes("*")) return true;
+  if (list.includes("*")) return true; // Note: `*` means all permissions.
   return list.includes(permission);
 }
 
+// Feature: resolve effective permission keys for an admin user.
 export async function getAdminPermissionKeysForUser(
   user: AdminSessionUser,
 ): Promise<string[]> {
+  // Super admins always have every permission.
+  // This is intentionally hardcoded to avoid accidental lockout if role profile data is modified.
   if (user.role === "SUPER_ADMIN") {
-    const roleId = await getRoleDefinitionIdBySlug("super_admin");
-    if (!roleId) return ["*"];
-    const keys = await getEffectivePermissionKeysByRoleId(roleId);
-    return keys.length === 0 ? ["*"] : keys;
+    return ["*"];
   }
 
+  // Guard: prefer custom permission profile when assigned.
   const customId = user.adminPermissionRoleId;
   if (customId != null) {
     const roleHasIsActive = await adminRoleDefinitionHasIsActiveColumn();
+    // Guard: if `isActive` exists, only active profiles are eligible.
     const roleId = roleHasIsActive
       ? await getActiveRoleDefinitionIdById(customId)
       : await getRoleDefinitionIdById(customId);
     if (roleId != null) return getEffectivePermissionKeysByRoleId(roleId);
   }
 
+  // Fallback: use role default profile when no custom profile applies.
   const baseSlug = permissionAppRoleFromUserRole(user.role);
   if (!baseSlug) return [];
   const baseRoleId = await getRoleDefinitionIdBySlug(baseSlug);
@@ -107,19 +108,22 @@ export async function getAdminPermissionKeysForUser(
   return getEffectivePermissionKeysByRoleId(baseRoleId);
 }
 
+// Guard: check whether user has a specific permission key.
 export async function adminUserHasPermission(
   user: AdminSessionUser,
   permission: string,
 ): Promise<boolean> {
   const keys = await getAdminPermissionKeysForUser(user);
-  if (keys.includes("*")) return true;
+  if (keys.includes("*")) return true; // Note: `*` means all permissions.
   return keys.includes(permission);
 }
 
+// Guard: check whether user has any catalog-management capability.
 export async function adminUserHasCatalogAccess(
   user: AdminSessionUser,
 ): Promise<boolean> {
   const keys = await getAdminPermissionKeysForUser(user);
-  if (keys.includes("*")) return true;
+  if (keys.includes("*")) return true; // Note: `*` means all permissions.
+  // Feature: any catalog permission key grants catalog access.
   return CATALOG_PERMISSION_KEYS.some((k) => keys.includes(k));
 }

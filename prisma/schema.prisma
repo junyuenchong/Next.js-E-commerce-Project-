@@ -526,6 +526,7 @@ model Order {
 
   // Relations / timestamps
   items     OrderLineItem[]
+  invoice   Invoice?
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
@@ -534,6 +535,30 @@ model Order {
   @@index([createdAt])
   @@index([status, createdAt])
   @@index([couponId])
+}
+
+model Invoice {
+  id Int @id @default(autoincrement())
+
+  // One invoice per order
+  orderId Int   @unique
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Invoice identity
+  invoiceNumber String   @unique
+  issuedAt      DateTime @default(now())
+  status        String   @default("issued")
+
+  // Billed snapshot
+  billedEmail String?
+  currency    String
+  subtotal    Decimal @db.Decimal(12, 2)
+  discount    Decimal @db.Decimal(12, 2)
+  total       Decimal @db.Decimal(12, 2)
+  couponCode  String?
+  lineItems   Json?
+
+  @@index([issuedAt])
 }
 
 model OrderLineItem {

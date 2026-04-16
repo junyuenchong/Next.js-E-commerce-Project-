@@ -10,8 +10,6 @@ export type Permission =
   | "product.delete"
   | "coupon.read"
   | "coupon.manage"
-  | "role.profile.update"
-  | "role.profile.delete"
   | "audit.read";
 
 export type AppPermissionRole = "super_admin" | "admin" | "staff";

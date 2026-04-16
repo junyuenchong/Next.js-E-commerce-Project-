@@ -1,7 +1,7 @@
-export { productSchema, productSlugSchema } from "@/shared/schema/product";
-export { categorySchema, categorySlugSchema } from "@/shared/schema/category";
+export { productSchema, productSlugSchema } from "../product";
+export { categorySchema, categorySlugSchema } from "../category";
+export { updateOrderStatusSchema } from "../order";
+export { updateReviewReplySchema } from "../review";
 export * from "./category-api.schema";
 export * from "./users-api.schema";
 export * from "./role-config.schema";
-export * from "./order.schema";
-export * from "./review.schema";
