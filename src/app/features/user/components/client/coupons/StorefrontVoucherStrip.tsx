@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import http, { getErrorMessage } from "@/app/utils/http";
 import { formatPriceRM } from "@/app/lib/format-price";
@@ -46,6 +46,16 @@ export default function StorefrontVoucherStrip({
   const { user } = useUser();
   const [localErr, setLocalErr] = useState<string | null>(null);
   const [applying, setApplying] = useState<string | null>(null);
+  const userStripRef = useRef<HTMLDivElement | null>(null);
+  const globalStripRef = useRef<HTMLDivElement | null>(null);
+  const [userScrollState, setUserScrollState] = useState({
+    canScrollLeft: false,
+    canScrollRight: false,
+  });
+  const [globalScrollState, setGlobalScrollState] = useState({
+    canScrollLeft: false,
+    canScrollRight: false,
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: [
@@ -67,6 +77,46 @@ export default function StorefrontVoucherStrip({
   const vouchers = data ?? [];
   const userVouchers = vouchers.filter((v) => v.scope === "USER");
   const globalVouchers = vouchers.filter((v) => v.scope !== "USER");
+
+  useEffect(() => {
+    const el = userStripRef.current;
+    if (!el) return;
+    const update = () => {
+      const left = el.scrollLeft > 0;
+      const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+      setUserScrollState({ canScrollLeft: left, canScrollRight: right });
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    return () => el.removeEventListener("scroll", update);
+  }, [userVouchers.length, variant]);
+
+  useEffect(() => {
+    const el = globalStripRef.current;
+    if (!el) return;
+    const update = () => {
+      const left = el.scrollLeft > 0;
+      const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+      setGlobalScrollState({ canScrollLeft: left, canScrollRight: right });
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    return () => el.removeEventListener("scroll", update);
+  }, [globalVouchers.length, variant]);
+
+  const scrollUserStrip = useCallback((dir: -1 | 1) => {
+    userStripRef.current?.scrollBy({
+      left: dir * 280,
+      behavior: "smooth",
+    });
+  }, []);
+
+  const scrollGlobalStrip = useCallback((dir: -1 | 1) => {
+    globalStripRef.current?.scrollBy({
+      left: dir * 280,
+      behavior: "smooth",
+    });
+  }, []);
 
   const apply = useCallback(
     async (code: string) => {
@@ -143,10 +193,10 @@ export default function StorefrontVoucherStrip({
       className={
         variant === "checkout"
           ? "rounded-lg border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50/80 p-3"
-          : "mb-6 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50/60 p-4 shadow-sm"
+          : "mb-6 inline-block max-w-full rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50/60 p-4 shadow-sm"
       }
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <div className="flex flex-wrap items-baseline gap-2">
         <h3
           className={
             variant === "checkout"
@@ -165,10 +215,30 @@ export default function StorefrontVoucherStrip({
       ) : null}
       {userVouchers.length > 0 ? (
         <>
-          <div className="mt-2 flex items-baseline justify-between gap-2">
+          <div className="mt-2 flex items-baseline gap-2">
             <h4 className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
               Your vouchers
             </h4>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                aria-label="Scroll vouchers left"
+                disabled={!userScrollState.canScrollLeft}
+                onClick={() => scrollUserStrip(-1)}
+                className="h-7 w-7 rounded-md border border-gray-200 bg-white text-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                aria-label="Scroll vouchers right"
+                disabled={!userScrollState.canScrollRight}
+                onClick={() => scrollUserStrip(1)}
+                className="h-7 w-7 rounded-md border border-gray-200 bg-white text-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ›
+              </button>
+            </div>
           </div>
           <div
             className={
@@ -176,6 +246,7 @@ export default function StorefrontVoucherStrip({
                 ? "mt-2 flex gap-2 overflow-x-auto pb-1"
                 : "mt-3 flex gap-3 overflow-x-auto pb-1"
             }
+            ref={userStripRef}
           >
             {userVouchers.map((v) => {
               const isApplied = appliedNorm === v.code.trim().toUpperCase();
@@ -248,10 +319,30 @@ export default function StorefrontVoucherStrip({
 
       {globalVouchers.length > 0 ? (
         <>
-          <div className="mt-3 flex items-baseline justify-between gap-2">
+          <div className="mt-3 flex items-baseline gap-2">
             <h4 className="text-[11px] font-semibold uppercase tracking-wide text-gray-600">
               Global coupons
             </h4>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                aria-label="Scroll global coupons left"
+                disabled={!globalScrollState.canScrollLeft}
+                onClick={() => scrollGlobalStrip(-1)}
+                className="h-7 w-7 rounded-md border border-gray-200 bg-white text-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                aria-label="Scroll global coupons right"
+                disabled={!globalScrollState.canScrollRight}
+                onClick={() => scrollGlobalStrip(1)}
+                className="h-7 w-7 rounded-md border border-gray-200 bg-white text-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ›
+              </button>
+            </div>
           </div>
           <div
             className={
@@ -259,6 +350,7 @@ export default function StorefrontVoucherStrip({
                 ? "mt-2 flex gap-2 overflow-x-auto pb-1"
                 : "mt-3 flex gap-3 overflow-x-auto pb-1"
             }
+            ref={globalStripRef}
           >
             {globalVouchers.map((v) => {
               const isApplied = appliedNorm === v.code.trim().toUpperCase();
