@@ -27,12 +27,10 @@ import {
 import {
   enqueueOrderAnalyticsJob,
   enqueueOrderEmailJob,
-  enqueueOrderPaymentJob,
 } from "@/backend/modules/messaging";
 import {
   buildPaidOrderLinesFromCart,
   createPaidOrderAfterCaptureService,
-  decrementStockForOrderLinesService,
   getOrderIdByPayPalOrderIdService,
   getInvoiceByOrderIdService,
   validateCartStockForOrder,
@@ -206,7 +204,8 @@ async function persistPaidOrderOrError(params: {
         shippingCountry: params.shipping.country,
         shippingMethod: params.shipping.method,
       },
-      { skipStockDecrement: params.useAsyncFulfillment },
+      // Business rule: stock is reduced only when the order reaches fulfilled.
+      { skipStockDecrement: true },
     );
     const dbOrderId = orderRow.id;
     return { ok: true as const, dbOrderId };
@@ -263,17 +262,9 @@ async function runFulfillmentFlow(params: {
 
   if (params.useAsyncFulfillment) {
     // Feature: prefer async fulfillment when MQ is enabled for faster capture responses.
-    let paymentEnqueued = false;
     let emailEnqueued = false;
     let analyticsEnqueued = false;
     try {
-      await enqueueOrderPaymentJob({
-        v: 1,
-        orderId: params.dbOrderId,
-        lines: params.inventoryLines,
-      });
-      paymentEnqueued = true;
-
       await enqueueOrderAnalyticsJob({
         v: 1,
         orderId: params.dbOrderId,
@@ -297,9 +288,6 @@ async function runFulfillmentFlow(params: {
         "[paypal/capture] RabbitMQ enqueue failed; applying sync payment + analytics + email",
         e,
       );
-      if (!paymentEnqueued) {
-        await decrementStockForOrderLinesService(params.inventoryLines);
-      }
       if (!analyticsEnqueued) {
         await bustAdminAnalyticsCache();
         await bustAdminCouponsListCache();
@@ -330,7 +318,6 @@ async function runFulfillmentFlow(params: {
     id: params.dbOrderId,
     status: "paid",
   });
-  await decrementStockForOrderLinesService(params.inventoryLines);
   if (params.sessionEmail) {
     await sendTransactionalEmail({
       to: params.sessionEmail,

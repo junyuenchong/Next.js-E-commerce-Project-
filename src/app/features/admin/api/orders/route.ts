@@ -153,6 +153,19 @@ export async function PATCH(request: Request) {
       void bustAdminAnalyticsCache();
       return NextResponse.json(order);
     } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === "insufficient_stock_at_fulfillment"
+      ) {
+        return NextResponse.json(
+          {
+            error: "insufficient_stock_at_fulfillment",
+            message:
+              "Current product stock is not enough to complete this order.",
+          },
+          { status: 409 },
+        );
+      }
       return jsonInternalServerError(
         error,
         "[admin/api/orders PATCH]",

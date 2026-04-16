@@ -372,9 +372,54 @@ export async function updateOrderStatusRepo(
   orderId: number,
   status: OrderStatus,
 ) {
-  return prisma.order.update({
-    where: { id: orderId },
-    data: { status },
+  return prisma.$transaction(async (tx) => {
+    const current = await tx.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        status: true,
+        items: {
+          select: { productId: true, quantity: true },
+          orderBy: { id: "asc" },
+        },
+      },
+    });
+    if (!current) {
+      throw new Error("order_not_found");
+    }
+
+    const entersFulfilled =
+      status === "fulfilled" && current.status !== "fulfilled";
+
+    if (entersFulfilled) {
+      const productIds = current.items.map((item) => item.productId);
+      const products = await tx.product.findMany({
+        where: { id: { in: productIds } },
+        select: { id: true, stock: true },
+      });
+      const stockByProductId = new Map(products.map((p) => [p.id, p.stock]));
+
+      for (const item of current.items) {
+        const stock = stockByProductId.get(item.productId);
+        if (stock == null || stock < item.quantity) {
+          throw new Error("insufficient_stock_at_fulfillment");
+        }
+      }
+
+      await Promise.all(
+        current.items.map((item) =>
+          tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { decrement: item.quantity } },
+          }),
+        ),
+      );
+    }
+
+    return tx.order.update({
+      where: { id: orderId },
+      data: { status },
+    });
   });
 }
 
