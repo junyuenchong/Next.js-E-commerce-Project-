@@ -69,15 +69,6 @@ export async function createPaidOrderRepo(
           data: { usedAt: new Date() },
         });
       }
-      if (c.redemptionScope === "PUBLIC" && input.userId) {
-        const priorOrder = await tx.order.findFirst({
-          where: { userId: input.userId, couponId: input.couponId },
-          select: { id: true },
-        });
-        if (priorOrder) {
-          throw new Error("coupon_already_used_at_capture");
-        }
-      }
       await tx.coupon.update({
         where: { id: input.couponId },
         data: { usedCount: { increment: 1 } },
