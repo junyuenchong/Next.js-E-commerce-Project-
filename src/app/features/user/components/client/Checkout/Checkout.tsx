@@ -4,12 +4,14 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDispatch } from "react-redux";
 import http, { getErrorMessage } from "@/app/utils/http";
 import type { SavedAddress } from "@/app/features/user/components/client/profile/AddressBookSection";
 import { useUser } from "@/app/features/user/components/client/UserContext";
 import { useShoppingCart } from "@/app/features/user/hooks";
 import { formatPriceRM } from "@/app/lib/format-price";
 import type { CartItemRowData } from "@/app/features/user/types";
+import { clearCart, setCartId } from "@/app/redux/store";
 
 const PayPalCheckoutButtons = dynamic(
   () =>
@@ -72,6 +74,7 @@ export default function Checkout({
   const qc = useQueryClient();
   const { user } = useUser();
   const { cart, isLoading, summary, mutate } = useShoppingCart();
+  const dispatch = useDispatch();
 
   const refreshCheckoutCoupon = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ["checkout-coupon-quote"] });
@@ -192,11 +195,17 @@ export default function Checkout({
     [qc],
   );
 
-  const handlePaid = useCallback((payload: { orderId: number }) => {
-    setPaid(true);
-    setPaidOrderId(payload.orderId);
-    setErr(null);
-  }, []);
+  const handlePaid = useCallback(
+    (payload: { orderId: number }) => {
+      setPaid(true);
+      setPaidOrderId(payload.orderId);
+      setErr(null);
+      // PayPal capture clears server cart; also clear Redux cart so header badge resets immediately.
+      dispatch(clearCart());
+      dispatch(setCartId(""));
+    },
+    [dispatch],
+  );
 
   useEffect(() => {
     if (!paid) return;
