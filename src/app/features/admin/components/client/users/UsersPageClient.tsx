@@ -631,21 +631,16 @@ export default function AdminUsersPage() {
                   disabled={!canManageCoupons}
                 >
                   <option value="">Select coupon…</option>
-                  {(couponsQuery.data ?? []).map((c) => (
-                    <option
-                      key={c.id}
-                      value={String(c.id)}
-                      disabled={!c.isActive}
-                    >
-                      {c.code}
-                      {c.redemptionScope
-                        ? c.redemptionScope === "PUBLIC"
-                          ? " (Global)"
-                          : " (Targeted)"
-                        : ""}
-                      {!c.isActive ? " (Inactive)" : ""}
-                    </option>
-                  ))}
+                  {(couponsQuery.data ?? [])
+                    .filter(
+                      (c) =>
+                        c.isActive && c.redemptionScope === "ASSIGNED_USERS",
+                    )
+                    .map((c) => (
+                      <option key={c.id} value={String(c.id)}>
+                        {c.code} (Targeted)
+                      </option>
+                    ))}
                 </select>
                 <span className="mt-1 block text-xs text-gray-500">
                   If you don’t see a code, ensure you have{" "}

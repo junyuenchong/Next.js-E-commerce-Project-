@@ -60,12 +60,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "coupon_not_found" }, { status: 404 });
     }
 
-    // Force targeted scope when assigning to specific users.
     if (coupon.redemptionScope !== "ASSIGNED_USERS") {
-      await prisma.coupon.update({
-        where: { id: couponId },
-        data: { redemptionScope: "ASSIGNED_USERS" },
-      });
+      // Business rule: this bulk assignment flow only supports targeted coupons.
+      return NextResponse.json(
+        { error: "coupon_not_assignable_to_users" },
+        { status: 400 },
+      );
     }
 
     const users = await prisma.user.findMany({
