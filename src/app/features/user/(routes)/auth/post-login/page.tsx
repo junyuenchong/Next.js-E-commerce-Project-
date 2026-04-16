@@ -1,11 +1,11 @@
 /** OAuth/callback landing: merge guest cart, then role-based redirect. */
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import {
   canAccessAdminPanel,
   postAuthRedirectPath,
 } from "@/backend/core/auth/auth.service";
 import { getServerSessionCached } from "@/backend/core/session";
-import { mergeGuestCartToUserService } from "@/backend/modules/cart";
 import type { UserRole } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +28,26 @@ export default async function PostLoginPage({
     redirect(postAuthRedirectPath(role, params.returnUrl));
   }
 
-  await mergeGuestCartToUserService();
+  // Important: merge/cookie writes must happen in a Route Handler or Server Action.
+  // Calling `mergeGuestCartToUserService()` directly from this Server Component
+  // violates Next.js cookies write constraints.
+  const h = await headers();
+  const host = h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  const origin = host ? `${proto}://${host}` : "";
+  try {
+    // Forward the incoming Cookie header so the merge route can read/update guestCartId.
+    const cookie = h.get("cookie") ?? "";
+    if (origin) {
+      await fetch(`${origin}/features/user/api/products/cart/merge`, {
+        method: "POST",
+        headers: { cookie },
+        cache: "no-store",
+      });
+    }
+  } catch (e) {
+    // Merge failure should not block login redirect.
+    console.error("[post-login] guest cart merge failed:", e);
+  }
   redirect(postAuthRedirectPath(role, params.returnUrl));
 }
