@@ -197,11 +197,17 @@ const ProductDetail = memo(function ProductDetail({
                       >
                         sign in
                       </Link>{" "}
-                      to submit a rating and comment.
+                      and purchase this product before submitting a rating and
+                      comment.
                     </>
                   )}
                 </div>
-              ) : null}
+              ) : (
+                <p className="text-sm text-gray-600">
+                  Only customers who purchased this product can leave a rating
+                  and comment.
+                </p>
+              )}
 
               <form onSubmit={submitReview} className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -249,7 +255,7 @@ const ProductDetail = memo(function ProductDetail({
                   <p className="text-sm text-gray-500">Loading reviews...</p>
                 ) : reviews.length === 0 ? (
                   <p className="text-sm text-gray-500">
-                    No ratings yet. Be the first to comment.
+                    No ratings yet. Be the first verified buyer to comment.
                   </p>
                 ) : (
                   reviews.map((review: ProductReview) => (

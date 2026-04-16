@@ -58,7 +58,12 @@ export async function POST(
     return NextResponse.json(review, { status: 200 });
   } catch (error: unknown) {
     const message = getErrorText(error);
-    const status = message === "Unauthorized" ? 401 : 400;
+    const status =
+      message === "Unauthorized"
+        ? 401
+        : message === "Please purchase this product before submitting a review"
+          ? 403
+          : 400;
     return NextResponse.json({ error: message }, { status });
   }
 }

@@ -5,7 +5,11 @@ export function messageFromReviewSubmitError(error: unknown): string {
     isAxiosError<{ error?: string }>(error) && error.response?.data?.error
       ? error.response.data.error
       : "Failed to submit review.";
-  return message === "Unauthorized"
-    ? "Please sign in to submit a rating and comment."
-    : message;
+  if (message === "Unauthorized") {
+    return "Please sign in to submit a rating and comment.";
+  }
+  if (message === "Please purchase this product before submitting a review") {
+    return "Only customers who purchased this product can leave a review.";
+  }
+  return message;
 }

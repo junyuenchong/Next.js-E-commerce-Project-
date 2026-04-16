@@ -1,6 +1,7 @@
 // Feature: Provides review services for product feedback listing, moderation, and replies.
 import {
   findProductById,
+  hasUserPurchasedProduct,
   listAllReviewsAdminRepo,
   listProductReviews,
   listProductReviewsForAdmin,
@@ -46,6 +47,13 @@ export async function upsertProductReviewService(params: {
 
   const product = await findProductById(params.productId);
   if (!product) throw new Error("Product not found");
+  const purchased = await hasUserPurchasedProduct(
+    params.userId,
+    params.productId,
+  );
+  if (!purchased) {
+    throw new Error("Please purchase this product before submitting a review");
+  }
 
   return upsertProductReview({
     productId: params.productId,

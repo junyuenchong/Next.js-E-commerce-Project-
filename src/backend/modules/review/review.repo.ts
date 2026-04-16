@@ -117,6 +117,23 @@ export async function findProductById(productId: number) {
   });
 }
 
+// Guard: only customers with a paid/fulfilled order containing the product may review it.
+export async function hasUserPurchasedProduct(
+  userId: number,
+  productId: number,
+) {
+  return prisma.orderLineItem.findFirst({
+    where: {
+      productId,
+      order: {
+        userId,
+        status: { in: ["paid", "processing", "shipped", "delivered"] },
+      },
+    },
+    select: { id: true },
+  });
+}
+
 // Fallback: soft-remove when column exists; hard-delete for pre-migration databases.
 export async function softDeactivateProductReviewById(reviewId: number) {
   const hasIsActive = await productReviewHasIsActiveColumn();
