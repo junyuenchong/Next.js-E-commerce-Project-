@@ -9,6 +9,7 @@ import http, { getErrorMessage } from "@/app/utils/http";
 import { formatPriceRM } from "@/app/lib/format-price";
 import { useUser } from "@/app/features/user/components/client/UserContext";
 import InvoiceDialog from "@/app/components/shared/InvoiceDialog";
+import { postProductReview } from "@/app/features/user/components/client/http";
 
 type OrderItemDto = {
   id: string;
@@ -63,6 +64,13 @@ export default function OrderDetailPage() {
   const paymentSuccess = searchParams.get("payment") === "success";
   const [showPaymentSuccessDialog, setShowPaymentSuccessDialog] =
     useState(false);
+
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState<OrderItemDto | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewErr, setReviewErr] = useState<string | null>(null);
 
   const q = useQuery({
     queryKey: ["user-order-detail", id],
@@ -125,6 +133,35 @@ export default function OrderDetailPage() {
     0,
     o.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0),
   );
+
+  const orderComplete = ["delivered", "fulfilled"].includes(
+    String(o.status).toLowerCase(),
+  );
+
+  const openReviewDialog = (item: OrderItemDto) => {
+    setReviewTarget(item);
+    setReviewRating(5);
+    setReviewComment("");
+    setReviewErr(null);
+    setReviewDialogOpen(true);
+  };
+
+  const submitReview = async () => {
+    if (!reviewTarget) return;
+    setReviewBusy(true);
+    setReviewErr(null);
+    try {
+      await postProductReview(reviewTarget.productId, {
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+      });
+      setReviewDialogOpen(false);
+    } catch (e: unknown) {
+      setReviewErr(getErrorMessage(e, "Could not submit review."));
+    } finally {
+      setReviewBusy(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
@@ -212,6 +249,30 @@ export default function OrderDetailPage() {
               </li>
             ))}
           </ul>
+
+          <div className="mt-4">
+            <div className="text-sm font-semibold text-gray-900 mb-2">
+              Product Ratings & Comments
+            </div>
+            {!orderComplete ? (
+              <p className="text-xs text-gray-500">
+                Reviews are available after your order is completed.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {o.items.map((i) => (
+                  <button
+                    key={`review-btn-${i.id}`}
+                    type="button"
+                    onClick={() => openReviewDialog(i)}
+                    className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50"
+                  >
+                    Review: {i.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -316,6 +377,74 @@ export default function OrderDetailPage() {
           <span className="font-mono">Order #{o.id}</span>.
         </div>
       </div>
+
+      {reviewDialogOpen && reviewTarget ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md rounded-xl bg-white shadow-xl border border-gray-200">
+            <div className="flex items-start justify-between gap-4 border-b px-4 py-3">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">
+                  Product Ratings & Comments
+                </h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  {reviewTarget.title}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewDialogOpen(false)}
+                className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="px-4 py-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Your rating:
+                </label>
+                <select
+                  value={reviewRating}
+                  onChange={(e) => setReviewRating(Number(e.target.value))}
+                  className="border rounded px-2 py-1 text-sm"
+                  disabled={reviewBusy}
+                >
+                  <option value={5}>5 - Excellent</option>
+                  <option value={4}>4 - Good</option>
+                  <option value={3}>3 - Average</option>
+                  <option value={2}>2 - Poor</option>
+                  <option value={1}>1 - Bad</option>
+                </select>
+              </div>
+              <textarea
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                placeholder="Write your comment..."
+                className="w-full border rounded px-3 py-2 text-sm min-h-24"
+                disabled={reviewBusy}
+              />
+              {reviewErr ? (
+                <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {reviewErr}
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void submitReview()}
+                disabled={reviewBusy || reviewComment.trim().length === 0}
+                className="w-full rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {reviewBusy ? "Submitting..." : "Submit Review"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

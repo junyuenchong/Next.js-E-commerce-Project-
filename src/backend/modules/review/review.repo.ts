@@ -127,7 +127,8 @@ export async function hasUserPurchasedProduct(
       productId,
       order: {
         userId,
-        status: { in: ["paid", "processing", "shipped", "delivered"] },
+        // Business rule: allow reviews only after the order is completed.
+        status: { in: ["delivered", "fulfilled"] },
       },
     },
     select: { id: true },
