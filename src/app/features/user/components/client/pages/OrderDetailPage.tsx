@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import http, { getErrorMessage } from "@/app/utils/http";
 import { formatPriceRM } from "@/app/lib/format-price";
@@ -57,6 +58,11 @@ export default function OrderDetailPage() {
   const { user, isLoading: sessionLoading } = useUser();
   const params = useParams<{ id: string }>();
   const id = String(params?.id ?? "");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const paymentSuccess = searchParams.get("payment") === "success";
+  const [showPaymentSuccessDialog, setShowPaymentSuccessDialog] =
+    useState(false);
 
   const q = useQuery({
     queryKey: ["user-order-detail", id],
@@ -64,6 +70,10 @@ export default function OrderDetailPage() {
     enabled: Boolean(user && id),
     staleTime: 5_000,
   });
+
+  useEffect(() => {
+    setShowPaymentSuccessDialog(paymentSuccess);
+  }, [paymentSuccess]);
 
   if (sessionLoading) {
     return (
@@ -118,6 +128,41 @@ export default function OrderDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
+      {showPaymentSuccessDialog ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Payment successful
+            </h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Thanks! Your order #{o.id} is confirmed and we&apos;re preparing
+              it now.
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPaymentSuccessDialog(false);
+                  router.replace(`/features/user/orders/${o.id}`);
+                }}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <Link
+                href={`/features/user/orders/${o.id}`}
+                className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+              >
+                View order
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import http, { getErrorMessage } from "@/app/utils/http";
 import type { SavedAddress } from "@/app/features/user/components/client/profile/AddressBookSection";
@@ -72,6 +73,7 @@ export default function Checkout({
   paypalCurrency,
 }: CheckoutProps) {
   const qc = useQueryClient();
+  const router = useRouter();
   const { user } = useUser();
   const { cart, isLoading, summary, mutate } = useShoppingCart();
   const dispatch = useDispatch();
@@ -203,8 +205,13 @@ export default function Checkout({
       // PayPal capture clears server cart; also clear Redux cart so header badge resets immediately.
       dispatch(clearCart());
       dispatch(setCartId(""));
+      router.push(
+        `/features/user/orders/${encodeURIComponent(
+          String(payload.orderId),
+        )}?payment=success`,
+      );
     },
-    [dispatch],
+    [dispatch, router],
   );
 
   useEffect(() => {
