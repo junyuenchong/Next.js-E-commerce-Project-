@@ -117,7 +117,7 @@ export async function findProductById(productId: number) {
   });
 }
 
-// Guard: only customers with a paid/fulfilled order containing the product may review it.
+// Guard: only customers with a fulfilled order containing the product may review it.
 export async function hasUserPurchasedProduct(
   userId: number,
   productId: number,
@@ -127,8 +127,8 @@ export async function hasUserPurchasedProduct(
       productId,
       order: {
         userId,
-        // Business rule: allow reviews only after the order is completed.
-        status: { in: ["delivered", "fulfilled"] },
+        // Business rule: allow reviews only after the order is fulfilled.
+        status: "fulfilled",
       },
     },
     select: { id: true },

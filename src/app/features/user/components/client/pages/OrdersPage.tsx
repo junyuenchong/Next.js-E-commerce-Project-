@@ -24,7 +24,7 @@ function statusLabel(s: OrderListItem["status"]): string {
     case "delivered":
       return "Delivered";
     case "fulfilled":
-      return "Fulfilled";
+      return "Completed";
     case "cancelled":
       return "Cancelled";
     default:

@@ -48,6 +48,27 @@ type OrderDetailDto = {
   items: OrderItemDto[];
 };
 
+function orderStatusLabel(status: string): string {
+  switch (String(status).toLowerCase()) {
+    case "pending":
+      return "Pending";
+    case "paid":
+      return "Paid";
+    case "processing":
+      return "Processing";
+    case "shipped":
+      return "Shipped";
+    case "delivered":
+      return "Delivered";
+    case "fulfilled":
+      return "Completed";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return status;
+  }
+}
+
 async function fetchOrder(id: string): Promise<OrderDetailDto> {
   const { data } = await http.get<{ order: OrderDetailDto }>(
     `/features/user/api/orders/${id}`,
@@ -134,9 +155,7 @@ export default function OrderDetailPage() {
     o.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0),
   );
 
-  const orderComplete = ["delivered", "fulfilled"].includes(
-    String(o.status).toLowerCase(),
-  );
+  const orderComplete = String(o.status).toLowerCase() === "fulfilled";
 
   const openReviewDialog = (item: OrderItemDto) => {
     setReviewTarget(item);
@@ -205,7 +224,8 @@ export default function OrderDetailPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Order #{o.id}</h1>
             <p className="text-sm text-gray-600 mt-1">
-              {created} · <span className="uppercase">{o.status}</span>
+              {created} ·{" "}
+              <span className="uppercase">{orderStatusLabel(o.status)}</span>
             </p>
           </div>
           <Link
@@ -256,7 +276,7 @@ export default function OrderDetailPage() {
             </div>
             {!orderComplete ? (
               <p className="text-xs text-gray-500">
-                Reviews are available after your order is completed.
+                Reviews are available only after your order is fulfilled.
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
