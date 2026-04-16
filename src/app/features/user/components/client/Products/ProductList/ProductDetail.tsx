@@ -43,6 +43,7 @@ const ProductDetail = memo(function ProductDetail({
     `/features/user/product/${productId}`,
   )}`;
   const canSubmitReview = Boolean(user) && !sessionLoading;
+  const showRatingsModule = Boolean(user) || sessionLoading;
 
   return (
     <div className="bg-gray-50">
@@ -172,121 +173,125 @@ const ProductDetail = memo(function ProductDetail({
               </div>
             </div>
 
-            <div className="mt-8 bg-white border border-gray-100 rounded-xl p-4 space-y-4">
-              <h2 className="text-xl font-semibold text-gray-800">
-                Product Ratings & Comments
-              </h2>
-              <p className="text-sm text-gray-600">
-                Average rating:{" "}
-                <span className="font-semibold">
-                  {averageRating.toFixed(1)}
-                </span>{" "}
-                / 5 ({reviews.length} reviews)
-              </p>
+            {showRatingsModule ? (
+              <div className="mt-8 bg-white border border-gray-100 rounded-xl p-4 space-y-4">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Product Ratings & Comments
+                </h2>
+                <p className="text-sm text-gray-600">
+                  Average rating:{" "}
+                  <span className="font-semibold">
+                    {averageRating.toFixed(1)}
+                  </span>{" "}
+                  / 5 ({reviews.length} reviews)
+                </p>
 
-              {!canSubmitReview ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                  {sessionLoading ? (
-                    "Checking your sign-in status..."
+                {!canSubmitReview ? (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    {sessionLoading ? (
+                      "Checking your sign-in status..."
+                    ) : (
+                      <>
+                        Please{" "}
+                        <Link
+                          href={signInHref}
+                          className="font-semibold underline"
+                        >
+                          sign in
+                        </Link>{" "}
+                        and purchase this product before submitting a rating and
+                        comment.
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600">
+                    Only customers who purchased this product can leave a rating
+                    and comment.
+                  </p>
+                )}
+
+                <form onSubmit={submitReview} className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Your rating:
+                    </label>
+                    <select
+                      value={rating}
+                      onChange={(e) => setRating(Number(e.target.value))}
+                      className="border rounded px-2 py-1 text-sm"
+                      disabled={!canSubmitReview || reviewMutation.isPending}
+                    >
+                      <option value={5}>5 - Excellent</option>
+                      <option value={4}>4 - Good</option>
+                      <option value={3}>3 - Average</option>
+                      <option value={2}>2 - Poor</option>
+                      <option value={1}>1 - Bad</option>
+                    </select>
+                  </div>
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder={
+                      canSubmitReview
+                        ? "Write your comment..."
+                        : "Sign in to write a comment..."
+                    }
+                    className="w-full border rounded px-3 py-2 text-sm min-h-24"
+                    disabled={!canSubmitReview || reviewMutation.isPending}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!canSubmitReview || reviewMutation.isPending}
+                    className="bg-blue-600 text-white px-4 py-2 rounded text-sm disabled:opacity-60"
+                  >
+                    {reviewMutation.isPending
+                      ? "Submitting..."
+                      : "Submit Review"}
+                  </button>
+                  {reviewMessage && (
+                    <p className="text-sm text-gray-700">{reviewMessage}</p>
+                  )}
+                </form>
+
+                <div className="space-y-3">
+                  {reviewsLoading ? (
+                    <p className="text-sm text-gray-500">Loading reviews...</p>
+                  ) : reviews.length === 0 ? (
+                    <p className="text-sm text-gray-500">
+                      No ratings yet. Be the first verified buyer to comment.
+                    </p>
                   ) : (
-                    <>
-                      Please{" "}
-                      <Link
-                        href={signInHref}
-                        className="font-semibold underline"
+                    reviews.map((review: ProductReview) => (
+                      <div
+                        key={review.id}
+                        className="border border-gray-100 rounded-lg p-3"
                       >
-                        sign in
-                      </Link>{" "}
-                      and purchase this product before submitting a rating and
-                      comment.
-                    </>
+                        <div className="text-sm font-medium text-gray-800">
+                          {review.user.name || review.user.email}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Rating: {review.rating}/5
+                        </div>
+                        <p className="text-sm text-gray-700 mt-1">
+                          {review.comment}
+                        </p>
+                        {review.adminReply && (
+                          <div className="mt-2 bg-blue-50 border border-blue-100 rounded p-2">
+                            <p className="text-xs font-semibold text-blue-700">
+                              Admin reply
+                            </p>
+                            <p className="text-sm text-blue-800">
+                              {review.adminReply}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))
                   )}
                 </div>
-              ) : (
-                <p className="text-sm text-gray-600">
-                  Only customers who purchased this product can leave a rating
-                  and comment.
-                </p>
-              )}
-
-              <form onSubmit={submitReview} className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Your rating:
-                  </label>
-                  <select
-                    value={rating}
-                    onChange={(e) => setRating(Number(e.target.value))}
-                    className="border rounded px-2 py-1 text-sm"
-                    disabled={!canSubmitReview || reviewMutation.isPending}
-                  >
-                    <option value={5}>5 - Excellent</option>
-                    <option value={4}>4 - Good</option>
-                    <option value={3}>3 - Average</option>
-                    <option value={2}>2 - Poor</option>
-                    <option value={1}>1 - Bad</option>
-                  </select>
-                </div>
-                <textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder={
-                    canSubmitReview
-                      ? "Write your comment..."
-                      : "Sign in to write a comment..."
-                  }
-                  className="w-full border rounded px-3 py-2 text-sm min-h-24"
-                  disabled={!canSubmitReview || reviewMutation.isPending}
-                />
-                <button
-                  type="submit"
-                  disabled={!canSubmitReview || reviewMutation.isPending}
-                  className="bg-blue-600 text-white px-4 py-2 rounded text-sm disabled:opacity-60"
-                >
-                  {reviewMutation.isPending ? "Submitting..." : "Submit Review"}
-                </button>
-                {reviewMessage && (
-                  <p className="text-sm text-gray-700">{reviewMessage}</p>
-                )}
-              </form>
-
-              <div className="space-y-3">
-                {reviewsLoading ? (
-                  <p className="text-sm text-gray-500">Loading reviews...</p>
-                ) : reviews.length === 0 ? (
-                  <p className="text-sm text-gray-500">
-                    No ratings yet. Be the first verified buyer to comment.
-                  </p>
-                ) : (
-                  reviews.map((review: ProductReview) => (
-                    <div
-                      key={review.id}
-                      className="border border-gray-100 rounded-lg p-3"
-                    >
-                      <div className="text-sm font-medium text-gray-800">
-                        {review.user.name || review.user.email}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Rating: {review.rating}/5
-                      </div>
-                      <p className="text-sm text-gray-700 mt-1">
-                        {review.comment}
-                      </p>
-                      {review.adminReply && (
-                        <div className="mt-2 bg-blue-50 border border-blue-100 rounded p-2">
-                          <p className="text-xs font-semibold text-blue-700">
-                            Admin reply
-                          </p>
-                          <p className="text-sm text-blue-800">
-                            {review.adminReply}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
               </div>
-            </div>
+            ) : null}
           </div>
         </div>
       </div>
