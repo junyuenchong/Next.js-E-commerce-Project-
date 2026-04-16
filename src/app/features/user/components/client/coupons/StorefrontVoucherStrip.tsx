@@ -65,7 +65,6 @@ export default function StorefrontVoucherStrip({
   });
 
   const vouchers = data ?? [];
-  const hasUserCoupons = vouchers.some((v) => v.scope === "USER");
   const userVouchers = vouchers.filter((v) => v.scope === "USER");
   const globalVouchers = vouchers.filter((v) => v.scope !== "USER");
 
@@ -263,8 +262,7 @@ export default function StorefrontVoucherStrip({
           >
             {globalVouchers.map((v) => {
               const isApplied = appliedNorm === v.code.trim().toUpperCase();
-              const userLock = hasUserCoupons && !isApplied;
-              const canUse = !userLock && v.meetsMinimumSpend !== false;
+              const canUse = v.meetsMinimumSpend !== false;
               const disabled =
                 busy || applying !== null || isApplied || !canUse;
               return (
@@ -321,9 +319,7 @@ export default function StorefrontVoucherStrip({
                       : applying === v.code
                         ? "Applying…"
                         : !canUse
-                          ? userLock
-                            ? "Clipped only"
-                            : "Not eligible"
+                          ? "Not eligible"
                           : "Apply"}
                   </button>
                 </div>
