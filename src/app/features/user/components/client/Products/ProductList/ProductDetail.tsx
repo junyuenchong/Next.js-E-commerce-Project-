@@ -23,6 +23,8 @@ const ProductDetail = memo(function ProductDetail({
 }) {
   const {
     product,
+    user,
+    sessionLoading,
     rating,
     setRating,
     comment,
@@ -36,6 +38,11 @@ const ProductDetail = memo(function ProductDetail({
   } = useProductDetail(productId, initialProduct);
 
   if (!product) return <div>Product not found</div>;
+
+  const signInHref = `/features/user/auth/sign-in?returnUrl=${encodeURIComponent(
+    `/features/user/product/${productId}`,
+  )}`;
+  const canSubmitReview = Boolean(user) && !sessionLoading;
 
   return (
     <div className="bg-gray-50">
@@ -177,6 +184,25 @@ const ProductDetail = memo(function ProductDetail({
                 / 5 ({reviews.length} reviews)
               </p>
 
+              {!canSubmitReview ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  {sessionLoading ? (
+                    "Checking your sign-in status..."
+                  ) : (
+                    <>
+                      Please{" "}
+                      <Link
+                        href={signInHref}
+                        className="font-semibold underline"
+                      >
+                        sign in
+                      </Link>{" "}
+                      to submit a rating and comment.
+                    </>
+                  )}
+                </div>
+              ) : null}
+
               <form onSubmit={submitReview} className="space-y-3">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium text-gray-700">
@@ -186,6 +212,7 @@ const ProductDetail = memo(function ProductDetail({
                     value={rating}
                     onChange={(e) => setRating(Number(e.target.value))}
                     className="border rounded px-2 py-1 text-sm"
+                    disabled={!canSubmitReview || reviewMutation.isPending}
                   >
                     <option value={5}>5 - Excellent</option>
                     <option value={4}>4 - Good</option>
@@ -197,12 +224,17 @@ const ProductDetail = memo(function ProductDetail({
                 <textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="Write your comment..."
+                  placeholder={
+                    canSubmitReview
+                      ? "Write your comment..."
+                      : "Sign in to write a comment..."
+                  }
                   className="w-full border rounded px-3 py-2 text-sm min-h-24"
+                  disabled={!canSubmitReview || reviewMutation.isPending}
                 />
                 <button
                   type="submit"
-                  disabled={reviewMutation.isPending}
+                  disabled={!canSubmitReview || reviewMutation.isPending}
                   className="bg-blue-600 text-white px-4 py-2 rounded text-sm disabled:opacity-60"
                 >
                   {reviewMutation.isPending ? "Submitting..." : "Submit Review"}

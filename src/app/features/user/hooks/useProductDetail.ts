@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRealtimeQuery } from "./useRealtimeQuery";
 import { qk } from "@/app/lib/query-keys";
 import { messageFromReviewSubmitError } from "@/app/lib/review-errors";
+import { useUser } from "@/app/features/user/components/client/UserContext";
 import {
   fetchProductById,
   fetchProductReviews,
@@ -28,6 +29,7 @@ export function useProductDetail(
   productId: string | number,
   initialProduct: ProductDetailPayload,
 ) {
+  const { user, isLoading: sessionLoading } = useUser();
   const { data: product } = useRealtimeQuery<ProductDetailPayload>(
     qk.user.productDetail(String(productId)),
     () => fetchProductById(productId),
@@ -94,6 +96,14 @@ export function useProductDetail(
   const submitReview = useCallback(
     (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
+      if (sessionLoading) {
+        setReviewMessage("Checking your sign-in status...");
+        return;
+      }
+      if (!user) {
+        setReviewMessage("Please sign in to submit a rating and comment.");
+        return;
+      }
       if (!comment.trim()) {
         setReviewMessage("Please write a comment before submitting.");
         return;
@@ -101,11 +111,13 @@ export function useProductDetail(
       setReviewMessage(null);
       reviewMutation.mutate({ rating, comment });
     },
-    [comment, rating, reviewMutation],
+    [comment, rating, reviewMutation, sessionLoading, user],
   );
 
   return {
     product,
+    user,
+    sessionLoading,
     rating,
     setRating,
     comment,
