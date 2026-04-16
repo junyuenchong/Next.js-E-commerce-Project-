@@ -140,7 +140,9 @@ const CartPage = () => {
               <h1 className="mb-4 text-3xl font-bold text-gray-900">
                 Your cart
               </h1>
-              <p className="mb-8 text-sm text-gray-600">Loading your cart...</p>
+              <p className="mt-1 text-xs text-gray-600">
+                Review your items and complete checkout.
+              </p>
               <div className="mx-auto h-11 w-52 animate-pulse rounded-lg bg-gray-200" />
             </div>
           </div>
@@ -181,7 +183,7 @@ const CartPage = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-xs text-gray-600">
               Review your items and complete checkout.
             </p>
           </div>

@@ -92,13 +92,7 @@ async function validateCouponRedemptionScope(
   userId: number | null,
 ): Promise<string | null> {
   // Guard: targeted vouchers require authenticated assigned users with unused rows.
-  // Business rule: if a user has at least one currently redeemable ASSIGNED_USERS coupon,
-  // they should not be able to redeem other (PUBLIC) coupons.
   if (scope !== "ASSIGNED_USERS") {
-    if (!userId) return null;
-    const hasRedeemableAssignedCoupons =
-      await userHasRedeemableAssignedCoupons(userId);
-    if (hasRedeemableAssignedCoupons) return "coupon_not_assigned";
     return null;
   }
   if (!userId) return "coupon_requires_login";
@@ -109,45 +103,6 @@ async function validateCouponRedemptionScope(
   if (!a) return "coupon_not_assigned";
   if (a.usedAt) return "coupon_already_used";
   return null;
-}
-
-async function userHasRedeemableAssignedCoupons(
-  userId: number,
-): Promise<boolean> {
-  const now = new Date();
-  const rows = await prisma.userCouponAssignment.findMany({
-    where: { userId, usedAt: null },
-    select: {
-      coupon: {
-        select: {
-          id: true,
-          isActive: true,
-          startsAt: true,
-          endsAt: true,
-          usageLimit: true,
-          usedCount: true,
-          redemptionScope: true,
-        },
-      },
-    },
-  });
-
-  for (const row of rows) {
-    const c = row.coupon;
-    if (!c) continue;
-    if (c.redemptionScope !== "ASSIGNED_USERS") continue;
-    // Validate schedule + usage window; minOrderSubtotal is checked in validateCouponForSubtotal
-    // during pricing, but this restriction only applies to switching between different coupon codes.
-    const w = validateCouponWindow(
-      c as Pick<
-        typeof c,
-        "isActive" | "startsAt" | "endsAt" | "usageLimit" | "usedCount"
-      >,
-      now,
-    );
-    if (!w) return true;
-  }
-  return false;
 }
 
 // Guard: validate coupon schedule and usage only (no minimum spend check).
