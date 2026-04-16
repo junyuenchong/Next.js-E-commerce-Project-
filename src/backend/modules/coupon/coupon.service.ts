@@ -99,6 +99,8 @@ async function validateCouponRedemptionScope(
     const hasRedeemableAssignedCoupons =
       await userHasRedeemableAssignedCoupons(userId);
     if (hasRedeemableAssignedCoupons) return "coupon_not_assigned";
+    const hasUsedPublicCoupon = await userHasRedeemedCoupon(userId, couponId);
+    if (hasUsedPublicCoupon) return "coupon_already_used";
     return null;
   }
   if (!userId) return "coupon_requires_login";
@@ -109,6 +111,17 @@ async function validateCouponRedemptionScope(
   if (!a) return "coupon_not_assigned";
   if (a.usedAt) return "coupon_already_used";
   return null;
+}
+
+async function userHasRedeemedCoupon(
+  userId: number,
+  couponId: number,
+): Promise<boolean> {
+  const priorOrder = await prisma.order.findFirst({
+    where: { userId, couponId },
+    select: { id: true },
+  });
+  return Boolean(priorOrder);
 }
 
 async function userHasRedeemableAssignedCoupons(
