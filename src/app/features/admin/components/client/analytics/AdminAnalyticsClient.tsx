@@ -57,8 +57,7 @@ export default function AdminAnalyticsClient() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Analytics</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Sales by month and top products (excluding pending and cancelled
-          orders).
+          Sales by month and top products from fulfilled orders only.
         </p>
         {q.isError ? (
           <p className="mt-2 text-sm text-red-600">
@@ -82,7 +81,7 @@ export default function AdminAnalyticsClient() {
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium uppercase text-gray-500">
-            Orders (excluding pending/cancelled)
+            Completed orders
           </p>
           <p className="mt-2 text-2xl font-semibold">
             {showSkeleton ? (
@@ -97,7 +96,7 @@ export default function AdminAnalyticsClient() {
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-medium text-gray-900">Revenue by month</h2>
         <p className="mt-1 text-xs text-gray-500">
-          Last 12 months with paid activity
+          Last 12 months with fulfilled orders
         </p>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-sm">
