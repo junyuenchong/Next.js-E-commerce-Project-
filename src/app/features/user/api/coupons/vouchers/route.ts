@@ -1,6 +1,7 @@
 /** Public list of promoted vouchers (cart / checkout strip). Optional `subtotal` for eligibility hints. */
 import { NextResponse } from "next/server";
-import { listStorefrontVouchersPublicService } from "@/backend/modules/coupon";
+import { listStorefrontVouchersForUserService } from "@/backend/modules/coupon";
+import { resolveUserId } from "@/backend/core/session";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,10 @@ export async function GET(req: Request) {
     subtotal != null && Number.isFinite(subtotal) && subtotal >= 0
       ? subtotal
       : null;
-  const vouchers = await listStorefrontVouchersPublicService({ subtotal: sub });
+  const userId = await resolveUserId();
+  const vouchers = await listStorefrontVouchersForUserService({
+    subtotal: sub,
+    userId,
+  });
   return NextResponse.json({ vouchers });
 }

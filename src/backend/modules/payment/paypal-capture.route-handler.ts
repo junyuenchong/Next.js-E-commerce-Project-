@@ -20,7 +20,10 @@ import {
 import { sendTransactionalEmail } from "@/backend/modules/notification";
 import { sendTwilioSms } from "@/backend/modules/notification";
 import { publishAdminOrderEvent } from "@/backend/modules/admin-events";
-import { bustAdminAnalyticsCache } from "@/backend/modules/admin-cache";
+import {
+  bustAdminAnalyticsCache,
+  bustAdminCouponsListCache,
+} from "@/backend/modules/admin-cache";
 import {
   enqueueOrderAnalyticsJob,
   enqueueOrderEmailJob,
@@ -299,6 +302,7 @@ async function runFulfillmentFlow(params: {
       }
       if (!analyticsEnqueued) {
         await bustAdminAnalyticsCache();
+        await bustAdminCouponsListCache();
         await publishAdminOrderEvent({
           kind: "updated",
           id: params.dbOrderId,
@@ -313,10 +317,14 @@ async function runFulfillmentFlow(params: {
         });
       }
     }
+    // Coupon redemption increments `coupon.usedCount` during persistence.
+    // Bust coupons list cache so admin UI shows updated Uses immediately.
+    await bustAdminCouponsListCache();
     return;
   }
 
   await bustAdminAnalyticsCache();
+  await bustAdminCouponsListCache();
   await publishAdminOrderEvent({
     kind: "updated",
     id: params.dbOrderId,

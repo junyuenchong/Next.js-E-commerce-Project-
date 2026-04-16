@@ -158,9 +158,22 @@ export default function PayPalCheckoutButtons({
 
   if (!clientId.trim()) {
     return (
-      <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
-        PayPal is not configured (missing client id).
-      </p>
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+        <p className="text-sm font-medium">
+          PayPal payment is temporarily unavailable.
+        </p>
+        <p className="mt-1 text-xs">
+          Missing PayPal client id. Set{" "}
+          <code className="rounded bg-amber-100 px-1 py-0.5">
+            NEXT_PUBLIC_PAYPAL_CLIENT_ID
+          </code>{" "}
+          (or{" "}
+          <code className="rounded bg-amber-100 px-1 py-0.5">
+            PAYPAL_CLIENT_ID
+          </code>
+          ) and refresh.
+        </p>
+      </div>
     );
   }
 

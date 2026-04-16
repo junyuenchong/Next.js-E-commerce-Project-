@@ -92,7 +92,15 @@ async function validateCouponRedemptionScope(
   userId: number | null,
 ): Promise<string | null> {
   // Guard: targeted vouchers require authenticated assigned users with unused rows.
-  if (scope !== "ASSIGNED_USERS") return null;
+  // Business rule: if a user has at least one currently redeemable ASSIGNED_USERS coupon,
+  // they should not be able to redeem other (PUBLIC) coupons.
+  if (scope !== "ASSIGNED_USERS") {
+    if (!userId) return null;
+    const hasRedeemableAssignedCoupons =
+      await userHasRedeemableAssignedCoupons(userId);
+    if (hasRedeemableAssignedCoupons) return "coupon_not_assigned";
+    return null;
+  }
   if (!userId) return "coupon_requires_login";
   const a = await prisma.userCouponAssignment.findUnique({
     where: { userId_couponId: { userId, couponId } },
@@ -101,6 +109,45 @@ async function validateCouponRedemptionScope(
   if (!a) return "coupon_not_assigned";
   if (a.usedAt) return "coupon_already_used";
   return null;
+}
+
+async function userHasRedeemableAssignedCoupons(
+  userId: number,
+): Promise<boolean> {
+  const now = new Date();
+  const rows = await prisma.userCouponAssignment.findMany({
+    where: { userId, usedAt: null },
+    select: {
+      coupon: {
+        select: {
+          id: true,
+          isActive: true,
+          startsAt: true,
+          endsAt: true,
+          usageLimit: true,
+          usedCount: true,
+          redemptionScope: true,
+        },
+      },
+    },
+  });
+
+  for (const row of rows) {
+    const c = row.coupon;
+    if (!c) continue;
+    if (c.redemptionScope !== "ASSIGNED_USERS") continue;
+    // Validate schedule + usage window; minOrderSubtotal is checked in validateCouponForSubtotal
+    // during pricing, but this restriction only applies to switching between different coupon codes.
+    const w = validateCouponWindow(
+      c as Pick<
+        typeof c,
+        "isActive" | "startsAt" | "endsAt" | "usageLimit" | "usedCount"
+      >,
+      now,
+    );
+    if (!w) return true;
+  }
+  return false;
 }
 
 // Guard: validate coupon schedule and usage only (no minimum spend check).
@@ -166,6 +213,10 @@ export type StorefrontVoucherPublic = {
   meetsMinimumSpend: boolean | null;
 };
 
+export type StorefrontVoucherDto = StorefrontVoucherPublic & {
+  scope: "USER" | "GLOBAL";
+};
+
 // Feature: list active coupons flagged for storefront voucher strip (cart/checkout).
 export async function listStorefrontVouchersPublicService(opts?: {
   subtotal?: number | null;
@@ -200,6 +251,86 @@ export async function listStorefrontVouchersPublicService(opts?: {
     });
   }
   return out;
+}
+
+// Feature: Amazon-like “clip” behavior for assigned vouchers.
+// If the user has any currently redeemable ASSIGNED_USERS coupons, we only show those
+// on cart/checkout voucher strips (hide PUBLIC ones).
+export async function listStorefrontVouchersForUserService(opts?: {
+  subtotal?: number | null;
+  userId?: number | null;
+}): Promise<StorefrontVoucherDto[]> {
+  const now = new Date();
+  const sub = opts?.subtotal ?? null;
+  const userId = opts?.userId ?? null;
+
+  const userCoupons: StorefrontVoucherDto[] = [];
+  if (userId != null) {
+    const assigned = await prisma.userCouponAssignment.findMany({
+      where: { userId, usedAt: null },
+      select: {
+        coupon: {
+          select: {
+            id: true,
+            code: true,
+            description: true,
+            discountType: true,
+            value: true,
+            minOrderSubtotal: true,
+            maxDiscount: true,
+            startsAt: true,
+            endsAt: true,
+            usageLimit: true,
+            usedCount: true,
+            isActive: true,
+            redemptionScope: true,
+            showOnStorefront: true,
+            voucherHeadline: true,
+          },
+        },
+      },
+    });
+
+    const coupons = assigned
+      .map((a) => a.coupon)
+      .filter((c): c is (typeof assigned)[number]["coupon"] => Boolean(c));
+
+    // Only show redeemable ASSIGNED_USERS vouchers.
+    const redeemableAssigned = coupons.filter((c) => {
+      if (c.redemptionScope !== "ASSIGNED_USERS") return false;
+      if (!c.isActive) return false;
+      return !validateCouponWindow(c, now);
+    });
+
+    userCoupons.push(
+      ...redeemableAssigned.map((c) => {
+        const minSub =
+          c.minOrderSubtotal != null ? moneyToNumber(c.minOrderSubtotal) : null;
+        const meetsMinimumSpend =
+          sub == null || !Number.isFinite(sub)
+            ? null
+            : minSub == null || sub >= minSub;
+        return {
+          code: c.code,
+          headline: c.voucherHeadline?.trim() || null,
+          detail: c.description?.trim() || null,
+          offerLabel: formatCouponOfferLabel(c),
+          minOrderSubtotal: minSub,
+          endsAt: c.endsAt?.toISOString() ?? null,
+          meetsMinimumSpend,
+          scope: "USER" as const,
+        };
+      }),
+    );
+  }
+
+  const globalCoupons = await listStorefrontVouchersPublicService({
+    subtotal: sub,
+  });
+  return [
+    ...userCoupons,
+    ...globalCoupons.map((v) => ({ ...v, scope: "GLOBAL" as const })),
+  ];
 }
 
 export function computeDiscountAmount(
