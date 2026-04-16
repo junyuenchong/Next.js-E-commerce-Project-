@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, type FormEvent } from "react";
 import type { ProductDetailPayload } from "@/app/features/user/types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRealtimeQuery } from "./useRealtimeQuery";
 import { qk } from "@/app/lib/query-keys";
 import { messageFromReviewSubmitError } from "@/app/lib/review-errors";
@@ -8,6 +8,7 @@ import { useUser } from "@/app/features/user/components/client/UserContext";
 import {
   fetchProductById,
   fetchProductReviews,
+  fetchProductReviewEligibility,
   postProductReview,
 } from "@/app/features/user/components/client/http";
 
@@ -46,6 +47,22 @@ export function useProductDetail(
   const [comment, setComment] = useState("");
   const [reviewMessage, setReviewMessage] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  const {
+    data: eligibility,
+    isLoading: eligibilityLoading,
+    error: eligibilityError,
+  } = useQuery({
+    queryKey: ["product-review-eligibility", String(productId), user?.id ?? 0],
+    queryFn: async () => {
+      const r = await fetchProductReviewEligibility(productId);
+      return r?.eligible === true;
+    },
+    enabled: Boolean(user) && !sessionLoading,
+    staleTime: 30_000,
+  });
+
+  const canReview = !eligibilityError && eligibility === true;
 
   const {
     data: reviews = [],
@@ -118,6 +135,8 @@ export function useProductDetail(
     product,
     user,
     sessionLoading,
+    canReview,
+    eligibilityLoading,
     rating,
     setRating,
     comment,

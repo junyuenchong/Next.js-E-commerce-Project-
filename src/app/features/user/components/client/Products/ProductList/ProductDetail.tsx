@@ -25,6 +25,7 @@ const ProductDetail = memo(function ProductDetail({
     product,
     user,
     sessionLoading,
+    canReview,
     rating,
     setRating,
     comment,
@@ -35,6 +36,7 @@ const ProductDetail = memo(function ProductDetail({
     averageRating,
     reviewMutation,
     submitReview,
+    eligibilityLoading,
   } = useProductDetail(productId, initialProduct);
 
   if (!product) return <div>Product not found</div>;
@@ -42,8 +44,9 @@ const ProductDetail = memo(function ProductDetail({
   const signInHref = `/features/user/auth/sign-in?returnUrl=${encodeURIComponent(
     `/features/user/product/${productId}`,
   )}`;
-  const canSubmitReview = Boolean(user) && !sessionLoading;
-  const showRatingsModule = Boolean(user) || sessionLoading;
+  const canSubmitReview =
+    Boolean(user) && !sessionLoading && Boolean(canReview);
+  const showRatingsModule = Boolean(canReview) && !eligibilityLoading;
 
   return (
     <div className="bg-gray-50">

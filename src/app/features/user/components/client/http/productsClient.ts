@@ -25,6 +25,16 @@ export async function fetchProductReviews(productId: string | number) {
     .data;
 }
 
+export async function fetchProductReviewEligibility(
+  productId: string | number,
+) {
+  return (
+    await http.get(
+      `/features/user/api/products/${productId}/reviews/eligibility`,
+    )
+  ).data;
+}
+
 export async function postProductReview(
   productId: string | number,
   payload: { rating: number; comment: string },
