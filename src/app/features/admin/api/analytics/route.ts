@@ -13,13 +13,7 @@ import { jsonInternalServerError } from "@/backend/lib/api-error";
 
 export const dynamic = "force-dynamic";
 
-const SALES_STATUSES = [
-  "paid",
-  "processing",
-  "shipped",
-  "delivered",
-  "fulfilled",
-] as const;
+const SALES_STATUSES = ["fulfilled"] as const;
 
 const MONTH_WINDOW = 12;
 
@@ -70,7 +64,7 @@ export async function GET() {
                  COALESCE(SUM(li."quantity"), 0)::bigint AS "quantity"
           FROM "OrderLineItem" li
           JOIN "Order" o ON o."id" = li."orderId"
-          WHERE o."status" IN ('paid','processing','shipped','delivered','fulfilled')
+          WHERE o."status" IN ('fulfilled')
           GROUP BY li."productId"
           ORDER BY "quantity" DESC
           LIMIT 8
@@ -97,7 +91,7 @@ export async function GET() {
             COALESCE(SUM("total"), 0)::float AS revenue,
             COUNT(*)::bigint AS order_count
           FROM "Order"
-          WHERE "status" IN ('paid','processing','shipped','delivered','fulfilled')
+          WHERE "status" IN ('fulfilled')
           GROUP BY 1
           ORDER BY 1 ASC
         `,

@@ -149,13 +149,11 @@ export default function AdminDashboardClient() {
               formatPriceRM(d.revenueTotal)
             )}
           </p>
-          <p className="mt-1 text-xs text-gray-500">
-            Excluding pending and cancelled orders
-          </p>
+          <p className="mt-1 text-xs text-gray-500">Fulfilled orders only</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-            Total orders
+            Completed orders
           </p>
           <p className="mt-2 text-2xl font-semibold text-gray-900">
             {showSkeleton ? (
