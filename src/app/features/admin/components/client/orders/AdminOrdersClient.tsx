@@ -40,6 +40,10 @@ type AdminOrderRow = {
 };
 
 type OrdersPage = { orders: AdminOrderRow[]; nextCursor: number | null };
+type StockMutationAction = "NONE" | "DEDUCT" | "RESTOCK";
+type OrderStatusUpdateResponse = AdminOrderRow & {
+  stockMutation?: StockMutationAction;
+};
 
 type Me = {
   can: { orderRead: boolean; orderUpdate: boolean; orderRefund: boolean };
@@ -242,16 +246,24 @@ export default function AdminOrdersClient() {
       setSavingId(orderRow.id);
       setBanner(null);
       try {
-        await http.patch(ORDERS_PATH, { orderId: orderRow.id, status: next });
+        const { data: updatedOrder } =
+          await http.patch<OrderStatusUpdateResponse>(ORDERS_PATH, {
+            orderId: orderRow.id,
+            status: next,
+          });
         setDraftStatus((d) => {
           const copy = { ...d };
           delete copy[orderRow.id];
           return copy;
         });
         await ordersQuery.refetch();
+        const stockHint =
+          updatedOrder.stockMutation && updatedOrder.stockMutation !== "NONE"
+            ? ` Inventory: ${updatedOrder.stockMutation}.`
+            : "";
         setBanner({
           kind: "ok",
-          text: `Order #${orderRow.id} updated to ${next}.`,
+          text: `Order #${orderRow.id} updated to ${next}.${stockHint}`,
         });
       } catch (error) {
         setBanner({

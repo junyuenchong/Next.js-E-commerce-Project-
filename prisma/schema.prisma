@@ -42,6 +42,7 @@ model User {
   cart                 Cart?
   reviews              ProductReview[]
   orders               Order[]
+  payments             Payment[]
   wishlist             WishlistItem[]
   passwordResets       PasswordResetToken[]
   addresses            UserAddress[]
@@ -427,6 +428,22 @@ enum OrderStatus {
   fulfilled
 }
 
+// =====================
+// Payments & Webhooks
+// =====================
+enum PaymentProvider {
+  PAYPAL
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
 enum CouponDiscountType {
   PERCENT
   FIXED
@@ -527,6 +544,7 @@ model Order {
   // Relations / timestamps
   items     OrderLineItem[]
   invoice   Invoice?
+  payments  Payment[]
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
@@ -535,6 +553,91 @@ model Order {
   @@index([createdAt])
   @@index([status, createdAt])
   @@index([couponId])
+}
+
+/// Canonical payment record created before calling a gateway.
+/// Webhook events are the source of truth for final status transitions.
+model Payment {
+  id Int @id @default(autoincrement())
+
+  // Ownership context (order is linked after persistence)
+  userId Int?
+  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Optional link once an order is persisted
+  orderId Int?
+  order   Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  // Gateway identity
+  provider          PaymentProvider
+  providerOrderId   String?         @unique
+  providerCaptureId String?
+
+  // Backend-calculated amount snapshot (never trust frontend)
+  currency String
+  subtotal Decimal @db.Decimal(12, 2)
+  discount Decimal @default(0) @db.Decimal(12, 2)
+  total    Decimal @db.Decimal(12, 2)
+
+  // Safety controls
+  idempotencyKey String
+  status         PaymentStatus @default(PENDING)
+  expiresAt      DateTime
+  version        Int           @default(0)
+
+  // Audit snapshots
+  gatewayResponse Json?
+
+  // Relations / timestamps
+  webhookEvents PaymentWebhookEvent[]
+  statusHistory PaymentStatusHistory[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@unique([provider, idempotencyKey])
+  @@index([userId, createdAt])
+  @@index([orderId])
+  @@index([provider, status, expiresAt])
+}
+
+/// Deduplicated webhook inbox (unique by provider + eventId).
+model PaymentWebhookEvent {
+  id Int @id @default(autoincrement())
+
+  provider PaymentProvider
+  eventId  String
+
+  paymentId Int?
+  payment   Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  signatureVerified Boolean @default(false)
+  payloadRaw        Json
+
+  receivedAt   DateTime  @default(now())
+  handledAt    DateTime?
+  handleResult String?
+
+  @@unique([provider, eventId])
+  @@index([paymentId, receivedAt])
+  @@index([provider, receivedAt])
+}
+
+/// Append-only status transitions for auditing and support.
+model PaymentStatusHistory {
+  id Int @id @default(autoincrement())
+
+  paymentId Int
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  fromStatus PaymentStatus?
+  toStatus   PaymentStatus
+  reason     String?
+  metadata   Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([paymentId, createdAt])
+  @@index([toStatus, createdAt])
 }
 
 model Invoice {

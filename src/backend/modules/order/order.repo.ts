@@ -1,6 +1,10 @@
 // Feature: Implements order persistence for paid-order creation, stock updates, and admin queries.
 import { Prisma, type OrderStatus } from "@prisma/client";
 import prisma from "@/backend/core/db/prisma";
+import {
+  shouldDeductForTransition,
+  shouldRestockForTransition,
+} from "@/backend/core/stock-policy";
 import type { CreatePaidOrderInput } from "@/shared/types";
 
 // Guard: persist paid order and optional stock decrement in single transaction.
@@ -388,10 +392,13 @@ export async function updateOrderStatusRepo(
       throw new Error("order_not_found");
     }
 
-    const entersFulfilled =
-      status === "fulfilled" && current.status !== "fulfilled";
+    const shouldDeductStock = shouldDeductForTransition(current.status, status);
+    const shouldRestockStock = shouldRestockForTransition(
+      current.status,
+      status,
+    );
 
-    if (entersFulfilled) {
+    if (shouldDeductStock) {
       const productIds = current.items.map((item) => item.productId);
       const products = await tx.product.findMany({
         where: { id: { in: productIds } },
@@ -402,7 +409,7 @@ export async function updateOrderStatusRepo(
       for (const item of current.items) {
         const stock = stockByProductId.get(item.productId);
         if (stock == null || stock < item.quantity) {
-          throw new Error("insufficient_stock_at_fulfillment");
+          throw new Error("insufficient_stock_for_status_transition");
         }
       }
 
@@ -411,6 +418,18 @@ export async function updateOrderStatusRepo(
           tx.product.update({
             where: { id: item.productId },
             data: { stock: { decrement: item.quantity } },
+          }),
+        ),
+      );
+    }
+
+    if (shouldRestockStock) {
+      // Return stock when transition exits the deducted state.
+      await Promise.all(
+        current.items.map((item) =>
+          tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
           }),
         ),
       );

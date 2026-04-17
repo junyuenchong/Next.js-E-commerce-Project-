@@ -181,9 +181,16 @@ FACEBOOK_CLIENT_SECRET=""
 # Optional
 PAYPAL_CLIENT_ID=""
 PAYPAL_CLIENT_SECRET=""
+PAYPAL_WEBHOOK_ID=""
 # Defaults to MYR
 PAYPAL_CURRENCY="MYR"
 NEXT_PUBLIC_PAYPAL_CURRENCY="MYR"
+# 1 = strict webhook-truth mode (capture returns processing; webhook finalizes payment/order)
+PAYMENT_WEBHOOK_TRUTH="0"
+# Inventory deduction mode:
+# - FULFILLED: deduct stock when order enters fulfilled
+# - PAID: Shopee-like, deduct stock when paid order is persisted
+STOCK_DEDUCT_MODE="FULFILLED"
 
 # Email (order receipts, password reset)
 EMAIL_USER=""
@@ -205,7 +212,31 @@ RABBITMQ_QUEUE_ORDER_INVENTORY="order.inventory"
 CLOUDINARY_CLOUD_NAME=""
 CLOUDINARY_API_KEY=""
 CLOUDINARY_API_SECRET=""
+CRON_SECRET=""
 ```
+
+### Recommended env presets
+
+**Side project (simple + fast iteration):**
+
+```bash
+PAYMENT_WEBHOOK_TRUTH="0"
+STOCK_DEDUCT_MODE="PAID"
+CRON_SECRET="dev"
+```
+
+**Production (safer + auditable):**
+
+```bash
+PAYMENT_WEBHOOK_TRUTH="1"
+STOCK_DEDUCT_MODE="FULFILLED"
+CRON_SECRET="<long-random-secret>"
+```
+
+Notes:
+
+- Side project preset reduces operational complexity and feels closer to Shopee checkout behavior.
+- Production preset keeps webhook as source of truth and postpones stock deduction to fulfillment to reduce operational disputes.
 
 **On Render:** copy the same keys into the dashboard. Set **`NEXTAUTH_URL`** to your production URL. Add OAuth redirect URLs in Google/Facebook (see below).
 
@@ -416,9 +447,41 @@ Storefront vouchers API: `GET /features/user/api/coupons/vouchers`
 - User order list: `/features/user/orders`
 - User order detail: `/features/user/orders/[id]` (items + images, shipping snapshot, PayPal ids, receipt email snapshot)
 
+### Payment safety model
+
+Simple flow:
+
+1. Create payment intent in the database first. Initial status starts at `PENDING`, then moves to `PROCESSING` after gateway order creation.
+2. Recalculate subtotal, discount, and total on the backend from cart and coupon snapshot. Frontend amount is never trusted.
+3. Capture payment and wait for webhook confirmation when strict mode is enabled.
+4. Update payment and order status using webhook as the final authority when `PAYMENT_WEBHOOK_TRUTH=1`.
+5. Apply stock mutation based on the configured policy and actual status transition.
+
+Core safety rules:
+
+- Webhook events are deduplicated by `(provider, eventId)` and signature-verified.
+- Stock deduction policy uses `STOCK_DEDUCT_MODE`.
+- `FULFILLED` mode reduces stock only when order reaches `fulfilled`.
+- `PAID` mode reduces stock immediately after payment and order persistence.
+- Stock mutation is computed from status transition (`from` and `to`) consistently across admin updates, webhook updates, and expiry jobs.
+- In `PAID` mode, cancellation-like transitions (`CANCELLED` and `REFUNDED`) restore stock only when the transition leaves a stock-deducted state.
+- Expiry job endpoint is `POST /features/admin/api/payments/expire` and is protected by `CRON_SECRET`.
+
+Production status and stock behavior:
+
+| Scenario                                     | `STOCK_DEDUCT_MODE=FULFILLED`                                      | `STOCK_DEDUCT_MODE=PAID`                     |
+| -------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------- |
+| Payment captured and order persisted         | No stock change yet                                                | Deduct stock                                 |
+| Order updated to `fulfilled`                 | Deduct stock                                                       | No extra stock change                        |
+| Order updated to `cancelled` before shipment | No stock change (if not deducted yet)                              | Restock                                      |
+| Webhook `PAYMENT.CAPTURE.REFUNDED`           | No stock change (unless previous transition deducted in this mode) | Restock when transition exits deducted state |
+| Expiry job cancels stale payment/order       | No stock change (if stock not deducted yet)                        | Restock when transition exits deducted state |
+
+This table describes business behavior. Real stock mutation is always computed by status transition logic in backend code.
+
 ### Admin analytics note
 
-Admin dashboard analytics (revenue, order count, units sold) **exclude** `pending` and `cancelled` orders.
+Admin dashboard analytics for revenue, order count, and units sold exclude `pending` and `cancelled` orders.
 
 ---
 

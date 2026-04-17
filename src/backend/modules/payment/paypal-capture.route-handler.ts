@@ -1,5 +1,6 @@
 // Feature: Handles PayPal capture webhook-like route flow with auth, validation, and order finalization.
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/backend/modules/auth";
 import {
@@ -12,6 +13,9 @@ import { clearCart } from "@/backend/modules/cart";
 import { resolveCheckoutCouponPricing } from "@/backend/modules/coupon/coupon.service";
 import type { CartItemRowData } from "@/app/features/user/types";
 import {
+  findPaymentByProviderOrderIdRepo,
+  markPaymentFailedRepo,
+  markPaymentPaidAndLinkOrderRepo,
   paypalCaptureOrder,
   paypalExtractCaptureId,
   paypalGetOrder,
@@ -36,12 +40,14 @@ import {
   validateCartStockForOrder,
 } from "@/backend/modules/order/order.service";
 import { resolveUserId } from "@/backend/core/session";
+import { deductStockOnPaid } from "@/backend/core/stock-policy";
 
 const DEFAULT_CURRENCY = (
   process.env.PAYPAL_CURRENCY ||
   process.env.NEXT_PUBLIC_PAYPAL_CURRENCY ||
   "MYR"
 ).trim();
+const WEBHOOK_TRUTH_MODE = process.env.PAYMENT_WEBHOOK_TRUTH === "1";
 
 function parseCaptureBody(raw: string): {
   smsTo: string;
@@ -183,6 +189,7 @@ async function persistPaidOrderOrError(params: {
     method?: string | null;
   };
   useAsyncFulfillment: boolean;
+  skipStockDecrement: boolean;
 }) {
   try {
     // Guard: persist order and coupon consumption atomically via service/repo transaction.
@@ -204,8 +211,7 @@ async function persistPaidOrderOrError(params: {
         shippingCountry: params.shipping.country,
         shippingMethod: params.shipping.method,
       },
-      // Business rule: stock is reduced only when the order reaches fulfilled.
-      { skipStockDecrement: true },
+      { skipStockDecrement: params.skipStockDecrement },
     );
     const dbOrderId = orderRow.id;
     return { ok: true as const, dbOrderId };
@@ -342,8 +348,20 @@ export async function postPayPalCaptureRoute(
       return jsonError(400, { error: "missing_order" });
     }
 
+    const payment = await findPaymentByProviderOrderIdRepo("PAYPAL", orderId);
+    if (WEBHOOK_TRUTH_MODE && !payment) {
+      return jsonError(409, { error: "payment_record_not_found" });
+    }
     const existingId = await getOrderIdByPayPalOrderIdService(orderId);
     if (existingId !== null) {
+      if (payment) {
+        await markPaymentPaidAndLinkOrderRepo({
+          paymentId: payment.id,
+          orderId: existingId,
+          providerCaptureId: null,
+          gatewayResponse: { duplicateOrder: true },
+        }).catch(() => null);
+      }
       const dupRes = NextResponse.json({
         ok: true,
         duplicate: true,
@@ -380,10 +398,31 @@ export async function postPayPalCaptureRoute(
     if (!remoteOk.ok) return remoteOk.response;
 
     const captureOk = await capturePayPalOrError(orderId);
-    if (!captureOk.ok) return captureOk.response;
+    if (!captureOk.ok) {
+      if (payment) {
+        await markPaymentFailedRepo({
+          paymentId: payment.id,
+          reason: "paypal_capture_failed",
+          gatewayResponse: { orderId, details: "capture_failed" },
+        }).catch(() => null);
+      }
+      return captureOk.response;
+    }
     const json = captureOk.json;
 
     const paypalCaptureId = paypalExtractCaptureId(json);
+
+    if (WEBHOOK_TRUTH_MODE) {
+      // In webhook-truth mode, capture only acknowledges gateway capture.
+      // Final paid/cancelled/refunded transitions and order linking happen in webhook.
+      const processingRes = NextResponse.json({
+        ok: true,
+        processing: true,
+      });
+      clearCheckoutCouponCookie(processingRes);
+      return processingRes;
+    }
+
     const lines = buildPaidOrderLinesFromCart(cartLines);
     const useAsyncFulfillment = Boolean(process.env.RABBITMQ_URL?.trim());
 
@@ -397,9 +436,18 @@ export async function postPayPalCaptureRoute(
       sessionEmail,
       shipping,
       useAsyncFulfillment,
+      skipStockDecrement: !deductStockOnPaid(),
     });
     if (!persisted.ok) return persisted.response;
     const { dbOrderId } = persisted;
+    if (payment) {
+      await markPaymentPaidAndLinkOrderRepo({
+        paymentId: payment.id,
+        orderId: dbOrderId,
+        providerCaptureId: paypalCaptureId,
+        gatewayResponse: json as Prisma.InputJsonValue,
+      });
+    }
     const invoice = await getInvoiceByOrderIdService(dbOrderId);
 
     await clearCart();

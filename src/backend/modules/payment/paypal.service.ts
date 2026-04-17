@@ -165,3 +165,41 @@ export async function paypalCaptureOrder(
   const json = await res.json().catch(() => ({}));
   return { ok: res.ok, json };
 }
+
+// Verifies PayPal webhook signature using PayPal verification endpoint.
+export async function paypalVerifyWebhookSignature(params: {
+  transmissionId: string;
+  transmissionTime: string;
+  certUrl: string;
+  authAlgo: string;
+  transmissionSig: string;
+  webhookEvent: unknown;
+}): Promise<boolean> {
+  const token = await getPayPalAccessToken();
+  if (!token) return false;
+  const webhookId = process.env.PAYPAL_WEBHOOK_ID?.trim();
+  if (!webhookId) return false;
+
+  const base = getPayPalApiBase();
+  const res = await fetch(`${base}/v1/notifications/verify-webhook-signature`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      transmission_id: params.transmissionId,
+      transmission_time: params.transmissionTime,
+      cert_url: params.certUrl,
+      auth_algo: params.authAlgo,
+      transmission_sig: params.transmissionSig,
+      webhook_id: webhookId,
+      webhook_event: params.webhookEvent,
+    }),
+  });
+  if (!res.ok) return false;
+  const json = (await res.json().catch(() => null)) as {
+    verification_status?: string;
+  } | null;
+  return json?.verification_status === "SUCCESS";
+}

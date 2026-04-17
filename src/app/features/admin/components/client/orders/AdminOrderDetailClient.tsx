@@ -54,6 +54,12 @@ type OrderDetail = {
 type Me = {
   can: { orderRead: boolean; orderUpdate: boolean; orderRefund: boolean };
 };
+type StockMutationAction = "NONE" | "DEDUCT" | "RESTOCK";
+type OrderStatusUpdateResponse = {
+  id: number;
+  status: OrderStatus;
+  stockMutation?: StockMutationAction;
+};
 
 const STATUS_FLOW: OrderStatus[] = [
   "pending",
@@ -255,13 +261,21 @@ export default function AdminOrderDetailClient({
     setSaving(true);
     setStatusMessage(null);
     try {
-      await http.patch("/features/admin/api/orders", {
-        orderId: order.id,
-        status: draftStatus,
-      });
+      const { data: updatedOrder } =
+        await http.patch<OrderStatusUpdateResponse>(
+          "/features/admin/api/orders",
+          {
+            orderId: order.id,
+            status: draftStatus,
+          },
+        );
       setDraftStatus(null);
       await orderQuery.refetch();
-      setStatusMessage("Status updated.");
+      const stockHint =
+        updatedOrder.stockMutation && updatedOrder.stockMutation !== "NONE"
+          ? ` Inventory: ${updatedOrder.stockMutation}.`
+          : "";
+      setStatusMessage(`Status updated.${stockHint}`);
     } catch (error) {
       setStatusMessage(getErrorMessage(error, "Update failed"));
     } finally {

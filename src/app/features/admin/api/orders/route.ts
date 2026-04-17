@@ -32,6 +32,7 @@ import { adminUserHasPermission } from "@/backend/modules/access-control";
 import { getCurrentAdminUser } from "@/backend/core/session";
 import { moneyToNumber } from "@/backend/core/money";
 import { jsonInternalServerError } from "@/backend/lib/api-error";
+import { resolveStockMutationForTransition } from "@/backend/core/stock-policy";
 
 // Parse shared cursor/search params for the orders list endpoint.
 function parseCursorParams(request: Request) {
@@ -158,17 +159,23 @@ export async function PATCH(request: Request) {
         });
       }
       void bustAdminAnalyticsCache();
-      return NextResponse.json(order);
+      return NextResponse.json({
+        ...order,
+        stockMutation: resolveStockMutationForTransition(
+          previous.status,
+          order.status,
+        ),
+      });
     } catch (error) {
       if (
         error instanceof Error &&
-        error.message === "insufficient_stock_at_fulfillment"
+        error.message === "insufficient_stock_for_status_transition"
       ) {
         return NextResponse.json(
           {
-            error: "insufficient_stock_at_fulfillment",
+            error: "insufficient_stock_for_status_transition",
             message:
-              "Current product stock is not enough to complete this order.",
+              "Current product stock is not enough for this status transition.",
           },
           { status: 409 },
         );

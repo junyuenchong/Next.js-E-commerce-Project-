@@ -2,11 +2,20 @@ import { NextResponse } from "next/server";
 import { readCheckoutCouponCode } from "@/app/lib/checkout-coupon-cookie";
 import { summarizeCartLines } from "@/app/lib/cart";
 import type { CartItemRowData } from "@/app/features/user/types";
-import { paypalCreateOrder } from "@/backend/modules/payment";
+import {
+  createOrReusePayPalPaymentRepo,
+  markPaymentFailedRepo,
+  markPaymentProcessingRepo,
+  paypalCreateOrder,
+} from "@/backend/modules/payment";
 import { getCartWithLiveProductsService } from "@/backend/modules/cart";
 import { resolveCheckoutCouponPricing } from "@/backend/modules/coupon";
 import { resolveUserId } from "@/backend/core/session";
-import { validateCartStockForOrder } from "@/backend/modules/order";
+import {
+  buildPaidOrderLinesFromCart,
+  validateCartStockForOrder,
+} from "@/backend/modules/order";
+import type { Prisma } from "@prisma/client";
 
 const DEFAULT_CURRENCY = (
   process.env.PAYPAL_CURRENCY ||
@@ -14,8 +23,14 @@ const DEFAULT_CURRENCY = (
   "MYR"
 ).trim();
 
+function resolveIdempotencyKey(request: Request, fallbackSeed: string) {
+  const provided = request.headers.get("x-idempotency-key")?.trim();
+  if (provided) return provided;
+  return `paypal-create:${fallbackSeed}`;
+}
+
 // Creates a PayPal order from the current cart total after stock and coupon checks.
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const cart = await getCartWithLiveProductsService();
     if (!cart?.items?.length) {
@@ -50,22 +65,77 @@ export async function POST() {
     }
 
     const value = priced.total.toFixed(2);
+    const idempotencyKey = resolveIdempotencyKey(
+      request,
+      `${userId ?? "guest"}:${cart.id}:${value}`,
+    );
+    const checkoutSnapshot = {
+      lines: buildPaidOrderLinesFromCart(
+        cartLines as Parameters<typeof buildPaidOrderLinesFromCart>[0],
+      ),
+      couponId: priced.couponId ?? null,
+      couponCodeSnapshot: priced.codeSnapshot ?? null,
+      subtotal: totalPrice,
+      discount: priced.discountAmount,
+      total: priced.total,
+      currency: DEFAULT_CURRENCY,
+    };
+    const payment = await createOrReusePayPalPaymentRepo({
+      userId,
+      idempotencyKey,
+      currency: DEFAULT_CURRENCY,
+      subtotal: totalPrice,
+      discount: priced.discountAmount,
+      total: priced.total,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      gatewayResponse: {
+        checkoutSnapshot,
+      } as Prisma.InputJsonValue,
+    });
+
+    // Idempotent replay: return already-created gateway order without creating a new one.
+    if (payment.providerOrderId) {
+      return NextResponse.json({
+        id: payment.providerOrderId,
+        currencyCode: DEFAULT_CURRENCY,
+        value,
+        paymentId: payment.id,
+        idempotencyKey,
+      });
+    }
+
     const created = await paypalCreateOrder({
       currencyCode: DEFAULT_CURRENCY,
       value,
     });
 
     if (!created) {
+      await markPaymentFailedRepo({
+        paymentId: payment.id,
+        reason: "paypal_create_failed",
+        gatewayResponse: { error: "paypal_create_failed" },
+      }).catch(() => null);
       return NextResponse.json(
         { error: "paypal_create_failed" },
         { status: 502 },
       );
     }
 
+    await markPaymentProcessingRepo({
+      paymentId: payment.id,
+      providerOrderId: created.id,
+      gatewayResponse: {
+        checkoutSnapshot,
+        providerOrderId: created.id,
+      } as Prisma.InputJsonValue,
+    });
+
     return NextResponse.json({
       id: created.id,
       currencyCode: DEFAULT_CURRENCY,
       value,
+      paymentId: payment.id,
+      idempotencyKey,
     });
   } catch (error) {
     console.error("[paypal/orders]", error);

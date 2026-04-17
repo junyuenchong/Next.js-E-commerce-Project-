@@ -26,12 +26,39 @@ type Params = {
   onError: (message: string) => void;
 };
 
+async function waitForPersistedOrderId(
+  paypalOrderId: string,
+): Promise<number | null> {
+  const maxAttempts = 10;
+  for (let i = 0; i < maxAttempts; i += 1) {
+    const response = await fetch(
+      `/features/user/api/paypal/orders/${encodeURIComponent(paypalOrderId)}/status`,
+      { credentials: "include", cache: "no-store" },
+    );
+    const payload = (await response.json().catch(() => null)) as {
+      order?: { id?: number };
+      payment?: { orderId?: number | null; status?: string };
+    } | null;
+    const orderId =
+      payload?.order?.id ??
+      (typeof payload?.payment?.orderId === "number"
+        ? payload.payment.orderId
+        : null);
+    if (typeof orderId === "number" && Number.isFinite(orderId)) {
+      return orderId;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 800));
+  }
+  return null;
+}
+
 // Component-level hook: isolates PayPal SDK loading + button rendering from UI.
 export function usePayPalCheckoutButtons(params: Params) {
   const { clientId, currencyCode, smsTo, shipping, disabled, onPaid, onError } =
     params;
 
   const hostRef = useRef<HTMLDivElement>(null);
+  const createOrderIdempotencyKeyRef = useRef<string | null>(null);
   const [sdkReady, setSdkReady] = useState(false);
 
   // Loads PayPal SDK once and marks the hook ready for button rendering.
@@ -62,10 +89,18 @@ export function usePayPalCheckoutButtons(params: Params) {
     await paypal
       .Buttons({
         createOrder: async () => {
+          if (!createOrderIdempotencyKeyRef.current) {
+            createOrderIdempotencyKeyRef.current =
+              globalThis.crypto?.randomUUID?.() ??
+              `paypal-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          }
           const createOrderResponse = await fetch(
             "/features/user/api/paypal/orders",
             {
               method: "POST",
+              headers: {
+                "x-idempotency-key": createOrderIdempotencyKeyRef.current,
+              },
               credentials: "include",
             },
           );
@@ -89,6 +124,8 @@ export function usePayPalCheckoutButtons(params: Params) {
           return createOrderPayload.id;
         },
         onApprove: async (data) => {
+          // Capture consumes this attempt; next create should use a fresh key.
+          createOrderIdempotencyKeyRef.current = null;
           const body = JSON.stringify({
             smsTo: smsTo ?? "",
             shipping: shipping ?? {},
@@ -127,15 +164,25 @@ export function usePayPalCheckoutButtons(params: Params) {
           }
           if (!capturePayload?.ok)
             throw new Error("Payment was not completed.");
-          const orderId = capturePayload?.order?.id;
-          if (typeof orderId !== "number" || !Number.isFinite(orderId)) {
+          const directOrderId = capturePayload?.order?.id;
+          if (
+            typeof directOrderId === "number" &&
+            Number.isFinite(directOrderId)
+          ) {
+            onPaid({ orderId: directOrderId });
+            return;
+          }
+          // Webhook-first safety: wait briefly for server-side order/payment reconciliation.
+          const persistedOrderId = await waitForPersistedOrderId(data.orderID);
+          if (typeof persistedOrderId !== "number") {
             throw new Error(
-              "Payment completed, but order id is missing. Please check your orders.",
+              "Payment is processing. Please open your orders page and refresh shortly.",
             );
           }
-          onPaid({ orderId });
+          onPaid({ orderId: persistedOrderId });
         },
         onCancel: () => {
+          createOrderIdempotencyKeyRef.current = null;
           onError("Payment was cancelled. Your cart is still saved.");
         },
         onError: (error) => {
