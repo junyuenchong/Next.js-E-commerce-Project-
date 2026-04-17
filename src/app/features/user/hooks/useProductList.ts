@@ -49,6 +49,7 @@ export function useProductList(
     },
   );
 
+  // Merge new page results into local list while preventing duplicates.
   useEffect(() => {
     if (!data) return;
     const items = Array.isArray(data)

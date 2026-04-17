@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: orders.
+ */
+
 import { NextResponse } from "next/server";
 import { bustAdminAnalyticsCache } from "@/backend/modules/admin-cache";
 import {
@@ -29,6 +33,7 @@ import { getCurrentAdminUser } from "@/backend/core/session";
 import { moneyToNumber } from "@/backend/core/money";
 import { jsonInternalServerError } from "@/backend/lib/api-error";
 
+// Parse shared cursor/search params for the orders list endpoint.
 function parseCursorParams(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() || undefined;
@@ -40,10 +45,11 @@ function parseCursorParams(request: Request) {
   return { cursor, take, q };
 }
 
+// Return paginated admin order rows for the orders table.
 export async function GET(request: Request) {
   try {
-    const g = await adminApiRequire("order.read");
-    if (!g.ok) return g.response;
+    const guard = await adminApiRequire("order.read");
+    if (!guard.ok) return guard.response;
 
     const { cursor, take, q } = parseCursorParams(request);
     const { orders, nextCursor } = await listAllOrdersAdminService(
@@ -80,6 +86,7 @@ export async function GET(request: Request) {
   }
 }
 
+// Update either order status or shipment details from one endpoint.
 export async function PATCH(request: Request) {
   const json = (await request.json().catch(() => null)) as unknown;
   const statusParsed = updateOrderStatusSchema.safeParse(json);

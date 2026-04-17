@@ -3,37 +3,20 @@
 import { useQuery } from "@tanstack/react-query";
 import http, { getErrorMessage } from "@/app/utils/http";
 import { formatPriceRM } from "@/app/lib/format-price";
-import { useAdminResourceSSE } from "@/app/features/admin/hooks";
+import { useAdminResourceSSE } from "@/app/features/admin/shared";
+import type { AdminAnalyticsPayload } from "@/shared/types";
 
-type TopProduct = {
-  productId: number;
-  quantity: number;
-  product: { id: number; title: string; price: number } | null;
-};
-
-type SalesMonth = {
-  month: string;
-  label: string;
-  revenue: number;
-  orderCount: number;
-};
-
-type AnalyticsPayload = {
-  revenueTotal: number;
-  orderCount: number;
-  salesByMonth: SalesMonth[];
-  topProducts: TopProduct[];
-};
-
-async function fetchAnalytics(): Promise<AnalyticsPayload> {
-  const { data } = await http.get<AnalyticsPayload>(
+// Fetch analytics payload shared by dashboard and analytics page.
+async function fetchAnalytics(): Promise<AdminAnalyticsPayload> {
+  // Reuse the shared payload type so both admin pages stay in sync.
+  const { data } = await http.get<AdminAnalyticsPayload>(
     "/features/admin/api/analytics",
   );
   return data;
 }
 
 export default function AdminAnalyticsClient() {
-  const q = useQuery({
+  const analyticsQuery = useQuery({
     queryKey: ["admin-analytics-full"],
     queryFn: fetchAnalytics,
     staleTime: 10_000,
@@ -44,13 +27,13 @@ export default function AdminAnalyticsClient() {
   useAdminResourceSSE(
     "/features/admin/api/events/orders",
     () => {
-      void q.refetch();
+      void analyticsQuery.refetch();
     },
     15000,
   );
 
-  const d = q.data;
-  const showSkeleton = q.isLoading || !d;
+  const analyticsData = analyticsQuery.data;
+  const showSkeleton = analyticsQuery.isLoading || !analyticsData;
 
   return (
     <div className="space-y-8">
@@ -59,9 +42,9 @@ export default function AdminAnalyticsClient() {
         <p className="mt-1 text-sm text-gray-600">
           Sales by month and top products from fulfilled orders only.
         </p>
-        {q.isError ? (
+        {analyticsQuery.isError ? (
           <p className="mt-2 text-sm text-red-600">
-            {getErrorMessage(q.error, "Could not load analytics.")}
+            {getErrorMessage(analyticsQuery.error, "Could not load analytics.")}
           </p>
         ) : null}
       </div>
@@ -75,7 +58,7 @@ export default function AdminAnalyticsClient() {
             {showSkeleton ? (
               <span className="inline-block h-8 w-28 animate-pulse rounded bg-gray-200" />
             ) : (
-              formatPriceRM(d.revenueTotal)
+              formatPriceRM(analyticsData.revenueTotal)
             )}
           </p>
         </div>
@@ -87,7 +70,7 @@ export default function AdminAnalyticsClient() {
             {showSkeleton ? (
               <span className="inline-block h-8 w-16 animate-pulse rounded bg-gray-200" />
             ) : (
-              d.orderCount
+              analyticsData.orderCount
             )}
           </p>
         </div>
@@ -122,14 +105,14 @@ export default function AdminAnalyticsClient() {
                     </td>
                   </tr>
                 ))
-              ) : d.salesByMonth.length === 0 ? (
+              ) : analyticsData.salesByMonth.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="py-4 text-gray-500">
                     No data yet.
                   </td>
                 </tr>
               ) : (
-                d.salesByMonth.map((row) => (
+                analyticsData.salesByMonth.map((row) => (
                   <tr key={row.month}>
                     <td className="py-2 pr-4">{row.label}</td>
                     <td className="py-2 pr-4 tabular-nums">
@@ -151,10 +134,10 @@ export default function AdminAnalyticsClient() {
         <ul className="mt-4 space-y-2 text-sm">
           {showSkeleton ? (
             <li className="h-20 animate-pulse rounded bg-gray-100" />
-          ) : d.topProducts.length === 0 ? (
+          ) : analyticsData.topProducts.length === 0 ? (
             <li className="text-gray-500">No sales yet.</li>
           ) : (
-            d.topProducts.map((row) => (
+            analyticsData.topProducts.map((row) => (
               <li
                 key={row.productId}
                 className="flex justify-between gap-2 border-b border-gray-100 py-2 last:border-0"

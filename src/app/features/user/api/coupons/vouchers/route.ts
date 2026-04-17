@@ -5,6 +5,7 @@ import { resolveUserId } from "@/backend/core/session";
 
 export const dynamic = "force-dynamic";
 
+// Returns storefront-visible vouchers, optionally evaluated against subtotal.
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const raw = url.searchParams.get("subtotal");

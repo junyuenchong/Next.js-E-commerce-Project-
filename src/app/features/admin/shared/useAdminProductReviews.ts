@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Manages admin review moderation: list, reply, and remove.
+ */
+
 import { useCallback, useEffect, useState } from "react";
 import { getErrorMessage } from "@/app/utils/http";
 import {
@@ -20,12 +24,14 @@ export type AdminReviewItem = {
   };
 };
 
+// Controls review list state and moderation actions.
 export function useAdminProductReviews(productId: number) {
   const [reviews, setReviews] = useState<AdminReviewItem[]>([]);
   const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
 
+  // Load reviews and initialize reply drafts by review id.
   const fetchReviews = useCallback(async () => {
     setReviewsLoading(true);
     setReviewsError(null);
@@ -50,10 +56,12 @@ export function useAdminProductReviews(productId: number) {
     }
   }, [productId]);
 
+  // Fetch on mount and whenever product id changes.
   useEffect(() => {
     fetchReviews();
   }, [fetchReviews]);
 
+  // Save one admin reply, then refresh the review list.
   const saveReply = useCallback(
     async (reviewId: number) => {
       const reply = replyDrafts[reviewId] ?? "";
@@ -69,6 +77,7 @@ export function useAdminProductReviews(productId: number) {
     [replyDrafts, fetchReviews],
   );
 
+  // Remove a review from storefront visibility after confirmation.
   const removeReview = useCallback(
     async (reviewId: number) => {
       if (!confirm("Remove this review from the storefront?")) return;

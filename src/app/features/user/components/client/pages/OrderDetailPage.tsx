@@ -2,108 +2,36 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/utils/http";
 import { formatPriceRM } from "@/app/lib/format-price";
-import { useUser } from "@/app/features/user/components/client/UserContext";
+import { getUserOrderStatusLabel } from "@/app/lib/order-status";
 import InvoiceDialog from "@/app/components/shared/InvoiceDialog";
-import { postProductReview } from "@/app/features/user/components/client/http";
-
-type OrderItemDto = {
-  id: string;
-  productId: number;
-  title: string;
-  quantity: number;
-  unitPrice: number;
-  imageUrl: string | null;
-};
-
-type OrderDetailDto = {
-  id: string;
-  status: string;
-  currency: string;
-  total: number;
-  discountAmount: number;
-  coupon: string | null;
-  paypalOrderId: string;
-  paypalCaptureId: string | null;
-  invoice: {
-    number: string;
-    issuedAt: string;
-    status: string;
-    previewText: string;
-    downloadUrl: string;
-  } | null;
-  emailSnapshot: string | null;
-  shipping: {
-    line1: string | null;
-    city: string | null;
-    postcode: string | null;
-    country: string | null;
-    method: string | null;
-  };
-  createdAt: string;
-  items: OrderItemDto[];
-};
-
-function orderStatusLabel(status: string): string {
-  switch (String(status).toLowerCase()) {
-    case "pending":
-      return "Pending";
-    case "paid":
-      return "Paid";
-    case "processing":
-      return "Processing";
-    case "shipped":
-      return "Shipped";
-    case "delivered":
-      return "Delivered";
-    case "fulfilled":
-      return "Completed";
-    case "cancelled":
-      return "Cancelled";
-    default:
-      return status;
-  }
-}
-
-async function fetchOrder(id: string): Promise<OrderDetailDto> {
-  const { data } = await http.get<{ order: OrderDetailDto }>(
-    `/features/user/api/orders/${id}`,
-  );
-  return data.order;
-}
+import { useOrderDetailPage } from "@/app/features/user/hooks";
 
 export default function OrderDetailPage() {
-  const { user, isLoading: sessionLoading } = useUser();
-  const params = useParams<{ id: string }>();
-  const id = String(params?.id ?? "");
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const paymentSuccess = searchParams.get("payment") === "success";
-  const [showPaymentSuccessDialog, setShowPaymentSuccessDialog] =
-    useState(false);
+  const {
+    created,
+    id,
+    orderComplete,
+    query: orderQuery,
+    reviewBusy,
+    reviewComment,
+    reviewDialogOpen,
+    reviewErr,
+    reviewRating,
+    reviewTarget,
+    sessionLoading,
+    showPaymentSuccessDialog,
+    subtotal,
+    user,
+    closePaymentSuccessDialog,
+    closeReviewDialog,
+    openReviewDialog,
+    setReviewComment,
+    setReviewRating,
+    submitReview,
+  } = useOrderDetailPage();
 
-  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
-  const [reviewTarget, setReviewTarget] = useState<OrderItemDto | null>(null);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState("");
-  const [reviewBusy, setReviewBusy] = useState(false);
-  const [reviewErr, setReviewErr] = useState<string | null>(null);
-
-  const q = useQuery({
-    queryKey: ["user-order-detail", id],
-    queryFn: () => fetchOrder(id),
-    enabled: Boolean(user && id),
-    staleTime: 5_000,
-  });
-
-  useEffect(() => {
-    setShowPaymentSuccessDialog(paymentSuccess);
-  }, [paymentSuccess]);
-
+  // Keep loading/unauthenticated/error branches explicit before main render.
   if (sessionLoading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 text-gray-600">Loading…</div>
@@ -124,7 +52,7 @@ export default function OrderDetailPage() {
     );
   }
 
-  if (q.isLoading) {
+  if (orderQuery.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
@@ -132,12 +60,10 @@ export default function OrderDetailPage() {
     );
   }
 
-  if (q.isError || !q.data) {
+  if (orderQuery.isError || !orderQuery.data) {
     return (
       <div className="min-h-screen bg-gray-50 py-16 px-4 text-center">
-        <p className="text-red-700 mb-4">
-          {getErrorMessage(q.error, "Could not load order.")}
-        </p>
+        <p className="text-red-700 mb-4">Could not load order.</p>
         <Link
           href="/features/user/orders"
           className="text-blue-600 hover:underline"
@@ -148,39 +74,8 @@ export default function OrderDetailPage() {
     );
   }
 
-  const o = q.data;
-  const created = new Date(o.createdAt).toLocaleString();
-  const subtotal = Math.max(
-    0,
-    o.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0),
-  );
-
-  const orderComplete = String(o.status).toLowerCase() === "fulfilled";
-
-  const openReviewDialog = (item: OrderItemDto) => {
-    setReviewTarget(item);
-    setReviewRating(5);
-    setReviewComment("");
-    setReviewErr(null);
-    setReviewDialogOpen(true);
-  };
-
-  const submitReview = async () => {
-    if (!reviewTarget) return;
-    setReviewBusy(true);
-    setReviewErr(null);
-    try {
-      await postProductReview(reviewTarget.productId, {
-        rating: reviewRating,
-        comment: reviewComment.trim(),
-      });
-      setReviewDialogOpen(false);
-    } catch (e: unknown) {
-      setReviewErr(getErrorMessage(e, "Could not submit review."));
-    } finally {
-      setReviewBusy(false);
-    }
-  };
+  // Narrow the query result once so the render tree stays simple.
+  const order = orderQuery.data;
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
@@ -195,22 +90,19 @@ export default function OrderDetailPage() {
               Payment successful
             </h3>
             <p className="mt-2 text-sm text-gray-600">
-              Thanks! Your order #{o.id} is confirmed and we&apos;re preparing
-              it now.
+              Thanks! Your order #{order.id} is confirmed and we&apos;re
+              preparing it now.
             </p>
             <div className="mt-5 flex items-center justify-end gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setShowPaymentSuccessDialog(false);
-                  router.replace(`/features/user/orders/${o.id}`);
-                }}
+                onClick={closePaymentSuccessDialog}
                 className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"
               >
                 Close
               </button>
               <Link
-                href={`/features/user/orders/${o.id}`}
+                href={`/features/user/orders/${order.id}`}
                 className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
               >
                 View order
@@ -222,10 +114,14 @@ export default function OrderDetailPage() {
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Order #{o.id}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Order #{order.id}
+            </h1>
             <p className="text-sm text-gray-600 mt-1">
               {created} ·{" "}
-              <span className="uppercase">{orderStatusLabel(o.status)}</span>
+              <span className="uppercase">
+                {getUserOrderStatusLabel(order.status)}
+              </span>
             </p>
           </div>
           <Link
@@ -239,13 +135,13 @@ export default function OrderDetailPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
           <h2 className="font-semibold text-gray-900 mb-3">Items</h2>
           <ul className="divide-y divide-gray-100">
-            {o.items.map((i) => (
-              <li key={i.id} className="py-3 flex gap-3">
+            {order.items.map((orderItem) => (
+              <li key={orderItem.id} className="py-3 flex gap-3">
                 <div className="h-14 w-14 rounded-md bg-gray-100 overflow-hidden shrink-0">
-                  {i.imageUrl ? (
+                  {orderItem.imageUrl ? (
                     <Image
-                      src={i.imageUrl}
-                      alt={i.title}
+                      src={orderItem.imageUrl}
+                      alt={orderItem.title}
                       width={56}
                       height={56}
                       className="h-14 w-14 object-cover"
@@ -254,16 +150,18 @@ export default function OrderDetailPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-gray-900 truncate">
-                    {i.title}
+                    {orderItem.title}
                   </div>
-                  <div className="text-xs text-gray-500">Qty {i.quantity}</div>
+                  <div className="text-xs text-gray-500">
+                    Qty {orderItem.quantity}
+                  </div>
                 </div>
                 <div className="text-right shrink-0">
                   <div className="font-semibold text-gray-900">
-                    {formatPriceRM(i.unitPrice * i.quantity)}
+                    {formatPriceRM(orderItem.unitPrice * orderItem.quantity)}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {formatPriceRM(i.unitPrice)} each
+                    {formatPriceRM(orderItem.unitPrice)} each
                   </div>
                 </div>
               </li>
@@ -280,14 +178,14 @@ export default function OrderDetailPage() {
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {o.items.map((i) => (
+                {order.items.map((orderItem) => (
                   <button
-                    key={`review-btn-${i.id}`}
+                    key={`review-btn-${orderItem.id}`}
                     type="button"
-                    onClick={() => openReviewDialog(i)}
+                    onClick={() => openReviewDialog(orderItem)}
                     className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50"
                   >
-                    Review: {i.title}
+                    Review: {orderItem.title}
                   </button>
                 ))}
               </div>
@@ -298,25 +196,29 @@ export default function OrderDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 space-y-2">
             <h2 className="font-semibold text-gray-900">Shipping address</h2>
-            {o.shipping.line1 ||
-            o.shipping.city ||
-            o.shipping.postcode ||
-            o.shipping.country ? (
+            {order.shipping.line1 ||
+            order.shipping.city ||
+            order.shipping.postcode ||
+            order.shipping.country ? (
               <>
                 <div className="text-sm text-gray-700 space-y-0.5">
-                  {o.shipping.line1 ? <div>{o.shipping.line1}</div> : null}
-                  {o.shipping.postcode || o.shipping.city ? (
+                  {order.shipping.line1 ? (
+                    <div>{order.shipping.line1}</div>
+                  ) : null}
+                  {order.shipping.postcode || order.shipping.city ? (
                     <div>
-                      {[o.shipping.postcode, o.shipping.city]
+                      {[order.shipping.postcode, order.shipping.city]
                         .filter(Boolean)
                         .join(" ")}
                     </div>
                   ) : null}
-                  {o.shipping.country ? <div>{o.shipping.country}</div> : null}
+                  {order.shipping.country ? (
+                    <div>{order.shipping.country}</div>
+                  ) : null}
                 </div>
-                {o.shipping.method ? (
+                {order.shipping.method ? (
                   <div className="text-xs text-gray-500">
-                    Method: {o.shipping.method}
+                    Method: {order.shipping.method}
                   </div>
                 ) : null}
               </>
@@ -333,32 +235,34 @@ export default function OrderDetailPage() {
             <div className="text-sm text-gray-700 space-y-1">
               <div>
                 <span className="text-gray-500">PayPal order:</span>{" "}
-                <span className="font-mono break-all">{o.paypalOrderId}</span>
+                <span className="font-mono break-all">
+                  {order.paypalOrderId}
+                </span>
               </div>
               <div>
                 <span className="text-gray-500">Capture:</span>{" "}
                 <span className="font-mono break-all">
-                  {o.paypalCaptureId ?? "-"}
+                  {order.paypalCaptureId ?? "-"}
                 </span>
               </div>
             </div>
             <div className="text-xs text-gray-500">
-              Receipt email: {o.emailSnapshot ?? user.email ?? "-"}
+              Receipt email: {order.emailSnapshot ?? user.email ?? "-"}
             </div>
-            {o.invoice ? (
+            {order.invoice ? (
               <div className="pt-2 text-xs text-gray-600 space-y-2">
                 <p>
                   Invoice:{" "}
                   <span className="font-mono text-gray-800">
-                    {o.invoice.number}
+                    {order.invoice.number}
                   </span>
                 </p>
                 <InvoiceDialog
-                  invoiceNumber={o.invoice.number}
-                  issuedAt={o.invoice.issuedAt}
-                  status={o.invoice.status}
-                  initialContent={o.invoice.previewText}
-                  downloadUrl={o.invoice.downloadUrl}
+                  invoiceNumber={order.invoice.number}
+                  issuedAt={order.invoice.issuedAt}
+                  status={order.invoice.status}
+                  initialContent={order.invoice.previewText}
+                  downloadUrl={order.invoice.downloadUrl}
                   triggerLabel="View invoice"
                 />
               </div>
@@ -373,20 +277,20 @@ export default function OrderDetailPage() {
               <span className="text-gray-600">Subtotal</span>
               <span>{formatPriceRM(subtotal)}</span>
             </div>
-            {o.discountAmount > 0 ? (
+            {order.discountAmount > 0 ? (
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">
-                  Discount{o.coupon ? ` (${o.coupon})` : ""}
+                  Discount{order.coupon ? ` (${order.coupon})` : ""}
                 </span>
                 <span className="text-emerald-700">
-                  - {formatPriceRM(o.discountAmount)}
+                  - {formatPriceRM(order.discountAmount)}
                 </span>
               </div>
             ) : null}
             <div className="flex items-center justify-between pt-2 border-t">
               <span className="font-semibold text-gray-900">Total</span>
               <span className="font-semibold text-gray-900">
-                {formatPriceRM(o.total)} {o.currency}
+                {formatPriceRM(order.total)} {order.currency}
               </span>
             </div>
           </div>
@@ -394,7 +298,7 @@ export default function OrderDetailPage() {
 
         <div className="text-xs text-gray-500">
           Need help? Use the chat bubble and mention{" "}
-          <span className="font-mono">Order #{o.id}</span>.
+          <span className="font-mono">Order #{order.id}</span>.
         </div>
       </div>
 
@@ -416,7 +320,7 @@ export default function OrderDetailPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setReviewDialogOpen(false)}
+                onClick={closeReviewDialog}
                 className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
               >
                 Close

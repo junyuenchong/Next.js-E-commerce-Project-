@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import ProductPrice from "@/app/components/shared/ProductPrice";
 import { useUser } from "@/app/features/user/components/client/UserContext";
+import { useProductCardWishlist } from "@/app/features/user/hooks";
 import { resolveSalePricing } from "@/app/lib/format-price";
 import { IMG } from "@/app/lib/image-sizes";
 import type { ProductCardProduct } from "@/app/features/user/types";
@@ -47,7 +48,7 @@ const ProductCard = React.memo(
     priority = false,
   }: ProductCardProps & { priority?: boolean }) => {
     const { user } = useUser();
-    const [wishPending, setWishPending] = React.useState(false);
+    const { wishPending, saveToWishlist } = useProductCardWishlist(product.id);
 
     const reviewCount = product.reviewCount ?? 0;
     const avgRating = product.avgRating ?? null;
@@ -111,7 +112,7 @@ const ProductCard = React.memo(
 
           {soldLast24h > 0 ? (
             <div className="text-xs text-green-700 font-medium">
-              {soldLast24h} sold in last 24h (paid orders)
+              {soldLast24h} sold in last 24h (completed orders)
             </div>
           ) : null}
 
@@ -120,20 +121,10 @@ const ProductCard = React.memo(
               type="button"
               disabled={wishPending}
               className="w-full text-center py-1.5 rounded-full text-xs font-semibold border border-pink-300 text-pink-700 hover:bg-pink-50"
-              onClick={async (e) => {
+              onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setWishPending(true);
-                try {
-                  await fetch("/features/user/api/wishlist", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify({ productId: product.id }),
-                  });
-                } finally {
-                  setWishPending(false);
-                }
+                void saveToWishlist();
               }}
             >
               {wishPending ? "Saving…" : "♥ Save to wishlist"}

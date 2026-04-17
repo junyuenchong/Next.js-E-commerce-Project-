@@ -1,6 +1,10 @@
 "use client";
 
-/** Shared helpers + query keys from `@/app/lib`. */
+/**
+ * Admin feature: client-side logic in one place (hooks, small utils, form helpers).
+ * Keeps `components/` for UI and `api/` for Route Handlers only — easier to navigate.
+ */
+
 export {
   categorySchema,
   categorySlugSchema,
@@ -9,6 +13,13 @@ export {
 } from "@/shared/schema";
 export { getErrorMessage } from "@/app/utils/http";
 export { qk } from "@/app/lib/query-keys";
+
+export { fetchSameOriginJson } from "./same-origin-fetch";
+export { trySetFieldErrorsFromAxios400 } from "./field-errors";
+export {
+  buildAdminProductPayload,
+  type AdminProductPayload,
+} from "./product-form";
 
 export { useAdminResourceSSE } from "./useAdminResourceSSE";
 export { useRealtimeInvalidate, useRealtimeQuery } from "./useRealtimeQuery";

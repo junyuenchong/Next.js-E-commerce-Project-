@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: audit-log.
+ */
+
 import { NextResponse } from "next/server";
 import {
   ADMIN_LIST_DEFAULT,
@@ -12,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 type AuditSort = "newest" | "oldest" | "action-a-z";
 
+// Normalize incoming sort value to a supported audit sort mode.
 function parseAuditSort(value: string | null): AuditSort {
   if (value === "oldest") return "oldest";
   // Keep backward compatibility with legacy client value "action_az".
@@ -19,10 +24,11 @@ function parseAuditSort(value: string | null): AuditSort {
   return "newest";
 }
 
+// Return paginated admin audit-log rows with actor details.
 export async function GET(req: Request) {
   try {
-    const g = await adminApiRequire("audit.read");
-    if (!g.ok) return g.response;
+    const guard = await adminApiRequire("audit.read");
+    if (!guard.ok) return guard.response;
 
     const { searchParams } = new URL(req.url);
     const take = clampAdminListLimit(

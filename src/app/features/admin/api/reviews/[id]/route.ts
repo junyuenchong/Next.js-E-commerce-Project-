@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: reviews/[id].
+ */
+
 import { NextResponse } from "next/server";
 import { deleteProductReviewAdminService } from "@/backend/modules/review";
 import { adminApiRequire } from "@/backend/core/admin-api-guard";
@@ -7,12 +11,13 @@ import {
 } from "@/backend/core/admin-action-log";
 import { jsonInternalServerError } from "@/backend/lib/api-error";
 
+// Delete a product review by id (admin moderation).
 export async function DELETE(
   _request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const g = await adminApiRequire("product.delete");
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequire("product.delete");
+  if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
   const reviewId = parseInt(id, 10);
@@ -22,7 +27,7 @@ export async function DELETE(
 
   try {
     await deleteProductReviewAdminService(reviewId);
-    const aid = adminActorNumericId(g.user);
+    const aid = adminActorNumericId(guard.user);
     if (aid != null) {
       void logAdminAction({
         actorUserId: aid,

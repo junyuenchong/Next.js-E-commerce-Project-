@@ -9,6 +9,7 @@ const bodySchema = z.object({
   password: z.string().min(8).max(128),
 });
 
+// Consumes reset token and writes the new password hash.
 export async function POST(request: Request) {
   const ip = clientIp(request);
   const rl = await rateLimit(`reset-pw:${ip}`, 10, 3600);

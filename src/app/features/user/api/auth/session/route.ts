@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/backend/modules/auth";
 
+// Returns lightweight session user payload for client bootstrap checks.
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (session?.user) {

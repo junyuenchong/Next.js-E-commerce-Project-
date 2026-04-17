@@ -1,3 +1,7 @@
+/**
+ * Admin feature type re-exports: UI imports from here instead of reaching into component files.
+ */
+
 export type { Category } from "@/shared/types";
 export type {
   ProductItemProps,

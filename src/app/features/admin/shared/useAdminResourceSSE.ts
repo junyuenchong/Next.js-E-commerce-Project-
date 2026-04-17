@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Subscribes to admin SSE endpoints (products/categories/orders) and triggers cache refresh callbacks.
+ */
+
 import { useRef } from "react";
 import { useRealtimeInvalidate } from "@/app/lib/query/useRealtimeQuery";
 

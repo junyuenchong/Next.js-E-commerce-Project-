@@ -1,4 +1,8 @@
-// Admin user API route handlers: CRUD & management endpoints
+/**
+ * Admin HTTP route: users.
+ */
+
+// Admin users API: list customers/team accounts and perform controlled mutations.
 import { NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
 import {
@@ -26,14 +30,17 @@ import { getCurrentAdminUser } from "@/backend/core/session";
 import { jsonInternalServerError } from "@/backend/lib/api-error";
 import { normalizeAdminLoginIdentifier } from "@/backend/modules/auth/auth.service";
 
+// Team accounts are admin/staff accounts rather than customer accounts.
 function isTeamRole(role: UserRole): boolean {
   return role === "ADMIN" || role === "STAFF";
 }
 
+// Only super admins can create or delete team accounts.
 function canCreateOrDeleteTeamAccount(actorRole: UserRole): boolean {
   return actorRole === "SUPER_ADMIN";
 }
 
+// Team accounts can only be changed by super admins.
 function canMutateTeamAccount(
   actorRole: UserRole,
   targetRole: UserRole,
@@ -54,8 +61,8 @@ const USER_LIST_SELECT = {
   adminPermissionRoleId: true,
 } as const;
 
-// Fetch role for a given user id
-async function getTargetUserRole(userId: number): Promise<UserRole | null> {
+// Read just the user's role (used for permission checks).
+async function getUserRoleById(userId: number): Promise<UserRole | null> {
   const target = await prisma.user.findUnique({
     where: { id: userId },
     select: { role: true },
@@ -63,8 +70,8 @@ async function getTargetUserRole(userId: number): Promise<UserRole | null> {
   return target?.role ?? null;
 }
 
-// Maps user db row to response row
-function mapUserListRow(row: {
+// Convert database row into response shape used by admin UI.
+function serializeUserListRow(row: {
   id: number;
   email: string;
   name: string | null;
@@ -82,7 +89,7 @@ function mapUserListRow(row: {
   };
 }
 
-// Parse cursor and limit params from request
+// Parse cursor pagination params for user list endpoint.
 function parseUserListParams(request: Request) {
   const { searchParams } = new URL(request.url);
   const cursorRaw = searchParams.get("cursor");
@@ -98,11 +105,11 @@ function parseUserListParams(request: Request) {
   return { cursor, take };
 }
 
-// List users (paginated)
+// Return paginated customer and team accounts for admin table.
 export async function GET(request: Request) {
   try {
-    const g = await adminApiRequire("user.read");
-    if (!g.ok) return g.response;
+    const guard = await adminApiRequire("user.read");
+    if (!guard.ok) return guard.response;
 
     const { cursor, take } = parseUserListParams(request);
 
@@ -119,7 +126,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(
       {
-        users: page.map(mapUserListRow),
+        users: page.map(serializeUserListRow),
         nextCursor,
         hasMore: nextCursor != null,
         limit: take,
@@ -136,7 +143,7 @@ export async function GET(request: Request) {
   }
 }
 
-// Create new admin user
+// Create a new team account (super admin only).
 export async function POST(request: Request) {
   const json = (await request.json().catch(() => null)) as unknown;
   const parsed = adminUserCreateBodySchema.safeParse(json);
@@ -186,7 +193,7 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json(mapUserListRow(created), { status: 201 });
+    return NextResponse.json(serializeUserListRow(created), { status: 201 });
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -198,7 +205,7 @@ export async function POST(request: Request) {
   }
 }
 
-// Delete admin team user
+// Delete an existing team account (super admin only).
 export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url);
   const bodyParsed = adminUserDeleteBodySchema.safeParse({
@@ -269,7 +276,7 @@ export async function DELETE(request: Request) {
   }
 }
 
-// Update user profile, role, permission, or status (admin only)
+// Update user profile, permission profile, or active status.
 export async function PATCH(request: Request) {
   const json = (await request.json().catch(() => null)) as unknown;
   const parsed = adminUserPatchBodySchema.safeParse(json);
@@ -289,7 +296,7 @@ export async function PATCH(request: Request) {
   }
 
   const actorKeys = await getAdminPermissionKeysForUser(actor);
-  const actorHas = (p: string) =>
+  const hasActorPermission = (p: string) =>
     actorKeys.includes("*") || actorKeys.includes(p);
 
   // Permission profile actions
@@ -356,18 +363,18 @@ export async function PATCH(request: Request) {
         metadata: { adminPermissionRoleId: roleId },
       });
     }
-    return NextResponse.json(mapUserListRow(updated));
+    return NextResponse.json(serializeUserListRow(updated));
   }
 
   // Profile actions (name/email)
   if (parsed.data.action === "profile") {
-    if (!actorHas("user.update")) {
+    if (!hasActorPermission("user.update")) {
       return adminJsonForbidden(
         "You don't have permission to edit user profiles.",
       );
     }
     const { userId, name, email } = parsed.data;
-    const targetRole = await getTargetUserRole(userId);
+    const targetRole = await getUserRoleById(userId);
     if (!targetRole) {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
@@ -398,7 +405,7 @@ export async function PATCH(request: Request) {
           metadata: { email: updated.email },
         });
       }
-      return NextResponse.json(mapUserListRow(updated));
+      return NextResponse.json(serializeUserListRow(updated));
     } catch (e) {
       if (
         e instanceof Prisma.PrismaClientKnownRequestError &&
@@ -416,15 +423,15 @@ export async function PATCH(request: Request) {
 
   // Block or activate user (status)
   if (parsed.data.isActive === false) {
-    if (!actorHas("user.ban")) {
+    if (!hasActorPermission("user.ban")) {
       return adminJsonForbidden(
         "You don't have permission to block or unblock users.",
       );
     }
-  } else if (!actorHas("user.update")) {
+  } else if (!hasActorPermission("user.update")) {
     return adminJsonForbidden("You don't have permission to reactivate users.");
   }
-  const activeTargetRole = await getTargetUserRole(parsed.data.userId);
+  const activeTargetRole = await getUserRoleById(parsed.data.userId);
   if (!activeTargetRole) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
@@ -450,7 +457,7 @@ export async function PATCH(request: Request) {
         metadata: { email: u.email },
       });
     }
-    return NextResponse.json(mapUserListRow(u));
+    return NextResponse.json(serializeUserListRow(u));
   } catch (error) {
     return jsonInternalServerError(error, "[admin/api/users PATCH status]");
   }

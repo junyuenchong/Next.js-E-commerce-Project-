@@ -1,53 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useForgotPasswordPage } from "@/app/features/user/hooks";
 
 export default function ForgotPasswordPage() {
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setMessage(null);
-    setError(null);
-    setPending(true);
-    const form = e.currentTarget;
-    const email = (new FormData(form).get("email") as string)?.trim();
-    if (!email) {
-      setError("Enter your email.");
-      setPending(false);
-      return;
-    }
-    try {
-      const res = await fetch("/features/user/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = (await res.json().catch(() => null)) as {
-        ok?: boolean;
-        message?: string;
-        error?: string;
-      } | null;
-      if (!res.ok) {
-        if (res.status === 429) setError("Too many attempts. Try again later.");
-        else setError("Something went wrong. Try again.");
-        setPending(false);
-        return;
-      }
-      setMessage(
-        data?.message ??
-          "If an account exists for that email, we sent reset instructions.",
-      );
-    } catch {
-      setError("Network error. Try again.");
-    } finally {
-      setPending(false);
-    }
-  }
+  const { message, error, pending, onSubmit } = useForgotPasswordPage();
 
   return (
     <div className="max-w-md mx-auto my-16 p-8 bg-white rounded-lg shadow-md">

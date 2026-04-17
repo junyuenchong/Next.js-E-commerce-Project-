@@ -1,3 +1,7 @@
+/**
+ * Sidebar navigation model and permission-based filtering rules.
+ */
+
 import type { AdminMe } from "@/app/features/admin/types";
 
 export type AdminNavNeed =
@@ -37,21 +41,24 @@ export const ADMIN_NAV_LINKS: readonly AdminNavLink[] = [
   { href: "/features/admin/audit-log", label: "Audit log", need: "auditRead" },
 ] as const;
 
+// Match current pathname to nav item (supports nested routes).
 export function adminNavLinkIsActive(pathname: string, href: string) {
   if (href === "/features/admin/dashboard") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+// Catalog section is visible if any catalog permission is granted.
 function canSeeCatalog(can: AdminMe["can"]) {
   return Boolean(can.productCreate || can.productUpdate || can.productDelete);
 }
 
+// Filter nav links using current admin capability flags.
 export function filterAdminNavLinks(
   links: readonly AdminNavLink[],
   me: AdminMe | undefined,
 ) {
   if (!me?.can) {
-    // Default-safe behavior: hide super-admin-only links until role is known.
+    // Safe default: hide super-admin links until role is loaded.
     return links.filter(
       (link) => link.href !== "/features/admin/role-permissions",
     );

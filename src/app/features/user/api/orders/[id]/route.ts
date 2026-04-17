@@ -9,6 +9,7 @@ import { renderInvoiceText } from "@/backend/modules/order/invoice.format";
 
 export const dynamic = "force-dynamic";
 
+// Parses trailing `/orders/[id]` segment into a positive integer.
 function parseId(req: Request): number | null {
   const parts = new URL(req.url).pathname.split("/");
   const raw = parts[parts.length - 1];
@@ -16,6 +17,7 @@ function parseId(req: Request): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+// Returns one order detail payload for the authenticated owner.
 export async function GET(req: Request) {
   const userId = await resolveUserId();
   if (!userId)

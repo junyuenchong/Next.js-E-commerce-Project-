@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: products.
+ */
+
 import {
   createProduct,
   deleteProduct,
@@ -26,9 +30,10 @@ import { jsonInternalServerError } from "@/backend/lib/api-error";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// Create a product from admin form payload.
 export async function POST(req: Request) {
-  const g = await adminApiRequire("product.create");
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequire("product.create");
+  if (!guard.ok) return guard.response;
 
   try {
     const body = await req.json();
@@ -57,9 +62,10 @@ export async function POST(req: Request) {
   }
 }
 
+// Return products for admin list, search, or cursor pagination views.
 export async function GET(req: Request) {
-  const g = await adminApiRequireCatalogAccess();
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequireCatalogAccess();
+  if (!guard.ok) return guard.response;
 
   const { searchParams } = new URL(req.url);
   const limitParam = searchParams.get("limit");
@@ -120,9 +126,10 @@ export async function GET(req: Request) {
   }
 }
 
+// Update an existing product from inline edit payload.
 export async function PATCH(req: Request) {
-  const g = await adminApiRequire("product.update");
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequire("product.update");
+  if (!guard.ok) return guard.response;
 
   try {
     const body = await req.json();
@@ -165,9 +172,10 @@ export async function PATCH(req: Request) {
   }
 }
 
+// Soft-delete a product by id.
 export async function DELETE(req: Request) {
-  const g = await adminApiRequire("product.delete");
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequire("product.delete");
+  if (!guard.ok) return guard.response;
 
   const idRaw = new URL(req.url).searchParams.get("id");
   const id = idRaw ? Number.parseInt(idRaw, 10) : NaN;

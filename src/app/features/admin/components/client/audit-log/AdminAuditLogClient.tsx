@@ -23,6 +23,7 @@ type PagePayload = {
   sort?: AuditSort;
 };
 
+// Convert machine-style keys into readable labels.
 function toHumanLabel(value: string | null | undefined): string {
   if (!value) return "—";
   return value
@@ -40,6 +41,7 @@ export default function AdminAuditLogClient() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Load one audit-log page, optionally appending to current rows.
   const load = useCallback(
     async (cursor: number | null, append: boolean, currentSort: AuditSort) => {
       const params = new URLSearchParams({ limit: "40" });
@@ -54,6 +56,7 @@ export default function AdminAuditLogClient() {
     [],
   );
 
+  // Reload list when sort order changes.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -83,6 +86,7 @@ export default function AdminAuditLogClient() {
     };
   }, [sort]);
 
+  // Load the next audit-log page from cursor.
   const loadMore = useCallback(async () => {
     if (nextCursor == null || loadingMore) return;
     setLoadingMore(true);

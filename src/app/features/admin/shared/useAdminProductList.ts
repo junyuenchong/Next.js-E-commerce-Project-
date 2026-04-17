@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Admin products table: pagination, sorting, inline edit, and delete actions.
+ */
+
 import {
   useState,
   useImperativeHandle,
@@ -19,8 +23,8 @@ import {
   fetchAdminCategories,
   postImageUpload,
 } from "@/app/features/admin/components/client";
-import { buildAdminProductPayload } from "@/app/features/admin/lib/product-form";
-import { trySetFieldErrorsFromAxios400 } from "@/app/features/admin/lib/field-errors";
+import { buildAdminProductPayload } from "./product-form";
+import { trySetFieldErrorsFromAxios400 } from "./field-errors";
 
 type AdminCategory = { id: number; name: string };
 
@@ -32,6 +36,7 @@ type ProductsPagePayload = {
   hasMore: boolean;
 };
 
+// Upload helper for edited product images.
 async function uploadImageIfNeeded(
   file: File | null,
 ): Promise<string | undefined> {
@@ -42,6 +47,7 @@ async function uploadImageIfNeeded(
   return secure_url;
 }
 
+// Normalize backend list response into one paging shape.
 async function fetchAdminProductsPage(
   url: string,
   isSearchMode: boolean,
@@ -65,6 +71,7 @@ async function fetchAdminProductsPage(
   };
 }
 
+// Manages product list state, pagination, sorting, and row actions.
 export function useAdminProductList(
   ref: Ref<AdminProductListHandle | null>,
   options?: {
@@ -80,7 +87,7 @@ export function useAdminProductList(
       | "recentlyUpdated";
   },
 ) {
-  // Feature: this hook is the single orchestration point for admin product list UX.
+  // Keep all product-list orchestration in one place.
   const searchQ = options?.searchQuery?.trim() ?? "";
   const sortKey = options?.sortKey ?? "recentlyUpdated";
   const [products, setProducts] = useState<ProductWithCategory[]>([]);
@@ -127,6 +134,7 @@ export function useAdminProductList(
   });
 
   const searchResetBoot = useRef(false);
+  // Reset pagination when search query changes.
   useEffect(() => {
     if (!searchResetBoot.current) {
       searchResetBoot.current = true;
@@ -137,8 +145,9 @@ export function useAdminProductList(
     setProducts([]);
   }, [searchQ]);
 
+  // Sort the currently loaded rows on the client.
   const sortedProducts = useMemo(() => {
-    // Feature: professional list sorting on already-loaded rows (keeps cursor paging stable).
+    // Sorting runs on loaded rows to keep cursor paging stable.
     const list = [...products];
     list.sort((a, b) => {
       switch (sortKey) {
@@ -166,6 +175,7 @@ export function useAdminProductList(
     return list;
   }, [products, sortKey]);
 
+  // Merge fetched page into local list state.
   useEffect(() => {
     if (!data) return;
     const { items, nextCursor: next, hasMore: more } = data;
@@ -181,13 +191,15 @@ export function useAdminProductList(
     setIsLoading(false);
   }, [data, cursor]);
 
+  // Load next page if a cursor is available.
   const handleLoadMore = useCallback(() => {
-    // Guard: refuse concurrent/invalid pagination transitions.
+    // Ignore invalid or concurrent load-more attempts.
     if (!hasMore || isLoading || nextCursor == null) return;
     setIsLoading(true);
     setCursor(nextCursor);
   }, [hasMore, isLoading, nextCursor]);
 
+  // Refresh from first page and clear cursors.
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     setCursor(null);
@@ -196,6 +208,7 @@ export function useAdminProductList(
     setIsRefreshing(false);
   }, [refetch]);
 
+  // Enter edit mode and seed form with row values.
   const handleEditClick = useCallback((product: ProductWithCategory) => {
     pendingImageFileRef.current = null;
     setEditingId(product.id);
@@ -216,6 +229,7 @@ export function useAdminProductList(
     setEditErrors({});
   }, []);
 
+  // Update edit form field and clear its inline error.
   const handleEditChange = useCallback(
     (
       e: React.ChangeEvent<
@@ -231,6 +245,7 @@ export function useAdminProductList(
     [editErrors],
   );
 
+  // Capture new image file for edit mode and refresh preview.
   const handleImageChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -243,10 +258,11 @@ export function useAdminProductList(
     [],
   );
 
+  // Save product edits (including optional image upload).
   const handleUpdate = useCallback(
     async (id: number) => {
       try {
-        // Feature: upload an edited image (if any) before persisting the product.
+        // Upload edited image before saving product changes.
         const file = pendingImageFileRef.current;
         const uploadedUrl = await uploadImageIfNeeded(file);
         if (uploadedUrl) pendingImageFileRef.current = null;
@@ -259,7 +275,7 @@ export function useAdminProductList(
         setEditingId(null);
         setTimeout(() => void handleRefresh(), 200);
       } catch (error: unknown) {
-        // Guard: render backend field errors inline when available.
+        // Show backend field errors inline when available.
         if (trySetFieldErrorsFromAxios400(error, setEditErrors)) return;
         alert(getErrorMessage(error, "Failed to update product"));
       }
@@ -267,6 +283,7 @@ export function useAdminProductList(
     [editForm, handleRefresh],
   );
 
+  // Soft-delete product after confirmation.
   const handleDelete = useCallback(
     async (id: number) => {
       if (
@@ -287,6 +304,7 @@ export function useAdminProductList(
     [handleRefresh],
   );
 
+  // Expose refresh to parent via imperative ref.
   useImperativeHandle(
     ref,
     () => ({
@@ -295,6 +313,7 @@ export function useAdminProductList(
     [handleRefresh],
   );
 
+  // Bundle row action props to keep row components presentational.
   const itemProps = useMemo(() => {
     return {
       editingId,

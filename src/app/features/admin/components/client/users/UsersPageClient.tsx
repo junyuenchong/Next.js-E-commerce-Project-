@@ -49,6 +49,7 @@ async function fetchAdminMe(): Promise<Me> {
   return data;
 }
 
+// Shared leading cells for customer/team rows.
 function UserLeadCells({ u }: { u: U }) {
   return (
     <>
@@ -75,6 +76,7 @@ function UserLeadCells({ u }: { u: U }) {
   );
 }
 
+// Shared trailing action cells for customer/team rows.
 function UserTailCells({
   u,
   canBan,
@@ -145,7 +147,7 @@ export default function AdminUsersPage() {
 
   const isSuper = String(me?.role ?? "") === "SUPER_ADMIN";
 
-  const { data: roleCfg } = useQuery({
+  const { data: roleConfig } = useQuery({
     queryKey: ["admin-role-config"],
     queryFn: async () => {
       const { data } = await http.get<RoleConfigResponse>(
@@ -201,6 +203,7 @@ export default function AdminUsersPage() {
     staleTime: 30_000,
   });
 
+  // Load first users page and reset pagination state.
   const loadInitial = useCallback(async () => {
     try {
       setLoading(true);
@@ -218,6 +221,7 @@ export default function AdminUsersPage() {
     }
   }, []);
 
+  // Load next users page using cursor pagination.
   const loadMore = useCallback(async () => {
     if (nextCursor == null) return;
     try {
@@ -235,6 +239,7 @@ export default function AdminUsersPage() {
     }
   }, [nextCursor]);
 
+  // Fetch initial users once component mounts.
   useEffect(() => {
     void loadInitial();
   }, [loadInitial]);
@@ -253,6 +258,7 @@ export default function AdminUsersPage() {
     customers.length > 0 &&
     customers.every((u) => selectedCustomerIds.has(u.id));
 
+  // Toggle customer selection for bulk actions.
   const toggleCustomerSelected = useCallback((id: number) => {
     setSelectedCustomerIds((prev) => {
       const next = new Set(prev);
@@ -262,6 +268,7 @@ export default function AdminUsersPage() {
     });
   }, []);
 
+  // Select or clear all visible customers.
   const toggleSelectAllCustomers = useCallback(() => {
     setSelectedCustomerIds((prev) => {
       const next = new Set(prev);
@@ -276,11 +283,13 @@ export default function AdminUsersPage() {
     });
   }, [customers]);
 
+  // Clear all selected customers.
   const clearSelection = useCallback(
     () => setSelectedCustomerIds(new Set()),
     [],
   );
 
+  // Open bulk voucher dialog and reset its transient state.
   const openBulkAssign = useCallback(() => {
     setBulkBanner(null);
     setBulkCouponId("");
@@ -289,6 +298,7 @@ export default function AdminUsersPage() {
     setBulkOpen(true);
   }, []);
 
+  // Allow deep-linking to bulk dialog via `couponId` query param.
   useEffect(() => {
     const raw = searchParams.get("couponId");
     if (!raw) return;
@@ -299,6 +309,7 @@ export default function AdminUsersPage() {
     setBulkOpen(true);
   }, [searchParams, canManageCoupons]);
 
+  // Submit bulk voucher assignment for selected customers.
   const submitBulkAssign = useCallback(async () => {
     if (!canManageCoupons) return;
     if (bulkCouponId === "") {
@@ -343,15 +354,17 @@ export default function AdminUsersPage() {
     selectedCustomerIds,
   ]);
 
+  // Toggle active/blocked state for a user.
   const toggleActive = async (userId: number, isActive: boolean) => {
-    const r = await setUserActiveAction(userId, isActive);
-    if (!r.ok) {
+    const actionResult = await setUserActiveAction(userId, isActive);
+    if (!actionResult.ok) {
       setErr("Update failed");
       return;
     }
     await loadInitial();
   };
 
+  // Open profile edit dialog with user snapshot values.
   const openEdit = (u: U) => {
     setEditingId(u.id);
     setDraftName(u.name ?? "");
@@ -359,23 +372,25 @@ export default function AdminUsersPage() {
     setProfileErr(null);
   };
 
+  // Close profile edit dialog and clear errors.
   const closeEdit = () => {
     setEditingId(null);
     setProfileErr(null);
   };
 
+  // Save profile changes from edit dialog.
   const saveProfile = async () => {
     if (editingId == null) return;
     setProfileSaving(true);
     setProfileErr(null);
     try {
-      const r = await updateUserProfileAdminAction(
+      const actionResult = await updateUserProfileAdminAction(
         editingId,
         draftEmail,
         draftName,
       );
-      if (!r.ok) {
-        if (r.error === "email_taken") {
+      if (!actionResult.ok) {
+        if (actionResult.error === "email_taken") {
           setProfileErr("That email is already in use.");
         } else {
           setProfileErr("Could not save profile.");
@@ -389,6 +404,7 @@ export default function AdminUsersPage() {
     }
   };
 
+  // Assign or clear permission profile for team account.
   const setPermissionProfile = async (userId: number, roleIdStr: string) => {
     setErr(null);
     try {
@@ -412,6 +428,7 @@ export default function AdminUsersPage() {
     }
   };
 
+  // Create a new team account (super admin only).
   const createTeamUser = async () => {
     if (!isSuper) {
       setErr("Only super admins can create admin users.");
@@ -443,6 +460,7 @@ export default function AdminUsersPage() {
     }
   };
 
+  // Delete a team account (super admin only).
   const deleteTeamUser = async (u: U) => {
     if (!isSuper) {
       setErr("Only super admins can delete team accounts.");
@@ -828,7 +846,7 @@ export default function AdminUsersPage() {
                               }
                             >
                               <option value="">Default (from role)</option>
-                              {(roleCfg?.roles ?? [])
+                              {(roleConfig?.roles ?? [])
                                 .filter(
                                   (r) =>
                                     r.isActive !== false &&

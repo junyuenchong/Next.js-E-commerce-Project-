@@ -1,3 +1,7 @@
+/**
+ * Returns current admin session identity and capability flags for UI gating.
+ */
+
 import { NextResponse } from "next/server";
 import {
   adminJsonForbidden,
@@ -8,6 +12,7 @@ import { getAdminPermissionKeysForUser } from "@/backend/modules/access-control"
 import { getCurrentAdminUser } from "@/backend/core/session";
 import { jsonInternalServerError } from "@/backend/lib/api-error";
 
+// Build `/api/me` response used by admin pages for permission checks.
 export async function GET() {
   try {
     const user = await getCurrentAdminUser();
@@ -23,7 +28,8 @@ export async function GET() {
     }
 
     const permissions = await getAdminPermissionKeysForUser(user);
-    const has = (p: string) =>
+    // Small helper to check a single permission key against the current list.
+    const hasPermission = (p: string) =>
       permissions.includes("*") || permissions.includes(p);
 
     return NextResponse.json({
@@ -35,18 +41,18 @@ export async function GET() {
       adminPermissionRoleId: user.adminPermissionRoleId,
       permissions,
       can: {
-        userRead: has("user.read"),
-        userUpdate: has("user.update"),
-        userBan: has("user.ban"),
-        orderRead: has("order.read"),
-        orderUpdate: has("order.update"),
-        orderRefund: has("order.refund"),
-        productCreate: has("product.create"),
-        productUpdate: has("product.update"),
-        productDelete: has("product.delete"),
-        couponRead: has("coupon.read"),
-        couponManage: has("coupon.manage"),
-        auditRead: has("audit.read"),
+        userRead: hasPermission("user.read"),
+        userUpdate: hasPermission("user.update"),
+        userBan: hasPermission("user.ban"),
+        orderRead: hasPermission("order.read"),
+        orderUpdate: hasPermission("order.update"),
+        orderRefund: hasPermission("order.refund"),
+        productCreate: hasPermission("product.create"),
+        productUpdate: hasPermission("product.update"),
+        productDelete: hasPermission("product.delete"),
+        couponRead: hasPermission("coupon.read"),
+        couponManage: hasPermission("coupon.manage"),
+        auditRead: hasPermission("audit.read"),
       } satisfies Record<string, boolean>,
     });
   } catch (error) {

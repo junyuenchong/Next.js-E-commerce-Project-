@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: reviews.
+ */
+
 import { NextResponse } from "next/server";
 import { listAllReviewsAdminService } from "@/backend/modules/review";
 import { adminApiRequireCatalogAccess } from "@/backend/core/admin-api-guard";
@@ -5,9 +9,10 @@ import { jsonInternalServerError } from "@/backend/lib/api-error";
 
 export const dynamic = "force-dynamic";
 
+// Return paginated admin review rows with optional filters.
 export async function GET(request: Request) {
-  const g = await adminApiRequireCatalogAccess();
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequireCatalogAccess();
+  if (!guard.ok) return guard.response;
 
   const { searchParams } = new URL(request.url);
   const page = Math.max(

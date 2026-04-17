@@ -31,13 +31,13 @@ export default async function PostLoginPage({
   // Important: merge/cookie writes must happen in a Route Handler or Server Action.
   // Calling `mergeGuestCartToUserService()` directly from this Server Component
   // violates Next.js cookies write constraints.
-  const h = await headers();
-  const host = h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "http";
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("host");
+  const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
   const origin = host ? `${proto}://${host}` : "";
   try {
     // Forward the incoming Cookie header so the merge route can read/update guestCartId.
-    const cookie = h.get("cookie") ?? "";
+    const cookie = requestHeaders.get("cookie") ?? "";
     if (origin) {
       await fetch(`${origin}/features/user/api/products/cart/merge`, {
         method: "POST",
@@ -45,9 +45,9 @@ export default async function PostLoginPage({
         cache: "no-store",
       });
     }
-  } catch (e) {
+  } catch (error) {
     // Merge failure should not block login redirect.
-    console.error("[post-login] guest cart merge failed:", e);
+    console.error("[post-login] guest cart merge failed:", error);
   }
   redirect(postAuthRedirectPath(role, params.returnUrl));
 }

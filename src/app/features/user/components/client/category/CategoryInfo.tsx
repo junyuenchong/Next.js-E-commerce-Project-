@@ -4,8 +4,7 @@ import React, { memo } from "react";
 import type { Category } from "@prisma/client";
 import SalesCampaignBanner from "@/app/features/user/components/client/SalesCampaignBanner/SalesCampaignBanner";
 import ProductList from "@/app/features/user/components/client/Products/ProductList/ProductList";
-import { useRealtimeQuery } from "@/app/lib/query/useRealtimeQuery";
-import { qk } from "@/app/lib/query-keys";
+import { useCategoryDetail } from "@/app/features/user/hooks";
 import type { ProductCardProduct } from "@/app/features/user/types";
 
 const CategoryInfo = memo(function CategoryInfo({
@@ -17,19 +16,7 @@ const CategoryInfo = memo(function CategoryInfo({
   initialCategory?: Category;
   initialProducts?: ProductCardProduct[];
 }) {
-  const { data: category } = useRealtimeQuery(
-    qk.user.categoryDetail(slug),
-    async () => {
-      const res = await fetch(`/features/user/api/categories/${slug}`);
-      return res.json();
-    },
-    {
-      channels: "categories",
-      initialData: initialCategory,
-      refetchInterval: 5000,
-      refetchIntervalInBackground: true,
-    },
-  );
+  const { data: category } = useCategoryDetail(slug, initialCategory);
 
   const cat = (category as Category | undefined) ?? initialCategory;
   if (!cat || typeof cat !== "object" || "error" in cat) {

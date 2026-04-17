@@ -10,6 +10,7 @@ export const revalidate = 0;
 const getErrorText = (error: unknown) =>
   error instanceof Error ? error.message : "Internal Server Error";
 
+// Lists reviews for one product.
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
@@ -31,6 +32,7 @@ export async function GET(
   }
 }
 
+// Creates or updates one review from the authenticated user for this product.
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },

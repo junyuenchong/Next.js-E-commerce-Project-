@@ -5,7 +5,7 @@ import { OrderStatus } from "@prisma/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import http, { getErrorMessage } from "@/app/utils/http";
-import { useAdminResourceSSE } from "@/app/features/admin/hooks";
+import { useAdminResourceSSE } from "@/app/features/admin/shared";
 import InvoiceDialog from "@/app/components/shared/InvoiceDialog";
 
 type OrderLine = {
@@ -65,6 +65,7 @@ const STATUS_FLOW: OrderStatus[] = [
   "cancelled",
 ];
 
+// Format money safely with a currency fallback.
 function formatMoney(amount: number, currency: string) {
   try {
     // Note: Malaysia-first formatting (still respects passed currency code).
@@ -77,11 +78,13 @@ function formatMoney(amount: number, currency: string) {
   }
 }
 
+// Normalize optional text input to nullable API value.
 function normalizeOptionalText(value: string): string | null {
   const v = value.trim();
   return v ? v : null;
 }
 
+// Build tracking URL for known carriers from carrier + tracking number.
 function buildTrackingUrl(
   carrierInput: string,
   trackingNumberInput: string,
@@ -121,7 +124,7 @@ export default function AdminOrderDetailClient({
   });
   const [saving, setSaving] = useState(false);
   const [savingShipment, setSavingShipment] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   // Feature: keep admin permissions responsive without constant refetch jitter.
   // Guard: login/logout path explicitly clears this cache to prevent role bleed.
@@ -151,6 +154,7 @@ export default function AdminOrderDetailClient({
 
   const order = orderQuery.data;
 
+  // Reset local drafts whenever base order data changes.
   useEffect(() => {
     setDraftStatus(null);
     setShipmentDraft({
@@ -245,10 +249,11 @@ export default function AdminOrderDetailClient({
     };
   }, [order]);
 
+  // Persist order status update.
   const saveStatus = useCallback(async () => {
     if (!order || draftStatus == null || !canSave) return;
     setSaving(true);
-    setMsg(null);
+    setStatusMessage(null);
     try {
       await http.patch("/features/admin/api/orders", {
         orderId: order.id,
@@ -256,18 +261,19 @@ export default function AdminOrderDetailClient({
       });
       setDraftStatus(null);
       await orderQuery.refetch();
-      setMsg("Status updated.");
-    } catch (e) {
-      setMsg(getErrorMessage(e, "Update failed"));
+      setStatusMessage("Status updated.");
+    } catch (error) {
+      setStatusMessage(getErrorMessage(error, "Update failed"));
     } finally {
       setSaving(false);
     }
   }, [canSave, draftStatus, order, orderQuery]);
 
+  // Persist shipping carrier and tracking information.
   const saveShipment = useCallback(async () => {
     if (!order || !canSaveShipment) return;
     setSavingShipment(true);
-    setMsg(null);
+    setStatusMessage(null);
     try {
       await http.patch("/features/admin/api/orders", {
         orderId: order.id,
@@ -276,9 +282,9 @@ export default function AdminOrderDetailClient({
         trackingUrl: normalizeOptionalText(shipmentDraft.trackingUrl),
       });
       await orderQuery.refetch();
-      setMsg("Shipment info updated.");
-    } catch (e) {
-      setMsg(getErrorMessage(e, "Shipment update failed"));
+      setStatusMessage("Shipment info updated.");
+    } catch (error) {
+      setStatusMessage(getErrorMessage(error, "Shipment update failed"));
     } finally {
       setSavingShipment(false);
     }
@@ -344,9 +350,9 @@ export default function AdminOrderDetailClient({
         </div>
       </div>
 
-      {msg && (
+      {statusMessage && (
         <p className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
-          {msg}
+          {statusMessage}
         </p>
       )}
 

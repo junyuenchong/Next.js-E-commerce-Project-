@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: support/conversations/[id]/messages.
+ */
+
 import { NextResponse } from "next/server";
 import prisma from "@/app/lib/prisma";
 import { adminApiRequire } from "@/backend/core/admin-api-guard";
@@ -12,15 +16,17 @@ export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+// Parse positive numeric route param id.
 function parseParamId(raw: string | undefined): number | null {
   const n = raw ? Number.parseInt(raw, 10) : NaN;
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+// Return ordered message history for one support conversation.
 export async function GET(_req: Request, ctx: RouteContext) {
   try {
-    const g = await adminApiRequire("order.read");
-    if (!g.ok) return g.response;
+    const guard = await adminApiRequire("order.read");
+    if (!guard.ok) return guard.response;
 
     const { id } = await ctx.params;
     const conversationId = parseParamId(id);
@@ -67,10 +73,11 @@ const postSchema = z.object({
   body: z.string().trim().min(1).max(4000),
 });
 
+// Post an admin reply into an open support conversation.
 export async function POST(req: Request, ctx: RouteContext) {
   try {
-    const g = await adminApiRequire("order.read");
-    if (!g.ok) return g.response;
+    const guard = await adminApiRequire("order.read");
+    if (!guard.ok) return guard.response;
 
     const { id } = await ctx.params;
     const conversationId = parseParamId(id);
@@ -98,7 +105,7 @@ export async function POST(req: Request, ctx: RouteContext) {
       );
     }
 
-    const adminId = adminActorNumericId(g.user);
+    const adminId = adminActorNumericId(guard.user);
     if (adminId == null) {
       return NextResponse.json({ error: "invalid_admin" }, { status: 400 });
     }

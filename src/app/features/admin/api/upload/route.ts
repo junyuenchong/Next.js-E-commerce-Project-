@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: upload.
+ */
+
 import * as cloudinary from "cloudinary";
 import sharp from "sharp";
 import { Readable } from "stream";
@@ -17,9 +21,35 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET!,
 });
 
+type CloudinaryUploadResult = { secure_url: string; public_id?: string };
+
+// Stream an in-memory image buffer to Cloudinary and return the public URL.
+function uploadImageBufferToCloudinary(
+  buffer: Buffer,
+): Promise<CloudinaryUploadResult> {
+  return new Promise<CloudinaryUploadResult>((resolve, reject) => {
+    const uploadStream = cloudinary.v2.uploader.upload_stream(
+      { folder: "products" },
+      (error, result) => {
+        if (error || !result?.secure_url) {
+          console.error("Cloudinary upload error:", error);
+          reject(error ?? new Error("Upload failed"));
+          return;
+        }
+        resolve({
+          secure_url: result.secure_url,
+          public_id: result.public_id,
+        });
+      },
+    );
+    Readable.from(buffer).pipe(uploadStream);
+  });
+}
+
+// Compress and upload one product image to Cloudinary.
 export async function POST(req: Request) {
-  const g = await adminApiRequireAny(["product.create", "product.update"]);
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequireAny(["product.create", "product.update"]);
+  if (!guard.ok) return guard.response;
 
   try {
     const formData = await req.formData();
@@ -43,30 +73,9 @@ export async function POST(req: Request) {
       .jpeg({ quality: 70 })
       .toBuffer();
 
-    const uploadToCloudinary = () =>
-      new Promise<{ secure_url: string; public_id?: string }>(
-        (resolve, reject) => {
-          const uploadStream = cloudinary.v2.uploader.upload_stream(
-            { folder: "products" },
-            (error, result) => {
-              if (error || !result?.secure_url) {
-                console.error("Cloudinary upload error:", error);
-                reject(error ?? new Error("Upload failed"));
-                return;
-              }
-              resolve({
-                secure_url: result.secure_url,
-                public_id: result.public_id,
-              });
-            },
-          );
-          Readable.from(compressedBuffer).pipe(uploadStream);
-        },
-      );
-
     const { secure_url: secureUrl, public_id: publicId } =
-      await uploadToCloudinary();
-    const aid = adminActorNumericId(g.user);
+      await uploadImageBufferToCloudinary(compressedBuffer);
+    const aid = adminActorNumericId(guard.user);
     if (aid != null) {
       void logAdminAction({
         actorUserId: aid,

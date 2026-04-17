@@ -1,14 +1,12 @@
 "use client";
 
 /** Cart lines, coupon apply/remove, totals. */
-import React, { useCallback, useState } from "react";
+import React from "react";
 import { ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/utils/http";
 import { formatPriceRM } from "@/app/lib/format-price";
-import { useShoppingCart } from "@/app/features/user/hooks";
+import { useCartCoupon, useShoppingCart } from "@/app/features/user/hooks";
 import type { CartItemRowData } from "@/app/features/user/types";
 
 const CartItemRow = dynamic(
@@ -29,35 +27,7 @@ const StorefrontVoucherStrip = dynamic(
   },
 );
 
-type CouponQuote = {
-  subtotal: number;
-  discountAmount: number;
-  total: number;
-  applied: { code: string } | null;
-  couponError?: string;
-};
-
-const COUPON_ERR: Record<string, string> = {
-  coupon_not_found: "That code is not valid.",
-  coupon_inactive: "This code is no longer active.",
-  coupon_not_started: "This code is not valid yet.",
-  coupon_expired: "This code has expired.",
-  coupon_used_up: "This code has reached its usage limit.",
-  coupon_min_subtotal: "Order subtotal is below the minimum for this code.",
-  coupon_total_too_low: "Discount would make the total too low to pay.",
-  invalid_subtotal: "Cart total is invalid.",
-  coupon_requires_login: "Sign in to use this voucher.",
-  coupon_not_assigned: "This voucher is not available for your account.",
-  coupon_already_used: "This voucher was already used.",
-};
-
-function couponMessage(err: string | undefined) {
-  if (!err) return "Could not apply code.";
-  return COUPON_ERR[err] ?? err.replace(/_/g, " ");
-}
-
 const CartPage = () => {
-  const qc = useQueryClient();
   const {
     cart,
     isLoading,
@@ -69,66 +39,20 @@ const CartPage = () => {
     clearCartActionError,
   } = useShoppingCart();
 
-  const [couponInput, setCouponInput] = useState("");
-  const [couponBusy, setCouponBusy] = useState(false);
-  const [couponLocalErr, setCouponLocalErr] = useState<string | null>(null);
   const cartItems = cart?.items ?? [];
   const showInitialLoading = isLoading && !cart;
   const showSkeleton = isLoading && cartItems.length === 0;
 
-  const couponQ = useQuery({
-    queryKey: ["checkout-coupon-quote", summary.totalPrice],
-    queryFn: async () => {
-      const { data } = await http.get<CouponQuote>(
-        "/features/user/api/checkout/coupon",
-      );
-      return data;
-    },
-    enabled: Boolean(cart?.items?.length),
-    staleTime: 5_000,
-  });
-
-  const invalidateCoupon = useCallback(() => {
-    void qc.invalidateQueries({ queryKey: ["checkout-coupon-quote"] });
-    void qc.invalidateQueries({ queryKey: ["storefront-vouchers"] });
-  }, [qc]);
-
-  const applyCoupon = useCallback(async () => {
-    if (!couponInput.trim()) return;
-    setCouponBusy(true);
-    setCouponLocalErr(null);
-    try {
-      await http.post("/features/user/api/checkout/coupon", {
-        code: couponInput.trim(),
-      });
-      setCouponInput("");
-      invalidateCoupon();
-    } catch (e) {
-      const msg = getErrorMessage(e, "apply_failed");
-      try {
-        const ax = e as { response?: { data?: { error?: string } } };
-        const code = ax.response?.data?.error;
-        setCouponLocalErr(code ? couponMessage(code) : msg);
-      } catch {
-        setCouponLocalErr(msg);
-      }
-    } finally {
-      setCouponBusy(false);
-    }
-  }, [couponInput, invalidateCoupon]);
-
-  const removeCoupon = useCallback(async () => {
-    setCouponBusy(true);
-    setCouponLocalErr(null);
-    try {
-      await http.delete("/features/user/api/checkout/coupon");
-      invalidateCoupon();
-    } catch (e) {
-      setCouponLocalErr(getErrorMessage(e, "Could not remove coupon."));
-    } finally {
-      setCouponBusy(false);
-    }
-  }, [invalidateCoupon]);
+  const {
+    couponQ,
+    couponInput,
+    setCouponInput,
+    couponBusy,
+    couponLocalErr,
+    invalidateCoupon,
+    applyCoupon,
+    removeCoupon,
+  } = useCartCoupon(summary.totalPrice, Boolean(cart?.items?.length));
 
   if (showInitialLoading) {
     return (
@@ -315,7 +239,7 @@ const CartPage = () => {
                 <div className="mt-2 min-h-[36px]">
                   {couponQ.data?.couponError ? (
                     <p className="text-xs text-amber-800">
-                      {couponMessage(couponQ.data.couponError)}
+                      {couponQ.data.couponError}
                     </p>
                   ) : null}
                   {couponLocalErr ? (

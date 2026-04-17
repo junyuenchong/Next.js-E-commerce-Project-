@@ -8,6 +8,7 @@ const patchSchema = z.object({
   name: z.string().min(1).max(120).optional(),
 });
 
+// Returns current user profile data for the account page.
 export async function GET() {
   const userId = await resolveUserId();
   if (!userId) {
@@ -42,6 +43,7 @@ export async function GET() {
   });
 }
 
+// Updates editable profile fields for the authenticated user.
 export async function PATCH(request: Request) {
   const userId = await resolveUserId();
   if (!userId) {

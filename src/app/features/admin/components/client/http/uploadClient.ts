@@ -1,4 +1,4 @@
-import { fetchSameOriginJson } from "@/app/features/admin/helpers";
+import { fetchSameOriginJson } from "@/app/features/admin/shared";
 
 /** Uses same-origin fetch so auth cookies are always included. */
 const ADMIN_UPLOAD_PATH = "/features/admin/api/upload";

@@ -5,12 +5,14 @@ import {
   mergeGuestCartToUserService,
 } from "@/backend/modules/cart";
 
+// Detects Prisma connectivity failures for clearer API responses.
 function isPrismaUnreachableError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const anyErr = error as { code?: unknown };
   return anyErr.code === "P1001";
 }
 
+// Merges guest cart into signed-in cart and returns fresh cart snapshot.
 export async function POST() {
   try {
     await mergeGuestCartToUserService();

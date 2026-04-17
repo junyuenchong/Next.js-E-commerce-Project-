@@ -2,17 +2,8 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
-import http, { getErrorMessage } from "@/app/utils/http";
-import type { SavedAddress } from "@/app/features/user/components/client/profile/AddressBookSection";
-import { useUser } from "@/app/features/user/components/client/UserContext";
-import { useShoppingCart } from "@/app/features/user/hooks";
+import { useCheckoutPage } from "@/app/features/user/hooks";
 import { formatPriceRM } from "@/app/lib/format-price";
-import type { CartItemRowData } from "@/app/features/user/types";
-import { clearCart, setCartId } from "@/app/redux/store";
 
 const PayPalCheckoutButtons = dynamic(
   () =>
@@ -34,247 +25,67 @@ type CheckoutProps = {
   paypalCurrency: string;
 };
 
-async function fetchAddresses(): Promise<SavedAddress[]> {
-  const { data } = await http.get<{ addresses: SavedAddress[] }>(
-    "/features/user/api/addresses",
-  );
-  return data.addresses ?? [];
-}
-
-type CouponQuote = {
-  subtotal: number;
-  discountAmount: number;
-  total: number;
-  applied: { code: string } | null;
-  couponError?: string;
-};
-
-const CHECKOUT_COUPON_ERR: Record<string, string> = {
-  coupon_not_found: "That code is not valid.",
-  coupon_inactive: "This code is no longer active.",
-  coupon_not_started: "This code is not valid yet.",
-  coupon_expired: "This code has expired.",
-  coupon_used_up: "This code has reached its usage limit.",
-  coupon_min_subtotal: "Order subtotal is below the minimum for this code.",
-  coupon_total_too_low: "Discount would make the total too low to pay.",
-  invalid_subtotal: "Cart total is invalid.",
-  coupon_requires_login: "Sign in to use this voucher.",
-  coupon_not_assigned: "This voucher is not available for your account.",
-  coupon_already_used: "This voucher was already used.",
-};
-
-function checkoutCouponMessage(err: string | undefined) {
-  if (!err) return "Could not apply code.";
-  return CHECKOUT_COUPON_ERR[err] ?? err.replace(/_/g, " ");
-}
-
 export default function Checkout({
   paypalClientId,
   paypalCurrency,
 }: CheckoutProps) {
-  const qc = useQueryClient();
-  const router = useRouter();
-  const { user } = useUser();
-  const { cart, isLoading, summary, mutate } = useShoppingCart();
-  const dispatch = useDispatch();
+  const {
+    user,
+    summary,
+    paid,
+    paidOrderId,
+    err,
+    smsTo,
+    setSmsTo,
+    empty,
+    showInitialLoading,
+    showPayPalButtons,
+    showAddressCards,
+    showItemLines,
+    setShowItemLines,
+    showAdvancedSections,
+    lines,
+    stockBlocked,
+    handlePaid,
+    handlePayPalError,
+    refreshCartAndTotals,
+    addresses,
+    coupons,
+    dueTotal,
+    dueDiscount,
+    dueCouponCode,
+  } = useCheckoutPage({ paypalCurrency });
 
-  const refreshCheckoutCoupon = useCallback(() => {
-    void qc.invalidateQueries({ queryKey: ["checkout-coupon-quote"] });
-    void qc.invalidateQueries({ queryKey: ["storefront-vouchers"] });
-  }, [qc]);
+  const {
+    savedAddresses,
+    shippingPrefilled,
+    selectedSavedId,
+    applySavedAddress,
+    setDefaultSavedAddress,
+    line1,
+    setLine1,
+    city,
+    setCity,
+    postcode,
+    setPostcode,
+    country,
+    setCountry,
+    shippingMethod,
+    setShippingMethod,
+    shippingPayload,
+  } = addresses;
 
-  const [paid, setPaid] = useState(false);
-  const [paidOrderId, setPaidOrderId] = useState<number | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [smsTo, setSmsTo] = useState("");
-  const [line1, setLine1] = useState("");
-  const [city, setCity] = useState("");
-  const [postcode, setPostcode] = useState("");
-  const [country, setCountry] = useState("Malaysia");
-  const [shippingMethod, setShippingMethod] = useState("standard");
-  const [shippingPrefilled, setShippingPrefilled] = useState(false);
-  const [selectedSavedId, setSelectedSavedId] = useState<number | "">("");
-  const [promoInput, setPromoInput] = useState("");
-  const [promoBusy, setPromoBusy] = useState(false);
-  const [promoLocalErr, setPromoLocalErr] = useState<string | null>(null);
-  const [showPayPalButtons, setShowPayPalButtons] = useState(false);
-  const [showAddressCards, setShowAddressCards] = useState(false);
-  const [showItemLines, setShowItemLines] = useState(false);
-  const [showAdvancedSections, setShowAdvancedSections] = useState(false);
-
-  const { data: savedAddresses = [], isSuccess: addressesLoaded } = useQuery({
-    queryKey: ["user-addresses"],
-    queryFn: fetchAddresses,
-    enabled: Boolean(user),
-  });
-
-  const couponQ = useQuery({
-    queryKey: ["checkout-coupon-quote", summary.totalPrice],
-    queryFn: async () => {
-      const { data } = await http.get<CouponQuote>(
-        "/features/user/api/checkout/coupon",
-      );
-      return data;
-    },
-    enabled: Boolean(cart?.items?.length),
-    staleTime: 5_000,
-  });
-
-  const applyPromoCode = useCallback(async () => {
-    if (!promoInput.trim()) return;
-    setPromoBusy(true);
-    setPromoLocalErr(null);
-    try {
-      await http.post("/features/user/api/checkout/coupon", {
-        code: promoInput.trim(),
-      });
-      setPromoInput("");
-      refreshCheckoutCoupon();
-    } catch (e) {
-      const ax = e as { response?: { data?: { error?: string } } };
-      const code = ax.response?.data?.error;
-      setPromoLocalErr(
-        code ? checkoutCouponMessage(code) : getErrorMessage(e, "apply_failed"),
-      );
-    } finally {
-      setPromoBusy(false);
-    }
-  }, [promoInput, refreshCheckoutCoupon]);
-
-  const removePromoCode = useCallback(async () => {
-    setPromoBusy(true);
-    setPromoLocalErr(null);
-    try {
-      await http.delete("/features/user/api/checkout/coupon");
-      refreshCheckoutCoupon();
-    } catch (e) {
-      setPromoLocalErr(getErrorMessage(e, "Could not remove coupon."));
-    } finally {
-      setPromoBusy(false);
-    }
-  }, [refreshCheckoutCoupon]);
-
-  useEffect(() => {
-    if (!user || !addressesLoaded || shippingPrefilled) return;
-    if (savedAddresses.length) {
-      const def = savedAddresses.find((a) => a.isDefault) ?? savedAddresses[0];
-      setLine1(def.line1);
-      setCity(def.city);
-      setPostcode(def.postcode);
-      setCountry(def.country);
-      setSelectedSavedId(def.id);
-    }
-    setShippingPrefilled(true);
-  }, [user, savedAddresses, addressesLoaded, shippingPrefilled]);
-
-  const applySavedAddress = useCallback(
-    (id: number | "") => {
-      setSelectedSavedId(id);
-      if (id === "") return;
-      const a = savedAddresses.find((x) => x.id === id);
-      if (a) {
-        setLine1(a.line1);
-        setCity(a.city);
-        setPostcode(a.postcode);
-        setCountry(a.country);
-      }
-    },
-    [savedAddresses],
-  );
-
-  const setDefaultSavedAddress = useCallback(
-    async (id: number) => {
-      setErr(null);
-      try {
-        await http.patch(`/features/user/api/addresses/${id}`, {
-          isDefault: true,
-        });
-        void qc.invalidateQueries({ queryKey: ["user-addresses"] });
-      } catch (e) {
-        setErr(getErrorMessage(e, "Could not set default address."));
-      }
-    },
-    [qc],
-  );
-
-  const handlePaid = useCallback(
-    (payload: { orderId: number }) => {
-      setPaid(true);
-      setPaidOrderId(payload.orderId);
-      setErr(null);
-      // PayPal capture clears server cart; also clear Redux cart so header badge resets immediately.
-      dispatch(clearCart());
-      dispatch(setCartId(""));
-      router.push(
-        `/features/user/orders/${encodeURIComponent(
-          String(payload.orderId),
-        )}?payment=success`,
-      );
-    },
-    [dispatch, router],
-  );
-
-  useEffect(() => {
-    if (!paid) return;
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [paid]);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setShowPayPalButtons(true), 180);
-    return () => window.clearTimeout(timer);
-  }, []);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setShowAddressCards(true), 220);
-    return () => window.clearTimeout(timer);
-  }, []);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setShowAdvancedSections(true), 260);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  const handlePayPalError = useCallback((message: string) => {
-    setErr(message);
-  }, []);
-
-  const refreshCartAndTotals = useCallback(async () => {
-    setErr(null);
-    await mutate();
-    refreshCheckoutCoupon();
-  }, [mutate, refreshCheckoutCoupon]);
-
-  const empty = !cart?.items?.length;
-  const showInitialLoading = isLoading && !cart;
-
-  const shippingPayload = useMemo(() => {
-    if (!line1.trim() || !city.trim() || !postcode.trim() || !country.trim()) {
-      return undefined;
-    }
-    return {
-      line1: line1.trim(),
-      city: city.trim(),
-      postcode: postcode.trim(),
-      country: country.trim(),
-      method: shippingMethod,
-    };
-  }, [line1, city, postcode, country, shippingMethod]);
-
-  const lines = useMemo(() => {
-    if (!cart?.items?.length) return [];
-    return cart.items.map((i: CartItemRowData) => {
-      const unit = i.liveProduct?.price ?? i.price;
-      const title = i.liveProduct?.title ?? i.title;
-      return { title, qty: i.quantity, unit };
-    });
-  }, [cart?.items]);
-
-  const stockBlocked = useMemo(() => {
-    if (!cart?.items?.length) return false;
-    return (cart.items as CartItemRowData[]).some((i) => {
-      if (i.liveProduct?.isActive === false) return true;
-      const s = i.liveProduct?.stock;
-      if (s == null) return false;
-      return i.quantity > s || s < 1;
-    });
-  }, [cart?.items]);
+  const {
+    couponQ,
+    couponInput: promoInput,
+    setCouponInput: setPromoInput,
+    couponBusy: promoBusy,
+    couponLocalErr: promoLocalErr,
+    couponErrorMessage: promoCouponErrorMessage,
+    invalidateCoupon: refreshCheckoutCoupon,
+    applyCoupon: applyPromoCode,
+    removeCoupon: removePromoCode,
+  } = coupons;
 
   if (showInitialLoading) {
     return (
@@ -315,15 +126,12 @@ export default function Checkout({
           <h1 className="text-2xl font-bold text-gray-900">Checkout</h1>
           <p className="text-sm text-gray-600 mt-1">
             Pay with PayPal (sandbox). You will be charged{" "}
-            <strong>
-              {formatPriceRM(couponQ.data?.total ?? summary.totalPrice)}
-            </strong>{" "}
-            {paypalCurrency}
-            {couponQ.data && couponQ.data.discountAmount > 0 ? (
+            <strong>{formatPriceRM(dueTotal)}</strong> {paypalCurrency}
+            {dueDiscount > 0 ? (
               <span className="text-emerald-700">
                 {" "}
-                (includes {formatPriceRM(couponQ.data.discountAmount)} discount
-                {couponQ.data.applied ? ` · ${couponQ.data.applied.code}` : ""})
+                (includes {formatPriceRM(dueDiscount)} discount
+                {dueCouponCode ? ` · ${dueCouponCode}` : ""})
               </span>
             ) : null}
             .
@@ -371,17 +179,12 @@ export default function Checkout({
               <span>−{formatPriceRM(couponQ.data.discountAmount)}</span>
             </div>
           ) : null}
-          {couponQ.data?.couponError ? (
-            <p className="text-xs text-amber-800">
-              Coupon was cleared: adjust your cart or re-apply a code on the
-              cart page.
-            </p>
+          {promoCouponErrorMessage ? (
+            <p className="text-xs text-amber-800">{promoCouponErrorMessage}</p>
           ) : null}
           <div className="flex justify-between font-semibold border-t pt-3">
             <span>Total due</span>
-            <span className="text-blue-600">
-              {formatPriceRM(couponQ.data?.total ?? summary.totalPrice)}
-            </span>
+            <span className="text-blue-600">{formatPriceRM(dueTotal)}</span>
           </div>
         </div>
 

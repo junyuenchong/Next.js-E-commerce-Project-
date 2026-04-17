@@ -3,54 +3,12 @@
 /** Saved wishlist items. */
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import http from "@/app/utils/http";
-import { useUser } from "@/app/features/user/components/client/UserContext";
+import { useWishlistPage } from "@/app/features/user/hooks";
 import { formatPriceRM } from "@/app/lib/format-price";
 import { IMG } from "@/app/lib/image-sizes";
 
-type Item = {
-  id: number;
-  productId: number;
-  product: {
-    id: number;
-    title: string;
-    slug: string;
-    price: number;
-    imageUrl: string | null;
-    stock: number;
-    isActive: boolean;
-  };
-};
-
 export default function WishlistPage() {
-  const { user, isLoading: authLoading } = useUser();
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
-  const showSkeleton = (authLoading || loading) && items.length === 0;
-
-  const load = useCallback(async () => {
-    try {
-      const { data } = await http.get<Item[]>("/features/user/api/wishlist");
-      setItems(Array.isArray(data) ? data : []);
-    } catch {
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!authLoading && user) void load();
-    if (!authLoading && !user) setLoading(false);
-  }, [authLoading, user, load]);
-
-  const remove = async (productId: number) => {
-    await http.delete(
-      `/features/user/api/wishlist?productId=${encodeURIComponent(String(productId))}`,
-    );
-    await load();
-  };
+  const { user, items, showSkeleton, remove } = useWishlistPage();
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">

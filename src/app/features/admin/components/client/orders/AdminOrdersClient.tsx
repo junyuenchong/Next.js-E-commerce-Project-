@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import http, { getErrorMessage } from "@/app/utils/http";
-import { useAdminResourceSSE } from "@/app/features/admin/hooks";
+import { useAdminResourceSSE } from "@/app/features/admin/shared";
 
 type OrderLine = {
   id: number;
@@ -63,6 +63,7 @@ async function fetchAdminMe(): Promise<Me> {
   return data;
 }
 
+// Fetch one cursor page from the admin orders endpoint.
 async function fetchOrdersPage(
   cursor?: number,
   q?: string,
@@ -77,6 +78,7 @@ async function fetchOrdersPage(
   return data;
 }
 
+// Format money safely with a currency fallback.
 function formatMoney(amount: number, currency: string) {
   try {
     // Note: Malaysia-first formatting (still respects passed currency code).
@@ -89,9 +91,10 @@ function formatMoney(amount: number, currency: string) {
   }
 }
 
-function customerLabel(o: AdminOrderRow) {
-  const email = o.user?.email ?? o.emailSnapshot;
-  const name = o.user?.name;
+// Build customer label from user snapshot fields.
+function customerLabel(orderRow: AdminOrderRow) {
+  const email = orderRow.user?.email ?? orderRow.emailSnapshot;
+  const name = orderRow.user?.name;
   if (email && name) return `${name} · ${email}`;
   if (email) return email;
   return "Guest / no email";
@@ -156,6 +159,7 @@ export default function AdminOrdersClient() {
   );
 
   // Debounced search-as-you-type (still supports enter-to-search form).
+  // Debounce search input before querying.
   useEffect(() => {
     const t = setTimeout(() => {
       const next = searchDraft.trim();
@@ -169,7 +173,7 @@ export default function AdminOrdersClient() {
     const filtered =
       statusFilter === "all"
         ? rows
-        : rows.filter((o) => o.status === statusFilter);
+        : rows.filter((orderRow) => orderRow.status === statusFilter);
     const sorted = [...filtered];
     sorted.sort((a, b) => {
       switch (sortKey) {
@@ -191,6 +195,7 @@ export default function AdminOrdersClient() {
     return sorted;
   }, [rows, sortKey, statusFilter]);
 
+  // Toggle expanded state for a row.
   const toggleExpand = useCallback((id: number) => {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -200,19 +205,22 @@ export default function AdminOrdersClient() {
     });
   }, []);
 
+  // Resolve row status from draft override or original value.
   const statusForRow = useCallback(
-    (o: AdminOrderRow) => draftStatus[o.id] ?? o.status,
+    (orderRow: AdminOrderRow) => draftStatus[orderRow.id] ?? orderRow.status,
     [draftStatus],
   );
 
+  // Update status draft for a single order row.
   const setStatusDraft = useCallback((orderId: number, status: OrderStatus) => {
     setDraftStatus((d) => ({ ...d, [orderId]: status }));
   }, []);
 
+  // Persist status change after permission checks.
   const saveStatus = useCallback(
-    async (o: AdminOrderRow) => {
-      const next = statusForRow(o);
-      if (next === o.status) {
+    async (orderRow: AdminOrderRow) => {
+      const next = statusForRow(orderRow);
+      if (next === orderRow.status) {
         setBanner({ kind: "ok", text: "No change to save." });
         return;
       }
@@ -231,19 +239,25 @@ export default function AdminOrdersClient() {
         return;
       }
 
-      setSavingId(o.id);
+      setSavingId(orderRow.id);
       setBanner(null);
       try {
-        await http.patch(ORDERS_PATH, { orderId: o.id, status: next });
+        await http.patch(ORDERS_PATH, { orderId: orderRow.id, status: next });
         setDraftStatus((d) => {
           const copy = { ...d };
-          delete copy[o.id];
+          delete copy[orderRow.id];
           return copy;
         });
         await ordersQuery.refetch();
-        setBanner({ kind: "ok", text: `Order #${o.id} updated to ${next}.` });
-      } catch (e) {
-        setBanner({ kind: "err", text: getErrorMessage(e, "Update failed") });
+        setBanner({
+          kind: "ok",
+          text: `Order #${orderRow.id} updated to ${next}.`,
+        });
+      } catch (error) {
+        setBanner({
+          kind: "err",
+          text: getErrorMessage(error, "Update failed"),
+        });
       } finally {
         setSavingId(null);
       }
@@ -251,6 +265,7 @@ export default function AdminOrdersClient() {
     [canRefund, canUpdate, ordersQuery, statusForRow],
   );
 
+  // Decide whether save action is allowed for this transition.
   const canSaveStatus = useCallback(
     (draft: OrderStatus, original: OrderStatus) => {
       if (draft === original) return false;

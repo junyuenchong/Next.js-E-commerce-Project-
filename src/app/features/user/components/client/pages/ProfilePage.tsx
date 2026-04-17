@@ -3,64 +3,37 @@
 /** Profile, avatar, linked accounts, addresses. */
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import http, { isAxiosError } from "@/app/utils/http";
-import {
-  formatLoginProviderLabel,
-  type LoginProviderId,
-} from "@/app/lib/login-providers";
-import { useUser } from "@/app/features/user/components/client/UserContext";
+import { formatLoginProviderLabel } from "@/app/lib/login-providers";
 import AddressBookSection from "@/app/features/user/components/client/profile/AddressBookSection";
 import PasswordInput from "@/app/components/shared/PasswordInput";
-
-type ProfileDto = {
-  id: number;
-  name: string | null;
-  email: string;
-  image: string | null;
-  role: string;
-  createdAt: string;
-  hasPassword: boolean;
-  loginProviders: LoginProviderId[];
-};
-
-async function fetchProfile(): Promise<{ user: ProfileDto }> {
-  const { data } = await http.get<{ user: ProfileDto }>(
-    "/features/user/api/profile",
-  );
-  return data;
-}
+import { useProfilePage } from "@/app/features/user/hooks";
 
 export default function ProfilePage() {
-  const { user, isLoading: sessionLoading } = useUser();
-  const queryClient = useQueryClient();
-  const [name, setName] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [pwMsg, setPwMsg] = useState<string | null>(null);
-  const [pwPending, setPwPending] = useState(false);
-  const [resetPending, setResetPending] = useState(false);
-  const [resetMsg, setResetMsg] = useState<string | null>(null);
-
   const {
-    data: profileData,
-    isLoading: profileLoading,
-    error: profileError,
-  } = useQuery({
-    queryKey: ["user-profile"],
-    queryFn: fetchProfile,
-    enabled: Boolean(user),
-  });
-
-  const profile = profileData?.user;
-
-  useEffect(() => {
-    if (profile?.name != null) setName(String(profile.name));
-    else if (user?.name) setName(String(user.name));
-  }, [profile?.name, user?.name]);
+    user,
+    sessionLoading,
+    profile,
+    profileQuery,
+    name,
+    setName,
+    msg,
+    displayName,
+    initial,
+    memberSince,
+    saveProfile,
+    currentPassword,
+    setCurrentPassword,
+    newPassword,
+    setNewPassword,
+    confirmPassword,
+    setConfirmPassword,
+    pwMsg,
+    pwPending,
+    changePassword,
+    resetPending,
+    resetMsg,
+    sendResetEmail,
+  } = useProfilePage();
 
   if (sessionLoading) {
     return (
@@ -84,7 +57,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (profileLoading) {
+  if (profileQuery.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
@@ -92,7 +65,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (profileError || !profile) {
+  if (profileQuery.isError || !profile) {
     return (
       <div className="min-h-screen py-16 text-center px-4 bg-gray-50">
         <p className="text-gray-700">Could not load profile.</p>
@@ -102,80 +75,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-
-  const displayName = profile.name?.trim() || user.name?.trim() || "Member";
-  const initial = displayName[0]?.toUpperCase() ?? "U";
-  const memberSince = new Date(profile.createdAt).toLocaleDateString(
-    undefined,
-    {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    },
-  );
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMsg(null);
-    try {
-      await http.patch("/features/user/api/profile", { name: name.trim() });
-      setMsg("Saved.");
-      await queryClient.invalidateQueries({ queryKey: ["user-profile"] });
-      await queryClient.invalidateQueries({ queryKey: ["user-session"] });
-    } catch {
-      setMsg("Could not save.");
-    }
-  };
-
-  const changePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPwMsg(null);
-    if (newPassword !== confirmPassword) {
-      setPwMsg("New passwords do not match.");
-      return;
-    }
-    setPwPending(true);
-    try {
-      await http.post("/features/user/api/profile/change-password", {
-        currentPassword,
-        newPassword,
-      });
-      setPwMsg("Password updated.");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (err: unknown) {
-      const code = isAxiosError<{ error?: string }>(err)
-        ? err.response?.data?.error
-        : undefined;
-      if (code === "invalid_current") {
-        setPwMsg("Current password is incorrect.");
-      } else if (code === "rate_limited") {
-        setPwMsg("Too many attempts. Try again later.");
-      } else {
-        setPwMsg("Could not update password.");
-      }
-    } finally {
-      setPwPending(false);
-    }
-  };
-
-  const sendResetEmail = async () => {
-    setResetMsg(null);
-    setResetPending(true);
-    try {
-      await http.post("/features/user/api/auth/forgot-password", {
-        email: profile.email.trim(),
-      });
-      setResetMsg(
-        "If this account can use password login, check your inbox for a reset link.",
-      );
-    } catch {
-      setResetMsg("Could not send email. Try again later.");
-    } finally {
-      setResetPending(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
@@ -231,7 +130,7 @@ export default function ProfilePage() {
           </div>
 
           <form
-            onSubmit={save}
+            onSubmit={saveProfile}
             className="space-y-3 pt-2 border-t border-gray-100"
           >
             <label className="block text-sm font-medium text-gray-800">

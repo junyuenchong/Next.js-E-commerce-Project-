@@ -1,21 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/utils/http";
 import { formatPriceRM } from "@/app/lib/format-price";
-import { useUser } from "@/app/features/user/components/client/UserContext";
-
-export type StorefrontVoucherDto = {
-  code: string;
-  headline: string | null;
-  detail: string | null;
-  offerLabel: string;
-  minOrderSubtotal: number | null;
-  endsAt: string | null;
-  meetsMinimumSpend: boolean | null;
-  scope?: "USER" | "GLOBAL";
-};
+import { useStorefrontVoucherStrip } from "@/app/features/user/hooks";
 
 type Props = {
   cartSubtotal: number;
@@ -26,16 +12,6 @@ type Props = {
   variant?: "cart" | "checkout";
 };
 
-const COUPON_ERR: Record<string, string> = {
-  coupon_not_found: "Invalid code.",
-  coupon_inactive: "No longer active.",
-  coupon_not_started: "Not valid yet.",
-  coupon_expired: "Expired.",
-  coupon_used_up: "Fully redeemed.",
-  coupon_min_subtotal: "Minimum spend not met.",
-  coupon_total_too_low: "Discount too high for this cart.",
-};
-
 export default function StorefrontVoucherStrip({
   cartSubtotal,
   appliedCode,
@@ -43,107 +19,27 @@ export default function StorefrontVoucherStrip({
   busy = false,
   variant = "cart",
 }: Props) {
-  const { user } = useUser();
-  const [localErr, setLocalErr] = useState<string | null>(null);
-  const [applying, setApplying] = useState<string | null>(null);
-  const userStripRef = useRef<HTMLDivElement | null>(null);
-  const globalStripRef = useRef<HTMLDivElement | null>(null);
-  const [userScrollState, setUserScrollState] = useState({
-    canScrollLeft: false,
-    canScrollRight: false,
+  const {
+    applying,
+    appliedNorm,
+    globalScrollState,
+    globalStripRef,
+    globalVouchers,
+    isLoading,
+    localErr,
+    scrollGlobalStrip,
+    scrollUserStrip,
+    userScrollState,
+    userStripRef,
+    userVouchers,
+    vouchers,
+    applyVoucher,
+  } = useStorefrontVoucherStrip({
+    cartSubtotal,
+    appliedCode,
+    onApplied,
+    variant,
   });
-  const [globalScrollState, setGlobalScrollState] = useState({
-    canScrollLeft: false,
-    canScrollRight: false,
-  });
-
-  const { data, isLoading } = useQuery({
-    queryKey: [
-      "storefront-vouchers",
-      cartSubtotal,
-      user?.id != null ? String(user.id) : "anon",
-    ],
-    queryFn: async () => {
-      const { data: body } = await http.get<{
-        vouchers: StorefrontVoucherDto[];
-      }>(
-        `/features/user/api/coupons/vouchers?subtotal=${encodeURIComponent(String(cartSubtotal))}`,
-      );
-      return body.vouchers ?? [];
-    },
-    staleTime: 30_000,
-  });
-
-  const vouchers = data ?? [];
-  const userVouchers = vouchers.filter((v) => v.scope === "USER");
-  const globalVouchers = vouchers.filter((v) => v.scope !== "USER");
-
-  useEffect(() => {
-    const el = userStripRef.current;
-    if (!el) return;
-    const update = () => {
-      const left = el.scrollLeft > 0;
-      const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
-      setUserScrollState({ canScrollLeft: left, canScrollRight: right });
-    };
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    return () => el.removeEventListener("scroll", update);
-  }, [userVouchers.length, variant]);
-
-  useEffect(() => {
-    const el = globalStripRef.current;
-    if (!el) return;
-    const update = () => {
-      const left = el.scrollLeft > 0;
-      const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
-      setGlobalScrollState({ canScrollLeft: left, canScrollRight: right });
-    };
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    return () => el.removeEventListener("scroll", update);
-  }, [globalVouchers.length, variant]);
-
-  const scrollUserStrip = useCallback((dir: -1 | 1) => {
-    userStripRef.current?.scrollBy({
-      left: dir * 280,
-      behavior: "smooth",
-    });
-  }, []);
-
-  const scrollGlobalStrip = useCallback((dir: -1 | 1) => {
-    globalStripRef.current?.scrollBy({
-      left: dir * 280,
-      behavior: "smooth",
-    });
-  }, []);
-
-  const apply = useCallback(
-    async (code: string) => {
-      setLocalErr(null);
-      setApplying(code);
-      try {
-        await http.post("/features/user/api/checkout/coupon", { code });
-        onApplied();
-      } catch (e) {
-        const ax = e as { response?: { data?: { error?: string } } };
-        const codeErr = ax.response?.data?.error;
-        setLocalErr(
-          codeErr && COUPON_ERR[codeErr]
-            ? COUPON_ERR[codeErr]
-            : getErrorMessage(e, "Could not apply voucher."),
-        );
-      } finally {
-        setApplying(null);
-      }
-    },
-    [onApplied],
-  );
-
-  const appliedNorm = useMemo(
-    () => (appliedCode ? appliedCode.trim().toUpperCase() : ""),
-    [appliedCode],
-  );
 
   if (isLoading && !vouchers.length) {
     return (
@@ -295,7 +191,7 @@ export default function StorefrontVoucherStrip({
                   <button
                     type="button"
                     disabled={disabled}
-                    onClick={() => void apply(v.code)}
+                    onClick={() => void applyVoucher(v.code)}
                     className={
                       variant === "checkout"
                         ? "mt-2 rounded border border-amber-300 bg-amber-500 px-2 py-1 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
@@ -399,7 +295,7 @@ export default function StorefrontVoucherStrip({
                   <button
                     type="button"
                     disabled={disabled}
-                    onClick={() => void apply(v.code)}
+                    onClick={() => void applyVoucher(v.code)}
                     className={
                       variant === "checkout"
                         ? "mt-2 rounded border border-amber-300 bg-amber-500 px-2 py-1 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"

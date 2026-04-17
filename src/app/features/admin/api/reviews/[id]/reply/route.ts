@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: reviews/[id]/reply.
+ */
+
 import { NextResponse } from "next/server";
 import { replyProductReview } from "@/backend/modules/review";
 import { updateReviewReplySchema } from "@/shared/schema";
@@ -11,12 +15,13 @@ import { jsonInternalServerError } from "@/backend/lib/api-error";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// Save or clear the admin reply text for a review.
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const g = await adminApiRequireCatalogAccess();
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequireCatalogAccess();
+  if (!guard.ok) return guard.response;
 
   try {
     const { id } = await context.params;
@@ -28,7 +33,7 @@ export async function PATCH(
     }
     const replyText = bodyParsed.data.adminReply ?? "";
     const updated = await replyProductReview(reviewId, replyText);
-    const aid = adminActorNumericId(g.user);
+    const aid = adminActorNumericId(guard.user);
     if (aid != null) {
       void logAdminAction({
         actorUserId: aid,

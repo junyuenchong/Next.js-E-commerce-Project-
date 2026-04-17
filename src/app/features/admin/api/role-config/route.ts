@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: role-config.
+ */
+
 import { NextResponse } from "next/server";
 import type { UserRole } from "@prisma/client";
 import prisma from "@/app/lib/prisma";
@@ -31,21 +35,24 @@ function isPermissionProfileSlugLocked(slug: string): boolean {
   return slug === LOCKED_PERMISSION_PROFILE_SLUG;
 }
 
-function editablePermissionProfileSlugs(actorRole: UserRole): string[] {
+// Return which profile slugs this actor is allowed to edit ("*" means all).
+function getEditablePermissionProfileSlugs(actorRole: UserRole): string[] {
   if (actorRole === "SUPER_ADMIN") return ["*"];
   return [];
 }
 
-function canEditPermissionProfileBySlug(actorRole: UserRole): boolean {
+// Only super admins can edit permission profiles.
+function canEditPermissionProfiles(actorRole: UserRole): boolean {
   if (actorRole === "SUPER_ADMIN") return true;
   return false;
 }
 
-async function getRoleDefinitionById(
+// Load one role definition by id with compatibility for databases missing `isActive`.
+async function getRoleDefinitionByIdCompat(
   roleId: number,
-  roleHasIsActive: boolean,
+  hasIsActiveColumn: boolean,
 ): Promise<RoleDefinitionLite | null> {
-  if (roleHasIsActive) {
+  if (hasIsActiveColumn) {
     const def = await prisma.adminRoleDefinition.findUnique({
       where: { id: roleId },
     });
@@ -60,10 +67,11 @@ async function getRoleDefinitionById(
   return { ...def, isActive: true };
 }
 
+// Permission gate for mutating role definitions.
 async function canMutateRoleDefinition(
   user: AdminSessionUser,
 ): Promise<boolean> {
-  return canEditPermissionProfileBySlug(user.role);
+  return canEditPermissionProfiles(user.role);
 }
 
 /**
@@ -71,8 +79,8 @@ async function canMutateRoleDefinition(
  * when the DB is behind migrations.
  */
 async function loadRoleDefinitionsForRoleConfig() {
-  const roleHasIsActive = await adminRoleDefinitionHasIsActiveColumn();
-  if (roleHasIsActive) {
+  const hasIsActiveColumn = await adminRoleDefinitionHasIsActiveColumn();
+  if (hasIsActiveColumn) {
     return prisma.adminRoleDefinition.findMany({
       orderBy: [{ isActive: "desc" }, { sortOrder: "asc" }, { slug: "asc" }],
       include: {
@@ -113,9 +121,10 @@ async function createAdminRoleDefinitionWithoutIsActive(
   return row;
 }
 
+// Return permission catalog + role definitions used by the admin permissions page.
 export async function GET() {
-  const g = await adminApiRequire("user.read");
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequire("user.read");
+  if (!guard.ok) return guard.response;
 
   try {
     const [catalog, defs] = await Promise.all([
@@ -136,10 +145,12 @@ export async function GET() {
       permissionIds: d.permissions.map((p) => p.permissionId),
     }));
 
-    const canEditProfiles = g.user.role === "SUPER_ADMIN";
-    const canAddProfile = g.user.role === "SUPER_ADMIN";
-    const canDeleteProfile = g.user.role === "SUPER_ADMIN";
-    const editableRoleSlugs = editablePermissionProfileSlugs(g.user.role);
+    const canEditProfiles = guard.user.role === "SUPER_ADMIN";
+    const canAddProfile = guard.user.role === "SUPER_ADMIN";
+    const canDeleteProfile = guard.user.role === "SUPER_ADMIN";
+    const editableRoleSlugs = getEditablePermissionProfileSlugs(
+      guard.user.role,
+    );
 
     return NextResponse.json({
       canEditProfiles,
@@ -162,39 +173,46 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const g = await adminApiRequire("user.read");
-    if (!g.ok) return g.response;
+    const guard = await adminApiRequire("user.read");
+    if (!guard.ok) return guard.response;
 
     const json = (await request.json().catch(() => null)) as unknown;
 
-    const metaParsed = adminRolePatchProfileMetaSchema.safeParse(json);
-    if (metaParsed.success) {
-      const { roleId, name } = metaParsed.data;
+    const profileMetaPayload = adminRolePatchProfileMetaSchema.safeParse(json);
+    if (profileMetaPayload.success) {
+      const { roleId, name } = profileMetaPayload.data;
       const nameTrimmed = name.trim();
-      const roleHasIsActive = await adminRoleDefinitionHasIsActiveColumn();
-      const def = await getRoleDefinitionById(roleId, roleHasIsActive);
-      if (!def) {
+      const hasIsActiveColumn = await adminRoleDefinitionHasIsActiveColumn();
+      const roleDef = await getRoleDefinitionByIdCompat(
+        roleId,
+        hasIsActiveColumn,
+      );
+      if (!roleDef) {
         return NextResponse.json({ error: "unknown_role" }, { status: 404 });
       }
-      if (def.isSystem) {
+      if (roleDef.isSystem) {
         return NextResponse.json(
           { error: "cannot_rename_system_profile" },
           { status: 400 },
         );
       }
-      if (roleHasIsActive && "isActive" in def && def.isActive === false) {
+      if (
+        hasIsActiveColumn &&
+        "isActive" in roleDef &&
+        roleDef.isActive === false
+      ) {
         return NextResponse.json(
           { error: "role_profile_removed" },
           { status: 400 },
         );
       }
-      if (!(await canMutateRoleDefinition(g.user))) {
+      if (!(await canMutateRoleDefinition(guard.user))) {
         return adminJsonForbidden(
           "You are not allowed to edit this permission profile.",
         );
       }
 
-      const updated = roleHasIsActive
+      const updated = hasIsActiveColumn
         ? await prisma.adminRoleDefinition.update({
             where: { id: roleId },
             data: { name: nameTrimmed },
@@ -209,7 +227,7 @@ export async function PATCH(request: Request) {
 
       await invalidateAdminPermissionCaches([roleId]);
 
-      const aidRename = adminActorNumericId(g.user);
+      const aidRename = adminActorNumericId(guard.user);
       if (aidRename != null) {
         void logAdminAction({
           actorUserId: aidRename,
@@ -231,12 +249,12 @@ export async function PATCH(request: Request) {
       });
     }
 
-    const parsed = adminRolePatchPermissionsSchema.safeParse(json);
-    if (!parsed.success) {
+    const permissionsPayload = adminRolePatchPermissionsSchema.safeParse(json);
+    if (!permissionsPayload.success) {
       return NextResponse.json({ error: "invalid_body" }, { status: 400 });
     }
 
-    const { roleId, permissionIds } = parsed.data;
+    const { roleId, permissionIds } = permissionsPayload.data;
     const uniqueIds = [...new Set(permissionIds)];
 
     const validRows = await prisma.adminPermission.findMany({
@@ -253,12 +271,15 @@ export async function PATCH(request: Request) {
       }
     }
 
-    const roleHasIsActive = await adminRoleDefinitionHasIsActiveColumn();
-    const def = await getRoleDefinitionById(roleId, roleHasIsActive);
-    if (!def) {
+    const hasIsActiveColumn = await adminRoleDefinitionHasIsActiveColumn();
+    const roleDef = await getRoleDefinitionByIdCompat(
+      roleId,
+      hasIsActiveColumn,
+    );
+    if (!roleDef) {
       return NextResponse.json({ error: "unknown_role" }, { status: 404 });
     }
-    if (isPermissionProfileSlugLocked(def.slug)) {
+    if (isPermissionProfileSlugLocked(roleDef.slug)) {
       return NextResponse.json(
         {
           error: "super_admin_permissions_locked",
@@ -268,13 +289,17 @@ export async function PATCH(request: Request) {
         { status: 400 },
       );
     }
-    if (roleHasIsActive && "isActive" in def && def.isActive === false) {
+    if (
+      hasIsActiveColumn &&
+      "isActive" in roleDef &&
+      roleDef.isActive === false
+    ) {
       return NextResponse.json(
         { error: "role_profile_removed" },
         { status: 400 },
       );
     }
-    if (!(await canMutateRoleDefinition(g.user))) {
+    if (!(await canMutateRoleDefinition(guard.user))) {
       return adminJsonForbidden(
         "You are not allowed to edit this permission profile.",
       );
@@ -291,21 +316,21 @@ export async function PATCH(request: Request) {
 
     await invalidateAdminPermissionCaches([roleId]);
 
-    const aidPerm = adminActorNumericId(g.user);
+    const aidPerm = adminActorNumericId(guard.user);
     if (aidPerm != null) {
       void logAdminAction({
         actorUserId: aidPerm,
         action: "role.permissions_update",
         targetType: "AdminRoleDefinition",
         targetId: String(roleId),
-        metadata: { slug: def.slug, permissionCount: uniqueIds.length },
+        metadata: { slug: roleDef.slug, permissionCount: uniqueIds.length },
       });
     }
 
     const sortedIds = [...uniqueIds].sort((a, b) => a - b);
     return NextResponse.json({
-      id: def.id,
-      slug: def.slug,
+      id: roleDef.id,
+      slug: roleDef.slug,
       permissionIds: sortedIds,
     });
   } catch (error) {
@@ -313,11 +338,12 @@ export async function PATCH(request: Request) {
   }
 }
 
+// Create a new custom permission profile (or restore inactive profile with same slug).
 export async function POST(request: Request) {
   try {
-    const g = await adminApiRequire("user.read");
-    if (!g.ok) return g.response;
-    if (g.user.role !== "SUPER_ADMIN") {
+    const guard = await adminApiRequire("user.read");
+    if (!guard.ok) return guard.response;
+    if (guard.user.role !== "SUPER_ADMIN") {
       return adminJsonForbidden("Only super admins can add permission roles.");
     }
 
@@ -333,10 +359,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "slug_reserved" }, { status: 409 });
     }
 
-    const roleHasIsActive = await adminRoleDefinitionHasIsActiveColumn();
+    const hasIsActiveColumn = await adminRoleDefinitionHasIsActiveColumn();
     const nameTrimmed = parsed.data.name.trim();
 
-    if (roleHasIsActive) {
+    if (hasIsActiveColumn) {
       const inactiveSameSlug = await prisma.adminRoleDefinition.findFirst({
         where: { slug, isActive: false },
       });
@@ -352,7 +378,7 @@ export async function POST(request: Request) {
           },
         });
         await invalidateAdminPermissionCaches([restored.id]);
-        const aidPost = adminActorNumericId(g.user);
+        const aidPost = adminActorNumericId(guard.user);
         if (aidPost != null) {
           void logAdminAction({
             actorUserId: aidPost,
@@ -379,7 +405,7 @@ export async function POST(request: Request) {
     });
     const sortOrder = (maxOrder._max.sortOrder ?? 0) + 1;
 
-    if (roleHasIsActive) {
+    if (hasIsActiveColumn) {
       try {
         const created = await prisma.adminRoleDefinition.create({
           data: {
@@ -390,7 +416,7 @@ export async function POST(request: Request) {
             sortOrder,
           },
         });
-        const aidCreate = adminActorNumericId(g.user);
+        const aidCreate = adminActorNumericId(guard.user);
         if (aidCreate != null) {
           void logAdminAction({
             actorUserId: aidCreate,
@@ -428,7 +454,7 @@ export async function POST(request: Request) {
         nameTrimmed,
         sortOrder,
       );
-      const aidLegacy = adminActorNumericId(g.user);
+      const aidLegacy = adminActorNumericId(guard.user);
       if (aidLegacy != null) {
         void logAdminAction({
           actorUserId: aidLegacy,
@@ -459,11 +485,12 @@ export async function POST(request: Request) {
   }
 }
 
+// Soft-remove a custom permission profile and detach assigned users.
 export async function DELETE(request: Request) {
   try {
-    const g = await adminApiRequire("user.read");
-    if (!g.ok) return g.response;
-    if (g.user.role !== "SUPER_ADMIN") {
+    const guard = await adminApiRequire("user.read");
+    if (!guard.ok) return guard.response;
+    if (guard.user.role !== "SUPER_ADMIN") {
       return adminJsonForbidden(
         "Only super admins can remove permission profiles.",
       );
@@ -479,22 +506,29 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const roleHasIsActive = await adminRoleDefinitionHasIsActiveColumn();
-    const def = await getRoleDefinitionById(roleId, roleHasIsActive);
-    if (!def) {
+    const hasIsActiveColumn = await adminRoleDefinitionHasIsActiveColumn();
+    const roleDef = await getRoleDefinitionByIdCompat(
+      roleId,
+      hasIsActiveColumn,
+    );
+    if (!roleDef) {
       return NextResponse.json({ error: "unknown_role" }, { status: 404 });
     }
-    if (def.isSystem) {
+    if (roleDef.isSystem) {
       return NextResponse.json(
         { error: "cannot_delete_system_role" },
         { status: 400 },
       );
     }
-    if (roleHasIsActive && "isActive" in def && def.isActive === false) {
+    if (
+      hasIsActiveColumn &&
+      "isActive" in roleDef &&
+      roleDef.isActive === false
+    ) {
       return NextResponse.json({ error: "already_removed" }, { status: 400 });
     }
 
-    if (!roleHasIsActive) {
+    if (!hasIsActiveColumn) {
       return NextResponse.json(
         {
           error: "profile_remove_unavailable",
@@ -517,21 +551,21 @@ export async function DELETE(request: Request) {
     ]);
 
     await invalidateAdminPermissionCaches([roleId]);
-    const aidDel = adminActorNumericId(g.user);
+    const aidDel = adminActorNumericId(guard.user);
     if (aidDel != null) {
       void logAdminAction({
         actorUserId: aidDel,
         action: "role.profile_remove",
         targetType: "AdminRoleDefinition",
         targetId: String(roleId),
-        metadata: { slug: def.slug },
+        metadata: { slug: roleDef.slug },
       });
     }
     return NextResponse.json({
       ok: true,
       removed: true,
       roleId,
-      slug: def.slug,
+      slug: roleDef.slug,
     });
   } catch (error) {
     return jsonInternalServerError(error, "[admin/role-config DELETE]");

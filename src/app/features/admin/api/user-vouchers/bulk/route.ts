@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: user-vouchers/bulk.
+ */
+
 import { NextResponse } from "next/server";
 import prisma from "@/app/lib/prisma";
 import { adminApiRequire } from "@/backend/core/admin-api-guard";
@@ -19,30 +23,31 @@ type Body = {
 
 export const dynamic = "force-dynamic";
 
+// Bulk-assign a targeted coupon to selected customer accounts (optionally email them).
 export async function POST(req: Request) {
   try {
-    const g = await adminApiRequire("coupon.manage");
-    if (!g.ok) return g.response;
+    const guard = await adminApiRequire("coupon.manage");
+    if (!guard.ok) return guard.response;
 
     const json = (await req.json().catch(() => null)) as Body | null;
     const couponIdRaw = json?.couponId;
-    const userIds = Array.isArray(json?.userIds) ? json!.userIds : [];
+    const selectedUserIds = Array.isArray(json?.userIds) ? json!.userIds : [];
     const sendEmail = Boolean(json?.sendEmail);
-    const message =
+    const emailMessage =
       typeof json?.message === "string" ? json.message.trim() : "";
 
     const couponId = Number(couponIdRaw);
     if (!Number.isFinite(couponId) || couponId < 1) {
       return NextResponse.json({ error: "invalid_coupon_id" }, { status: 400 });
     }
-    const ids = Array.from(
+    const uniqueUserIds = Array.from(
       new Set(
-        userIds
+        selectedUserIds
           .map((n) => Number(n))
           .filter((n) => Number.isFinite(n) && n > 0),
       ),
     );
-    if (ids.length === 0) {
+    if (uniqueUserIds.length === 0) {
       return NextResponse.json({ error: "empty_selection" }, { status: 400 });
     }
 
@@ -68,21 +73,21 @@ export async function POST(req: Request) {
       );
     }
 
-    const users = await prisma.user.findMany({
-      where: { id: { in: ids }, isActive: true, role: "USER" },
+    const targetUsers = await prisma.user.findMany({
+      where: { id: { in: uniqueUserIds }, isActive: true, role: "USER" },
       select: { id: true, email: true, name: true },
     });
 
-    if (users.length === 0) {
+    if (targetUsers.length === 0) {
       return NextResponse.json({ error: "no_valid_users" }, { status: 400 });
     }
 
     const created = await prisma.userCouponAssignment.createMany({
-      data: users.map((u) => ({ userId: u.id, couponId })),
+      data: targetUsers.map((u) => ({ userId: u.id, couponId })),
       skipDuplicates: true,
     });
 
-    const actorId = adminActorNumericId(g.user);
+    const actorId = adminActorNumericId(guard.user);
     if (actorId != null) {
       void logAdminAction({
         actorUserId: actorId,
@@ -90,7 +95,7 @@ export async function POST(req: Request) {
         targetType: "Coupon",
         targetId: String(couponId),
         metadata: {
-          userCount: users.length,
+          userCount: targetUsers.length,
           created: created.count,
           sendEmail,
         },
@@ -103,10 +108,10 @@ export async function POST(req: Request) {
         coupon.endsAt != null
           ? `\nExpires: ${coupon.endsAt.toISOString()}`
           : "";
-      const extra = message ? `\n\n${message}` : "";
-      for (const u of users) {
+      const extra = emailMessage ? `\n\n${emailMessage}` : "";
+      for (const u of targetUsers) {
         if (!u.email) continue;
-        const r = await sendTransactionalEmail({
+        const emailResult = await sendTransactionalEmail({
           to: u.email,
           subject: `Your voucher code: ${coupon.code}`,
           text:
@@ -116,7 +121,7 @@ export async function POST(req: Request) {
             `Use it on the cart or checkout page.\n` +
             extra,
         });
-        if (r.ok) {
+        if (emailResult.ok) {
           emailed += 1;
           await prisma.userCouponAssignment.updateMany({
             where: { userId: u.id, couponId, emailedAt: null },
@@ -129,7 +134,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       couponId,
-      assigned: users.length,
+      assigned: targetUsers.length,
       created: created.count,
       emailed,
     });

@@ -15,6 +15,7 @@ const addressFields = {
 
 const postSchema = z.object(addressFields);
 
+// Lists active addresses for the authenticated user.
 export async function GET() {
   const userId = await resolveUserId();
   if (!userId) {
@@ -29,6 +30,7 @@ export async function GET() {
   return NextResponse.json({ addresses: list });
 }
 
+// Creates a new address and optionally marks it as default.
 export async function POST(request: Request) {
   const userId = await resolveUserId();
   if (!userId) {

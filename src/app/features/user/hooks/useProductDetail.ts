@@ -55,8 +55,9 @@ export function useProductDetail(
   } = useQuery({
     queryKey: ["product-review-eligibility", String(productId), user?.id ?? 0],
     queryFn: async () => {
-      const r = await fetchProductReviewEligibility(productId);
-      return r?.eligible === true;
+      const eligibilityResponse =
+        await fetchProductReviewEligibility(productId);
+      return eligibilityResponse?.eligible === true;
     },
     enabled: Boolean(user) && !sessionLoading,
     staleTime: 30_000,
@@ -111,8 +112,8 @@ export function useProductDetail(
   });
 
   const submitReview = useCallback(
-    (e: FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
       if (sessionLoading) {
         setReviewMessage("Checking your sign-in status...");
         return;

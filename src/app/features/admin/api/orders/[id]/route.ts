@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: orders/[id].
+ */
+
 import { NextResponse } from "next/server";
 import {
   getOrCreateInvoiceByOrderIdService,
@@ -10,13 +14,14 @@ import { renderInvoiceText } from "@/backend/modules/order/invoice.format";
 
 export const dynamic = "force-dynamic";
 
+// Return one order detail row for admin (includes invoice preview + download link).
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    const g = await adminApiRequire("order.read");
-    if (!g.ok) return g.response;
+    const guard = await adminApiRequire("order.read");
+    if (!guard.ok) return guard.response;
 
     const { id: idParam } = await context.params;
     const id = Number.parseInt(idParam, 10);

@@ -1,9 +1,6 @@
 "use client";
 import React, { createContext, useContext } from "react";
-import { useDispatch } from "react-redux";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchSession } from "@/app/features/user/components/client/http";
-import { useUserSessionSync } from "@/app/features/user/hooks";
+import { useUserSession } from "@/app/features/user/hooks";
 
 type User = {
   id: number | string;
@@ -22,25 +19,12 @@ const UserContext = createContext<UserContextType>({
   isLoading: true,
 });
 
-declare global {
-  interface Window {
-    __cartMerged?: boolean;
-  }
-}
-
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery({
-    queryKey: ["user-session"],
-    queryFn: fetchSession,
-    refetchInterval: 60000,
-  });
-  const dispatch = useDispatch();
-
-  useUserSessionSync(data, isLoading, dispatch, queryClient);
+  // Provider is intentionally thin; orchestration lives in hooks.
+  const { user, isLoading } = useUserSession();
   return (
     <UserContext.Provider
-      value={{ user: data?.user ? (data.user as User) : null, isLoading }}
+      value={{ user: user ? (user as User) : null, isLoading }}
     >
       {children}
     </UserContext.Provider>

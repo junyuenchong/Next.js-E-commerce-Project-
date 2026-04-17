@@ -1,182 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/utils/http";
 import Link from "next/link";
-import { useUser } from "@/app/features/user/components/client/UserContext";
-import { useSearchParams } from "next/navigation";
-import type { OrderListItem } from "@/app/features/user/types";
 import { formatPriceRM } from "@/app/lib/format-price";
-
-type ConversationRow = {
-  id: number;
-  status: "OPEN" | "CLOSED";
-  subject: string | null;
-  lastMessageAt: string;
-  createdAt: string;
-};
-
-type MessageRow = {
-  id: number;
-  senderType: "USER" | "ADMIN";
-  body: string;
-  createdAt: string;
-};
-
-async function ensureConversation(subject?: string) {
-  const { data } = await http.post<{ conversationId: number }>(
-    "/features/user/api/support/conversations",
-    { subject: subject?.trim() || null },
-  );
-  return data.conversationId;
-}
+import { useSupportChatPage } from "@/app/features/user/hooks";
 
 export default function SupportChatPage() {
-  const { user, isLoading: sessionLoading } = useUser();
-  const qc = useQueryClient();
-  const searchParams = useSearchParams();
-  const [conversationId, setConversationId] = useState<number | null>(null);
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [orderPreview, setOrderPreview] = useState<OrderListItem[] | null>(
-    null,
-  );
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const conversationsQ = useQuery({
-    queryKey: ["support-conversations"],
-    queryFn: async () => {
-      const { data } = await http.get<{ conversations: ConversationRow[] }>(
-        "/features/user/api/support/conversations",
-      );
-      return data.conversations ?? [];
-    },
-    enabled: Boolean(user),
-    refetchInterval: 8_000,
-    staleTime: 5_000,
-  });
-
-  useEffect(() => {
-    if (conversationId != null) return;
-    const first = conversationsQ.data?.[0];
-    if (first?.id) setConversationId(first.id);
-  }, [conversationId, conversationsQ.data]);
-
-  const messagesQ = useQuery({
-    queryKey: ["support-messages", conversationId],
-    queryFn: async () => {
-      const { data } = await http.get<{ messages: MessageRow[] }>(
-        `/features/user/api/support/conversations/${conversationId}/messages`,
-      );
-      return data.messages ?? [];
-    },
-    enabled: Boolean(user && conversationId),
-    refetchInterval: 4_000,
-    staleTime: 2_000,
-  });
-
-  const canSend = useMemo(() => {
-    const convo = conversationsQ.data?.find((c) => c.id === conversationId);
-    return convo?.status === "OPEN";
-  }, [conversationsQ.data, conversationId]);
-
-  useEffect(() => {
-    if (!messagesQ.data?.length) return;
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messagesQ.data?.length]);
-
-  const startNew = useCallback(async () => {
-    setErr(null);
-    setBusy(true);
-    try {
-      const id = await ensureConversation("Support request");
-      setConversationId(id);
-      void qc.invalidateQueries({ queryKey: ["support-conversations"] });
-    } catch (e) {
-      setErr(getErrorMessage(e, "Could not start chat."));
-    } finally {
-      setBusy(false);
-    }
-  }, [qc]);
-
-  const startFromBot = useCallback(
-    async (topic: string, opts?: { sendIntro?: boolean }) => {
-      setErr(null);
-      setBusy(true);
-      try {
-        const id =
-          conversationId ?? (await ensureConversation("Support request"));
-        if (conversationId == null) setConversationId(id);
-
-        if (opts?.sendIntro) {
-          await http.post(
-            `/features/user/api/support/conversations/${id}/messages`,
-            {
-              body: `Hi, I need help with: ${topic}`,
-            },
-          );
-        }
-
-        void qc.invalidateQueries({ queryKey: ["support-messages", id] });
-        void qc.invalidateQueries({ queryKey: ["support-conversations"] });
-        queueMicrotask(() => inputRef.current?.focus());
-      } catch (e) {
-        setErr(getErrorMessage(e, "Could not start chat."));
-      } finally {
-        setBusy(false);
-      }
-    },
-    [conversationId, qc],
-  );
-
-  const showMyOrders = useCallback(async () => {
-    setErr(null);
-    setBusy(true);
-    try {
-      const id = conversationId ?? (await ensureConversation("Order enquiry"));
-      if (conversationId == null) setConversationId(id);
-
-      const { data } = await http.get<{ orders: OrderListItem[] }>(
-        "/features/user/api/orders?limit=10",
-      );
-      setOrderPreview(Array.isArray(data.orders) ? data.orders : []);
-
-      queueMicrotask(() => inputRef.current?.focus());
-    } catch (e) {
-      setErr(getErrorMessage(e, "Could not load your orders."));
-    } finally {
-      setBusy(false);
-    }
-  }, [conversationId]);
-
-  const sendOrderHelp = useCallback(
-    async (orderId: string) => {
-      if (!conversationId) return;
-      setBusy(true);
-      setErr(null);
-      try {
-        await http.post(
-          `/features/user/api/support/conversations/${conversationId}/messages`,
-          {
-            body: `Hi, I need help with Order #${orderId}`,
-          },
-        );
-        void qc.invalidateQueries({
-          queryKey: ["support-messages", conversationId],
-        });
-        void qc.invalidateQueries({ queryKey: ["support-conversations"] });
-        queueMicrotask(() => inputRef.current?.focus());
-      } catch (e) {
-        setErr(getErrorMessage(e, "Could not send message."));
-      } finally {
-        setBusy(false);
-      }
-    },
-    [conversationId, qc],
-  );
+  const {
+    user,
+    sessionLoading,
+    conversationsQ,
+    messagesQ,
+    conversationId,
+    setConversationId,
+    message,
+    setMessage,
+    busy,
+    err,
+    orderPreview,
+    canSend,
+    bottomRef,
+    inputRef,
+    startNew,
+    startFromBot,
+    showMyOrders,
+    sendOrderHelp,
+    send,
+  } = useSupportChatPage();
 
   const QuickButtons = (
     <div className="grid grid-cols-2 gap-2 max-w-md">
@@ -216,38 +65,6 @@ export default function SupportChatPage() {
       </button>
     </div>
   );
-
-  useEffect(() => {
-    const topic = searchParams?.get("topic")?.trim();
-    if (!topic) return;
-    // Trigger once per mount; user can still start new chats manually.
-    void startFromBot(topic, { sendIntro: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const send = useCallback(async () => {
-    const text = message.trim();
-    if (!text || !conversationId) return;
-    setBusy(true);
-    setErr(null);
-    try {
-      await http.post(
-        `/features/user/api/support/conversations/${conversationId}/messages`,
-        {
-          body: text,
-        },
-      );
-      setMessage("");
-      void qc.invalidateQueries({
-        queryKey: ["support-messages", conversationId],
-      });
-      void qc.invalidateQueries({ queryKey: ["support-conversations"] });
-    } catch (e) {
-      setErr(getErrorMessage(e, "Could not send message."));
-    } finally {
-      setBusy(false);
-    }
-  }, [message, conversationId, qc]);
 
   if (sessionLoading) {
     return <div className="p-6 text-gray-600">Loading…</div>;

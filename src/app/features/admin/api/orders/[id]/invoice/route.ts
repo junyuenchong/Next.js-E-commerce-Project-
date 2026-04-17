@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: orders/[id]/invoice.
+ */
+
 import { NextResponse } from "next/server";
 import { moneyToNumber } from "@/backend/core/money";
 import { adminApiRequire } from "@/backend/core/admin-api-guard";
@@ -10,20 +14,22 @@ import { jsonInternalServerError } from "@/backend/lib/api-error";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-function parseParamId(raw: string | undefined): number | null {
+// Parse positive numeric route param id.
+function parsePositiveIntParam(raw: string | undefined): number | null {
   const n = raw ? Number.parseInt(raw, 10) : NaN;
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 export const dynamic = "force-dynamic";
 
+// Return an order invoice as plain text (preview in browser or download as file).
 export async function GET(request: Request, context: RouteContext) {
   try {
-    const g = await adminApiRequire("order.read");
-    if (!g.ok) return g.response;
+    const guard = await adminApiRequire("order.read");
+    if (!guard.ok) return guard.response;
 
     const { id: idParam } = await context.params;
-    const orderId = parseParamId(idParam);
+    const orderId = parsePositiveIntParam(idParam);
     if (!orderId) {
       return NextResponse.json({ error: "invalid_id" }, { status: 400 });
     }

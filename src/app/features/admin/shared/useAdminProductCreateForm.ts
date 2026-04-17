@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Create-product flow: categories, validation, image upload hook-in, and API submit.
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createProduct } from "@/backend/modules/product";
@@ -9,11 +13,12 @@ import {
   fetchAdminCategories,
   postImageUpload,
 } from "@/app/features/admin/components/client";
-import { buildAdminProductPayload } from "@/app/features/admin/lib/product-form";
-import { trySetFieldErrorsFromAxios400 } from "@/app/features/admin/lib/field-errors";
+import { buildAdminProductPayload } from "./product-form";
+import { trySetFieldErrorsFromAxios400 } from "./field-errors";
 
 type AdminCategory = { id: number; name: string };
 
+// Manages product-create form state, validation, and submission.
 export function useAdminProductCreateForm(onProductCreated?: () => void) {
   const queryClient = useQueryClient();
   const categoriesQuery = useQuery<AdminCategory[]>({
@@ -42,6 +47,7 @@ export function useAdminProductCreateForm(onProductCreated?: () => void) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Select the first category by default after categories load.
   useEffect(() => {
     if (categories.length > 0 && !formData.categoryId) {
       setFormData((prev) => ({
@@ -51,6 +57,7 @@ export function useAdminProductCreateForm(onProductCreated?: () => void) {
     }
   }, [categories, formData.categoryId]);
 
+  // Update a single form field and clear its inline error.
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       const { name, value } = e.target;
@@ -63,6 +70,7 @@ export function useAdminProductCreateForm(onProductCreated?: () => void) {
     [errors],
   );
 
+  // Store selected image and update preview URL.
   const handleImageChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -75,6 +83,7 @@ export function useAdminProductCreateForm(onProductCreated?: () => void) {
     [],
   );
 
+  // Upload selected image and return the uploaded URL.
   async function uploadImageIfNeeded(): Promise<string> {
     if (!imageFile) return formData.imageUrl;
     const form = new FormData();
@@ -83,8 +92,9 @@ export function useAdminProductCreateForm(onProductCreated?: () => void) {
     return data.secure_url;
   }
 
+  // Validate normalized payload with the shared product schema.
   const validateForm = useCallback(() => {
-    // Guard: validate normalized payload, not raw form strings.
+    // Validate normalized values, not raw string inputs.
     const payload = buildAdminProductPayload(formData);
 
     const validation = productSchema.safeParse(payload);
@@ -103,6 +113,7 @@ export function useAdminProductCreateForm(onProductCreated?: () => void) {
     return true;
   }, [formData]);
 
+  // Submit after validation and optional image upload.
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -111,7 +122,7 @@ export function useAdminProductCreateForm(onProductCreated?: () => void) {
     }
 
     setLoading(true);
-    // Feature: upload image first so the final payload contains a stable URL.
+    // Upload first so final payload contains the final URL.
     let imageUrl = formData.imageUrl;
     try {
       imageUrl = await uploadImageIfNeeded();

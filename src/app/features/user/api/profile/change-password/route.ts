@@ -4,6 +4,7 @@ import { updateUserPasswordSchema } from "@/shared/schema";
 import { clientIp, rateLimit } from "@/app/lib/rate-limit";
 import { resolveUserId } from "@/backend/core/session";
 
+// Updates password for an authenticated user with rate limiting.
 export async function POST(request: Request) {
   const ip = clientIp(request);
   const rl = await rateLimit(`change-pw:${ip}`, 10, 3600);

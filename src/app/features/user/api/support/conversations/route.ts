@@ -5,6 +5,7 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
+// Lists support conversations for the current user.
 export async function GET() {
   const userId = await resolveUserId();
   if (!userId) {
@@ -33,6 +34,7 @@ const createSchema = z.object({
   subject: z.string().trim().max(200).optional().nullable(),
 });
 
+// Creates (or reuses) an open support conversation for the current user.
 export async function POST(req: Request) {
   const userId = await resolveUserId();
   if (!userId) {

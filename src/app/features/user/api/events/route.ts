@@ -6,6 +6,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Parses requested SSE topics; defaults to products/categories/orders.
 function parseChannels(raw: string | null): string[] {
   if (!raw) return ["products", "categories", "orders"];
   const normalized = raw
@@ -15,6 +16,7 @@ function parseChannels(raw: string | null): string[] {
   return Array.from(new Set(normalized));
 }
 
+// Maps public SSE topic names to internal Redis channels.
 function toRedisChannel(channel: string): string | null {
   if (channel === "products") return ADMIN_SSE_CHANNELS.products;
   if (channel === "categories") return ADMIN_SSE_CHANNELS.categories;
@@ -22,6 +24,7 @@ function toRedisChannel(channel: string): string | null {
   return null;
 }
 
+// Streams realtime admin-backed events to storefront clients over SSE.
 export async function GET(request: Request) {
   const encoder = new TextEncoder();
   const { searchParams } = new URL(request.url);

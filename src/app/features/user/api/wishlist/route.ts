@@ -8,6 +8,7 @@ import {
   wishlistMutateSchema,
 } from "@/backend/modules/wishlist";
 
+// Returns current user's wishlist items.
 export async function GET() {
   const userId = await resolveUserId();
   if (!userId) {
@@ -19,6 +20,7 @@ export async function GET() {
   });
 }
 
+// Adds one active product to the user's wishlist.
 export async function POST(request: Request) {
   const userId = await resolveUserId();
   if (!userId) {
@@ -44,6 +46,7 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true });
 }
 
+// Removes one product from the user's wishlist.
 export async function DELETE(request: Request) {
   const userId = await resolveUserId();
   if (!userId) {

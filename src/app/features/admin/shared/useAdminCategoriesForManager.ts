@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Loads admin categories and keeps cache fresh with realtime invalidation.
+ */
+
 import { useCallback, useMemo } from "react";
 import type { QueryKey } from "@tanstack/react-query";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,6 +12,7 @@ import type { Category } from "@/app/features/admin/types";
 import { fetchAdminCategories } from "@/app/features/admin/components/client/http";
 import { useRealtimeInvalidate } from "./useRealtimeQuery";
 
+// Provides category data, refresh, and realtime invalidation.
 export function useAdminCategoriesForManager() {
   const queryClient = useQueryClient();
   const query = useQuery<Category[]>({
@@ -26,6 +31,7 @@ export function useAdminCategoriesForManager() {
       (key[2] as { scope?: string } | undefined)?.scope === "admin",
   });
 
+  // Manual refresh action for category list.
   const handleRefresh = useCallback(async () => {
     try {
       await queryClient.invalidateQueries({ queryKey: qk.admin.categories() });

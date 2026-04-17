@@ -7,11 +7,13 @@ export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+// Parses `[id]` route param into a safe positive integer.
 function parseParamId(raw: string | undefined): number | null {
   const n = raw ? Number.parseInt(raw, 10) : NaN;
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+// Returns messages for a conversation owned by the current user.
 export async function GET(_req: Request, ctx: RouteContext) {
   const userId = await resolveUserId();
   if (!userId)
@@ -25,11 +27,13 @@ export async function GET(_req: Request, ctx: RouteContext) {
       { status: 400 },
     );
 
-  const convo = await prisma.supportConversation.findFirst({
+  const conversation = await prisma.supportConversation.findFirst({
     where: { id: conversationId, userId },
     select: { id: true },
   });
-  if (!convo) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  if (!conversation) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
 
   const messages = await prisma.supportMessage.findMany({
     where: { conversationId },
@@ -53,6 +57,7 @@ const postSchema = z.object({
   body: z.string().trim().min(1).max(4000),
 });
 
+// Appends a new user message to an open support conversation.
 export async function POST(req: Request, ctx: RouteContext) {
   const userId = await resolveUserId();
   if (!userId)
@@ -72,16 +77,18 @@ export async function POST(req: Request, ctx: RouteContext) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  const convo = await prisma.supportConversation.findFirst({
+  const conversation = await prisma.supportConversation.findFirst({
     where: { id: conversationId, userId },
     select: { id: true, status: true },
   });
-  if (!convo) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  if (convo.status !== "OPEN") {
+  if (!conversation) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+  if (conversation.status !== "OPEN") {
     return NextResponse.json({ error: "conversation_closed" }, { status: 400 });
   }
 
-  const msg = await prisma.supportMessage.create({
+  const message = await prisma.supportMessage.create({
     data: {
       conversationId,
       senderType: "USER",
@@ -93,9 +100,9 @@ export async function POST(req: Request, ctx: RouteContext) {
 
   await prisma.supportConversation.update({
     where: { id: conversationId },
-    data: { lastMessageAt: msg.createdAt },
+    data: { lastMessageAt: message.createdAt },
     select: { id: true },
   });
 
-  return NextResponse.json({ ok: true, messageId: msg.id });
+  return NextResponse.json({ ok: true, messageId: message.id });
 }

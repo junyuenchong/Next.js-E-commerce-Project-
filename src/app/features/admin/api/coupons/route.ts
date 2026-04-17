@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: coupons.
+ */
+
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
@@ -27,6 +31,7 @@ import { jsonInternalServerError } from "@/backend/lib/api-error";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// Parse optional date input from admin form payload.
 function parseDateInput(v: unknown): Date | null | undefined {
   if (v === undefined) return undefined;
   if (v === null) return null;
@@ -37,6 +42,7 @@ function parseDateInput(v: unknown): Date | null | undefined {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+// Convert coupon row into JSON shape used by admin pages.
 function serializeCoupon(
   c: Awaited<ReturnType<typeof listCouponsAdminService>>[number],
 ) {
@@ -62,10 +68,11 @@ function serializeCoupon(
   };
 }
 
+// Return admin coupon list, using short-lived cache when available.
 export async function GET() {
   try {
-    const g = await adminApiRequire("coupon.read");
-    if (!g.ok) return g.response;
+    const guard = await adminApiRequire("coupon.read");
+    if (!guard.ok) return guard.response;
 
     const cacheKey = ADMIN_CACHE_KEYS.couponsList;
     const hit =
@@ -91,9 +98,10 @@ export async function GET() {
   }
 }
 
+// Create a new coupon from admin payload.
 export async function POST(req: Request) {
-  const g = await adminApiRequire("coupon.manage");
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequire("coupon.manage");
+  if (!guard.ok) return guard.response;
 
   const json = (await req.json().catch(() => null)) as unknown;
   const parsed = adminCouponCreateBodySchema.safeParse(json);
@@ -118,7 +126,7 @@ export async function POST(req: Request) {
       showOnStorefront: d.showOnStorefront,
       voucherHeadline: d.voucherHeadline ?? null,
     });
-    const aid = adminActorNumericId(g.user);
+    const aid = adminActorNumericId(guard.user);
     if (aid != null) {
       void logAdminAction({
         actorUserId: aid,
@@ -147,9 +155,10 @@ export async function POST(req: Request) {
   }
 }
 
+// Update coupon fields from admin edit payload.
 export async function PATCH(req: Request) {
-  const g = await adminApiRequire("coupon.manage");
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequire("coupon.manage");
+  if (!guard.ok) return guard.response;
 
   const json = (await req.json().catch(() => null)) as unknown;
   const parsed = adminCouponPatchBodySchema.safeParse(json);
@@ -200,7 +209,7 @@ export async function PATCH(req: Request) {
 
   try {
     const row = await updateCouponAdminService(id, data);
-    const aid = adminActorNumericId(g.user);
+    const aid = adminActorNumericId(guard.user);
     if (aid != null) {
       void logAdminAction({
         actorUserId: aid,
@@ -223,9 +232,10 @@ export async function PATCH(req: Request) {
   }
 }
 
+// Deactivate a coupon by id.
 export async function DELETE(req: Request) {
-  const g = await adminApiRequire("coupon.manage");
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequire("coupon.manage");
+  if (!guard.ok) return guard.response;
 
   const idRaw = new URL(req.url).searchParams.get("id");
   const id = idRaw ? Number.parseInt(idRaw, 10) : NaN;
@@ -235,7 +245,7 @@ export async function DELETE(req: Request) {
 
   try {
     const row = await deactivateCouponAdminService(id);
-    const aid = adminActorNumericId(g.user);
+    const aid = adminActorNumericId(guard.user);
     if (aid != null) {
       void logAdminAction({
         actorUserId: aid,

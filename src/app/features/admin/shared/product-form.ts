@@ -1,3 +1,7 @@
+/**
+ * Admin product UI: string form state → numeric API payload (price, compare-at, stock, category).
+ */
+
 type AdminProductFormLike = {
   title: string;
   description?: string;

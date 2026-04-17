@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: categories.
+ */
+
 import {
   createCategory,
   deleteCategory,
@@ -29,9 +33,10 @@ import { jsonInternalServerError } from "@/backend/lib/api-error";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// Return category list, using short-lived admin cache when available.
 export async function GET() {
-  const g = await adminApiRequireCatalogAccess();
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequireCatalogAccess();
+  if (!guard.ok) return guard.response;
 
   try {
     const key = ADMIN_CACHE_KEYS.categoriesList;
@@ -57,9 +62,10 @@ export async function GET() {
   }
 }
 
+// Create a new category for the product catalog.
 export async function POST(req: Request) {
-  const g = await adminApiRequire("product.update");
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequire("product.update");
+  if (!guard.ok) return guard.response;
 
   const json = (await req.json().catch(() => null)) as unknown;
   const parsed = adminCategoryCreateBodySchema.safeParse(json);
@@ -69,7 +75,7 @@ export async function POST(req: Request) {
 
   try {
     const category = await createCategory(parsed.data.name);
-    const aid = adminActorNumericId(g.user);
+    const aid = adminActorNumericId(guard.user);
     if (
       aid != null &&
       category &&
@@ -93,9 +99,10 @@ export async function POST(req: Request) {
   }
 }
 
+// Rename an existing category.
 export async function PATCH(req: Request) {
-  const g = await adminApiRequire("product.update");
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequire("product.update");
+  if (!guard.ok) return guard.response;
 
   const json = (await req.json().catch(() => null)) as unknown;
   const parsed = adminCategoryPatchBodySchema.safeParse(json);
@@ -108,7 +115,7 @@ export async function PATCH(req: Request) {
     if (updated && typeof updated === "object" && "message" in updated) {
       return NextResponse.json(updated, { status: 404 });
     }
-    const aid = adminActorNumericId(g.user);
+    const aid = adminActorNumericId(guard.user);
     if (aid != null) {
       void logAdminAction({
         actorUserId: aid,
@@ -128,9 +135,10 @@ export async function PATCH(req: Request) {
   }
 }
 
+// Delete a category by id.
 export async function DELETE(req: Request) {
-  const g = await adminApiRequire("product.delete");
-  if (!g.ok) return g.response;
+  const guard = await adminApiRequire("product.delete");
+  if (!guard.ok) return guard.response;
 
   const idRaw = new URL(req.url).searchParams.get("id");
   const id = idRaw ? Number.parseInt(idRaw, 10) : NaN;
@@ -143,7 +151,7 @@ export async function DELETE(req: Request) {
     if (result && typeof result === "object" && "message" in result) {
       return NextResponse.json(result, { status: 404 });
     }
-    const aid = adminActorNumericId(g.user);
+    const aid = adminActorNumericId(guard.user);
     if (aid != null) {
       void logAdminAction({
         actorUserId: aid,

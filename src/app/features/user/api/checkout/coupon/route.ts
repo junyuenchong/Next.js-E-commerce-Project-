@@ -14,18 +14,23 @@ import {
   type ResolvedCheckoutCoupon,
 } from "@/backend/modules/coupon";
 
+// Reads current cart subtotal for coupon quote/apply flows.
 async function cartSubtotal(): Promise<number | null> {
   const cart = await getCartWithLiveProductsService();
   if (!cart?.items?.length) return null;
   return summarizeCartLines(cart.items as CartItemRowData[]).totalPrice;
 }
 
-function appliedPayload(r: Extract<ResolvedCheckoutCoupon, { ok: true }>) {
-  return r.codeSnapshot != null
-    ? { code: r.codeSnapshot, couponId: r.couponId }
+// Normalizes successful coupon result into API response shape.
+function appliedPayload(
+  resolvedCoupon: Extract<ResolvedCheckoutCoupon, { ok: true }>,
+) {
+  return resolvedCoupon.codeSnapshot != null
+    ? { code: resolvedCoupon.codeSnapshot, couponId: resolvedCoupon.couponId }
     : null;
 }
 
+// Returns current coupon quote for the cart subtotal.
 export async function GET() {
   const subtotal = await cartSubtotal();
   if (subtotal == null) {
@@ -33,30 +38,31 @@ export async function GET() {
   }
   const userId = await resolveUserId();
   const code = await readCheckoutCouponCode();
-  const r = await resolveCheckoutCouponPricing({
+  const resolvedCoupon = await resolveCheckoutCouponPricing({
     subtotal,
     couponCode: code,
     userId,
   });
-  if (!r.ok) {
-    const res = NextResponse.json({
+  if (!resolvedCoupon.ok) {
+    const response = NextResponse.json({
       subtotal,
       discountAmount: 0,
       total: subtotal,
       applied: null,
-      couponError: r.error,
+      couponError: resolvedCoupon.error,
     });
-    if (code) clearCheckoutCouponCookie(res);
-    return res;
+    if (code) clearCheckoutCouponCookie(response);
+    return response;
   }
   return NextResponse.json({
     subtotal,
-    discountAmount: r.discountAmount,
-    total: r.total,
-    applied: appliedPayload(r),
+    discountAmount: resolvedCoupon.discountAmount,
+    total: resolvedCoupon.total,
+    applied: appliedPayload(resolvedCoupon),
   });
 }
 
+// Applies a coupon code and persists it in checkout cookie when valid.
 export async function POST(req: Request) {
   const json = (await req.json().catch(() => null)) as { code?: string } | null;
   const code = typeof json?.code === "string" ? json.code : "";
@@ -68,32 +74,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "empty_cart" }, { status: 400 });
   }
   const userId = await resolveUserId();
-  const r = await resolveCheckoutCouponPricing({
+  const resolvedCoupon = await resolveCheckoutCouponPricing({
     subtotal,
     couponCode: code,
     userId,
   });
-  if (!r.ok) {
-    return NextResponse.json({ error: r.error }, { status: 400 });
+  if (!resolvedCoupon.ok) {
+    return NextResponse.json({ error: resolvedCoupon.error }, { status: 400 });
   }
-  const res = NextResponse.json({
+  const response = NextResponse.json({
     subtotal,
-    discountAmount: r.discountAmount,
-    total: r.total,
-    applied: appliedPayload(r),
+    discountAmount: resolvedCoupon.discountAmount,
+    total: resolvedCoupon.total,
+    applied: appliedPayload(resolvedCoupon),
   });
-  if (r.codeSnapshot) attachCheckoutCouponCookie(res, r.codeSnapshot);
-  return res;
+  if (resolvedCoupon.codeSnapshot) {
+    attachCheckoutCouponCookie(response, resolvedCoupon.codeSnapshot);
+  }
+  return response;
 }
 
+// Clears checkout coupon cookie and returns zero-discount totals.
 export async function DELETE() {
   const subtotal = await cartSubtotal();
-  const res = NextResponse.json({
+  const response = NextResponse.json({
     subtotal: subtotal ?? 0,
     discountAmount: 0,
     total: subtotal ?? 0,
     applied: null,
   });
-  clearCheckoutCouponCookie(res);
-  return res;
+  clearCheckoutCouponCookie(response);
+  return response;
 }

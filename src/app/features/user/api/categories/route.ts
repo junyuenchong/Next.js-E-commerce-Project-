@@ -8,6 +8,7 @@ import { getStorefrontCategoriesService } from "@/backend/modules/category";
 
 const TTL_SECONDS = 300;
 
+// Returns cached storefront categories and refreshes Redis on cache miss.
 export async function GET() {
   try {
     const key = cacheKeys.categoriesAll();

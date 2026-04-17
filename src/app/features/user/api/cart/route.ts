@@ -13,6 +13,7 @@ import {
 } from "@/backend/modules/cart";
 import { NextResponse } from "next/server";
 
+// Detects Prisma connectivity errors and maps them to 503 responses.
 function isPrismaUnreachableError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const anyErr = error as { code?: unknown };
@@ -30,7 +31,7 @@ type Cart = {
   items: CartItem[];
 };
 
-// --- GET: Fetch the cart with live product data ---
+// Fetches cart state enriched with live product snapshots.
 export async function GET() {
   try {
     const cart = await getCartWithLiveProducts();
@@ -65,7 +66,7 @@ export async function GET() {
   }
 }
 
-// --- POST: Handle cart actions ---
+// Applies add/remove/update/clear cart mutations from one endpoint.
 export async function POST(req: Request) {
   try {
     const raw = (await req.json().catch(() => null)) as unknown;

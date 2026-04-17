@@ -35,6 +35,7 @@ async function fetchRoleConfig(): Promise<RoleConfigPayload> {
   return data;
 }
 
+// Group permission keys by prefix before the first dot.
 function groupLabel(key: string): string {
   const i = key.indexOf(".");
   return i === -1 ? "General" : key.slice(0, i);
@@ -58,6 +59,7 @@ export default function RolePermissionsClient() {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
 
+  // Seed editable drafts whenever role config payload changes.
   useEffect(() => {
     if (!data?.roles) return;
     const next: Record<number, number[]> = {};
@@ -94,6 +96,7 @@ export default function RolePermissionsClient() {
     return map;
   }, [data?.permissionCatalog]);
 
+  // Toggle one permission id in a role draft.
   const togglePermission = useCallback(
     (roleId: number, permId: number, on: boolean) => {
       setDraftByRole((prev) => {
@@ -129,6 +132,7 @@ export default function RolePermissionsClient() {
     [permissionKeyById],
   );
 
+  // Persist permission ids for one profile.
   const savePermissions = async (roleId: number) => {
     setBusyRoleId(roleId);
     setErr(null);
@@ -149,6 +153,7 @@ export default function RolePermissionsClient() {
     }
   };
 
+  // Persist display name change for one profile.
   const saveName = async (roleId: number) => {
     const name = (nameDraft[roleId] ?? "").trim();
     if (!name) {
@@ -174,6 +179,7 @@ export default function RolePermissionsClient() {
     }
   };
 
+  // Create a new custom permission profile.
   const createProfile = async () => {
     const slug = newSlug.trim().toLowerCase();
     const name = newName.trim();
@@ -198,6 +204,7 @@ export default function RolePermissionsClient() {
     }
   };
 
+  // Remove an existing custom profile.
   const removeProfile = async (roleId: number) => {
     if (
       !confirm(

@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Category manager UI state: search, edit, delete, and server actions wiring.
+ */
+
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { Category } from "@/app/features/admin/types";
 

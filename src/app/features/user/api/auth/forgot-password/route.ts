@@ -9,6 +9,7 @@ const bodySchema = z.object({
   email: z.string().email(),
 });
 
+// Starts forgot-password flow and sends reset mail if account exists.
 export async function POST(request: Request) {
   const ip = clientIp(request);
   const rl = await rateLimit(`forgot-pw:${ip}`, 5, 3600);

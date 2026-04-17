@@ -4,7 +4,7 @@ import React, { memo, Suspense } from "react";
 import { Product, Category } from "@prisma/client";
 import dynamic from "next/dynamic";
 import ProductPrice from "@/app/components/shared/ProductPrice";
-import { useAdminProductReviews } from "@/app/features/admin/hooks";
+import { useAdminProductReviews } from "@/app/features/admin/shared";
 import { resolveSalePricing } from "@/app/lib/format-price";
 
 // Dynamic import for next/image to avoid SSR issues

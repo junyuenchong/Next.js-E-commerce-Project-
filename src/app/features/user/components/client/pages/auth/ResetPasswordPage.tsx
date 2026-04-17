@@ -1,69 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import PasswordInput from "@/app/components/shared/PasswordInput";
+import { useResetPasswordForm } from "@/app/features/user/hooks";
 
 function ResetPasswordForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get("token")?.trim() ?? "";
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setMessage(null);
-    setError(null);
-    if (!token) {
-      setError(
-        "Missing or invalid reset link. Request a new one from forgot password.",
-      );
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
-    if (password !== confirm) {
-      setError("Passwords do not match.");
-      return;
-    }
-    setPending(true);
-    try {
-      const res = await fetch("/features/user/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
-      });
-      const data = (await res.json().catch(() => null)) as {
-        ok?: boolean;
-        error?: string;
-      } | null;
-      if (!res.ok) {
-        if (res.status === 429) setError("Too many attempts. Try again later.");
-        else if (data?.error === "invalid_or_expired")
-          setError("This link expired or was already used.");
-        else
-          setError(
-            "Could not reset password. Try again or request a new link.",
-          );
-        setPending(false);
-        return;
-      }
-      setMessage("Password updated. You can sign in with your new password.");
-      setTimeout(() => router.push("/features/user/auth/sign-in"), 1500);
-    } catch {
-      setError("Network error. Try again.");
-    } finally {
-      setPending(false);
-    }
-  }
+  const {
+    token,
+    password,
+    setPassword,
+    confirm,
+    setConfirm,
+    message,
+    error,
+    pending,
+    onSubmit,
+    goForgotPasswordHref,
+  } = useResetPasswordForm();
 
   if (!token) {
     return (
@@ -72,7 +27,7 @@ function ResetPasswordForm() {
           This reset link is invalid or incomplete.
         </p>
         <Link
-          href="/features/user/auth/forgot-password"
+          href={goForgotPasswordHref}
           className="text-blue-600 hover:underline text-sm"
         >
           Request a new link

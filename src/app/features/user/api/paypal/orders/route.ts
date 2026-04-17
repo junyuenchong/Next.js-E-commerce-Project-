@@ -14,6 +14,7 @@ const DEFAULT_CURRENCY = (
   "MYR"
 ).trim();
 
+// Creates a PayPal order from the current cart total after stock and coupon checks.
 export async function POST() {
   try {
     const cart = await getCartWithLiveProductsService();
@@ -66,8 +67,8 @@ export async function POST() {
       currencyCode: DEFAULT_CURRENCY,
       value,
     });
-  } catch (e) {
-    console.error("[paypal/orders]", e);
+  } catch (error) {
+    console.error("[paypal/orders]", error);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 }

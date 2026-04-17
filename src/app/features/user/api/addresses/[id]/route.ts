@@ -14,12 +14,14 @@ const patchSchema = z.object({
   isDefault: z.boolean().optional(),
 });
 
+// Verifies the target address belongs to the authenticated user.
 async function addressOwnedByUser(addressId: number, userId: number) {
   return prisma.userAddress.findFirst({
     where: { id: addressId, userId, isActive: true },
   });
 }
 
+// Updates one owned address and handles default-address transitions.
 export async function PATCH(
   request: Request,
   ctx: { params: Promise<{ id: string }> },
@@ -85,6 +87,7 @@ export async function PATCH(
   return NextResponse.json({ address: row });
 }
 
+// Soft-deletes one owned address and re-balances default address state.
 export async function DELETE(
   _request: Request,
   ctx: { params: Promise<{ id: string }> },

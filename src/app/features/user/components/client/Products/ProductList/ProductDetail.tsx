@@ -47,7 +47,7 @@ const ProductDetail = memo(function ProductDetail({
           </div>
         </div>
       </div>
-      {/* Availability (real stock + recent paid sales) */}
+      {/* Availability (real stock + recent completed sales) */}
       <div className="bg-gradient-to-r from-slate-100 to-slate-200/80 py-6 px-4 border-y border-slate-200">
         <div className="container mx-auto text-center space-y-2">
           <p className="text-lg md:text-xl font-semibold text-slate-800">
@@ -55,12 +55,12 @@ const ProductDetail = memo(function ProductDetail({
           </p>
           {(product.soldLast24h ?? 0) > 0 ? (
             <p className="text-sm text-slate-600">
-              {product.soldLast24h ?? 0} units sold in paid orders in the last
-              24 hours
+              {product.soldLast24h ?? 0} units sold from completed orders in the
+              last 24 hours
             </p>
           ) : (
             <p className="text-sm text-slate-500">
-              No paid sales recorded in the last 24 hours
+              No completed sales recorded in the last 24 hours
             </p>
           )}
         </div>

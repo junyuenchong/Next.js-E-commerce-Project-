@@ -6,6 +6,7 @@ import { hasUserPurchasedProduct } from "@/backend/modules/review";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// Checks whether current user purchased this product and can review it.
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },

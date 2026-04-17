@@ -47,9 +47,9 @@ export async function generateMetadata({
 }: {
   searchParams?: Promise<{ query?: string | string[] }>;
 }): Promise<Metadata> {
-  const p = searchParams ? await searchParams : {};
-  const q = parseSearchQuery(p.query ?? null);
-  const mode = searchMode(q);
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const parsedQuery = parseSearchQuery(resolvedSearchParams.query ?? null);
+  const mode = searchMode(parsedQuery);
   switch (mode) {
     case "browse":
       return {
@@ -63,12 +63,12 @@ export async function generateMetadata({
       };
     default:
       return {
-        title: `Search: ${q}`,
-        description: `Results for “${q}” — CJY E-Commerce.`,
+        title: `Search: ${parsedQuery}`,
+        description: `Results for “${parsedQuery}” — CJY E-Commerce.`,
         robots: { index: true, follow: true },
         openGraph: {
-          title: `Search: ${q} | CJY E-Commerce`,
-          description: `Results for “${q}” — CJY E-Commerce.`,
+          title: `Search: ${parsedQuery} | CJY E-Commerce`,
+          description: `Results for “${parsedQuery}” — CJY E-Commerce.`,
         },
       };
   }
@@ -168,8 +168,8 @@ async function SearchResults(filters: FilterProps) {
         <section className="container mx-auto py-8">{body}</section>
       </>
     );
-  } catch (e) {
-    console.error("[search]", e);
+  } catch (error) {
+    console.error("[search]", error);
     return <LoadError title="Could not load results" />;
   }
 }
@@ -179,13 +179,13 @@ export default async function SearchPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const p = searchParams ? await searchParams : {};
-  const q = parseSearchQuery(p.query ?? null);
-  const categorySlug = first(p.category);
-  const minPrice = num(first(p.minPrice));
-  const maxPrice = num(first(p.maxPrice));
-  const minRating = num(first(p.minRating));
-  const sort = parseSortParam(first(p.sort));
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const parsedQuery = parseSearchQuery(resolvedSearchParams.query ?? null);
+  const categorySlug = first(resolvedSearchParams.category);
+  const minPrice = num(first(resolvedSearchParams.minPrice));
+  const maxPrice = num(first(resolvedSearchParams.maxPrice));
+  const minRating = num(first(resolvedSearchParams.minRating));
+  const sort = parseSortParam(first(resolvedSearchParams.sort));
 
   const categories = await getAllCategories();
 
@@ -214,7 +214,7 @@ export default async function SearchPage({
               type="search"
               name="query"
               placeholder="Search products"
-              defaultValue={q ?? ""}
+              defaultValue={parsedQuery ?? ""}
               className="mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[180px]"
             />
           </label>
@@ -226,9 +226,9 @@ export default async function SearchPage({
               className="mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[160px]"
             >
               <option value="">All categories</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.slug}>
-                  {c.name}
+              {categories.map((category) => (
+                <option key={category.id} value={category.slug}>
+                  {category.name}
                 </option>
               ))}
             </select>
@@ -278,9 +278,9 @@ export default async function SearchPage({
               defaultValue={sort}
               className="mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[200px]"
             >
-              {SORT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
+              {SORT_OPTIONS.map((sortOption) => (
+                <option key={sortOption.value} value={sortOption.value}>
+                  {sortOption.label}
                 </option>
               ))}
             </select>
@@ -295,7 +295,7 @@ export default async function SearchPage({
       </div>
       <Suspense fallback={<Loading />}>
         <SearchResults
-          query={q}
+          query={parsedQuery}
           categorySlug={categorySlug}
           minPrice={minPrice}
           maxPrice={maxPrice}

@@ -23,6 +23,7 @@ type AdminMessageRow = {
   adminSender?: { id: number; email: string; name: string | null } | null;
 };
 
+// Admin support inbox with polling-based conversation and message refresh.
 export default function AdminSupportChatsPageClient() {
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -50,6 +51,7 @@ export default function AdminSupportChatsPageClient() {
     staleTime: 5_000,
   });
 
+  // Auto-select the first conversation when list first loads.
   useEffect(() => {
     if (selectedId != null) return;
     const first = convosQ.data?.[0];
@@ -74,11 +76,13 @@ export default function AdminSupportChatsPageClient() {
     [convosQ.data, selectedId],
   );
 
+  // Keep the latest message in view after message list updates.
   useEffect(() => {
     if (!messagesQ.data?.length) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messagesQ.data?.length]);
 
+  // Send reply to the selected conversation and refresh related queries.
   const sendReply = useCallback(async () => {
     const text = reply.trim();
     if (!selectedId || !text) return;

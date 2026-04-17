@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: analytics.
+ */
+
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "@/app/lib/prisma";
@@ -17,20 +21,23 @@ const SALES_STATUSES = ["fulfilled"] as const;
 
 const MONTH_WINDOW = 12;
 
+// Snap a date to the first day of its UTC month.
 function startOfMonthUtc(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
 
+// Move a UTC month boundary forward or backward by N months.
 function addMonthsUtc(date: Date, months: number): Date {
   return new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1),
   );
 }
 
+// Return cached admin analytics summary derived from fulfilled orders.
 export async function GET() {
   try {
-    const g = await adminApiRequire("order.read");
-    if (!g.ok) return g.response;
+    const guard = await adminApiRequire("order.read");
+    if (!guard.ok) return guard.response;
 
     const cached = await getAdminCachedJson<Record<string, unknown>>(
       ADMIN_CACHE_KEYS.analyticsSummary,

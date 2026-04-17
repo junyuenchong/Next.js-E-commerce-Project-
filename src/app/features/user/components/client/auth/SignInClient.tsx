@@ -1,25 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { getSession, signIn, signOut } from "next-auth/react";
-import { signInCredentialsSchema } from "@/shared/schema";
-import { canAccessAdminPanel, postAuthRedirectPath } from "@/backend/lib/auth";
-import type { UserRole } from "@prisma/client";
-import { useSignInResultAlerts } from "@/app/features/user/hooks";
+import { useSignInClient } from "@/app/features/user/hooks";
 import PasswordInput from "@/app/components/shared/PasswordInput";
-
-type FormState = { message: string } | undefined;
-
-const POST_LOGIN = "/features/user/auth/post-login";
-
-function withReturnUrl(returnUrl?: string) {
-  const t = returnUrl?.trim();
-  return !t ? POST_LOGIN : `${POST_LOGIN}?returnUrl=${encodeURIComponent(t)}`;
-}
 
 export type SignInProps = {
   /** Preserved for OAuth callback → `/auth/post-login?returnUrl=…` */
@@ -29,101 +14,11 @@ export type SignInProps = {
 };
 
 const SignIn = ({ returnUrl, mode = "customer" }: SignInProps) => {
-  const isAdmin = mode === "admin";
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const [state, setState] = useState<FormState>(undefined);
-  const [isPending, setIsPending] = useState(false);
-
-  useSignInResultAlerts(state);
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsPending(true);
-    setState(undefined);
-
-    const formData = new FormData(event.currentTarget);
-    const parsed = signInCredentialsSchema.safeParse(
-      Object.fromEntries(formData),
-    );
-    if (!parsed.success) {
-      setState({
-        message: "Check your email and password (min. 5 characters).",
-      });
-      setIsPending(false);
-      return;
-    }
-
-    const { email, password } = parsed.data;
-    if (isAdmin) {
-      const adminRes = await fetch("/features/admin/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const adminJson = (await adminRes.json().catch(() => null)) as {
-        role?: UserRole;
-        message?: string;
-      } | null;
-      const role = (adminJson?.role ?? null) as UserRole | null;
-
-      if (!adminRes.ok || !role || !canAccessAdminPanel(role)) {
-        setState({
-          message:
-            adminJson?.message ??
-            "This portal is for staff and administrators only. Sign in as a customer on the shop page.",
-        });
-        setIsPending(false);
-        return;
-      }
-
-      const nextPath = postAuthRedirectPath(role, returnUrl);
-      queryClient.removeQueries({ queryKey: ["admin-me"] });
-      router.push(nextPath);
-      router.refresh();
-      setIsPending(false);
-      return;
-    }
-
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
+  const { isAdmin, state, isPending, handleSubmit, oauthSignIn } =
+    useSignInClient({
+      returnUrl,
+      mode,
     });
-
-    if (res?.error) {
-      setState({ message: "Invalid email or password." });
-      setIsPending(false);
-      return;
-    }
-
-    let session = await getSession();
-    for (let i = 0; i < 3 && !session?.user?.id; i += 1) {
-      await new Promise((r) => setTimeout(r, 50));
-      session = await getSession();
-    }
-    if (!session?.user?.id) {
-      setState({ message: "Could not load session. Please try again." });
-      setIsPending(false);
-      return;
-    }
-
-    const role = (session.user.role ?? "USER") as UserRole;
-    if (canAccessAdminPanel(role)) {
-      await signOut({ redirect: false });
-      setState({
-        message:
-          "Staff and admin accounts must sign in at Admin sign-in (/features/admin/auth/sign-in).",
-      });
-      setIsPending(false);
-      return;
-    }
-
-    const nextPath = withReturnUrl(returnUrl);
-    router.push(nextPath);
-    router.refresh();
-    setIsPending(false);
-  };
 
   return (
     <form
@@ -253,9 +148,7 @@ const SignIn = ({ returnUrl, mode = "customer" }: SignInProps) => {
           </div>
           <button
             type="button"
-            onClick={() =>
-              signIn("google", { callbackUrl: withReturnUrl(returnUrl) })
-            }
+            onClick={() => void oauthSignIn("google")}
             className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 rounded-md shadow-sm hover:bg-gray-50 transition-colors font-medium"
           >
             <svg className="h-5 w-5" viewBox="0 0 48 48">
@@ -282,9 +175,7 @@ const SignIn = ({ returnUrl, mode = "customer" }: SignInProps) => {
           </button>
           <button
             type="button"
-            onClick={() =>
-              signIn("facebook", { callbackUrl: withReturnUrl(returnUrl) })
-            }
+            onClick={() => void oauthSignIn("facebook")}
             className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 rounded-md shadow-sm hover:bg-blue-700 transition-colors font-medium"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">

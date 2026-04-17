@@ -11,8 +11,10 @@ import {
   postImageUpload,
 } from "@/app/features/admin/components/client";
 import { useAdminToast } from "@/app/providers/AdminProviders";
-import { buildAdminProductPayload } from "@/app/features/admin/lib/product-form";
-import { trySetFieldErrorsFromAxios400 } from "@/app/features/admin/lib/field-errors";
+import {
+  buildAdminProductPayload,
+  trySetFieldErrorsFromAxios400,
+} from "@/app/features/admin/shared";
 
 type AdminCategory = { id: number; name: string };
 

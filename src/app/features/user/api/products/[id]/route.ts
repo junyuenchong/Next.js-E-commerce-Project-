@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// Returns one storefront-safe product payload by id.
 export async function GET(
   request: Request,
   context: { params: Promise<{ id: string }> },

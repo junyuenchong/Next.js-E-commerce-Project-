@@ -1,3 +1,7 @@
+/**
+ * Admin forms: turn backend 400 `detail` strings (`field: msg; …`) into per-field error maps.
+ */
+
 import { isAxiosError } from "@/app/utils/http";
 
 function parseFieldErrorsFromDetail(detail: string): Record<string, string> {

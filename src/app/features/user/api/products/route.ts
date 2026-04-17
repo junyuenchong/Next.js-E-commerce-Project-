@@ -22,12 +22,13 @@ import { NextResponse } from "next/server";
 
 type ListMode = "search" | "category" | "all";
 
+// Returns product cards for search/category/browse with optional cursor pagination.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const limitParam = searchParams.get("limit");
   const pageParam = searchParams.get("page");
   const cursorParam = searchParams.get("cursor");
-  const q = searchParams.get("q") || "";
+  const searchQuery = searchParams.get("q") || "";
   const categorySlug = searchParams.get("category");
 
   const limit = limitParam ? parseInt(limitParam, 10) : 20;
@@ -35,7 +36,7 @@ export async function GET(req: Request) {
   const cursorId = cursorParam ? parseInt(cursorParam, 10) : undefined;
   const useCursor = cursorId != null && Number.isFinite(cursorId);
 
-  const mode: ListMode = q.trim()
+  const mode: ListMode = searchQuery.trim()
     ? "search"
     : categorySlug
       ? "category"
@@ -45,7 +46,7 @@ export async function GET(req: Request) {
     let products: unknown;
     switch (mode) {
       case "search":
-        products = await searchProductsService(q);
+        products = await searchProductsService(searchQuery);
         break;
       case "category":
         products = useCursor
@@ -95,6 +96,7 @@ export async function GET(req: Request) {
   }
 }
 
+// Adds one product to the current user's cart.
 export async function POST(req: Request) {
   try {
     const { productId, quantity } = await req.json();

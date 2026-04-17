@@ -8,7 +8,7 @@ import ProductItem from "@/app/features/admin/components/client/products/types/P
 import {
   useAdminProductList,
   type AdminProductListHandle,
-} from "@/app/features/admin/hooks/useAdminProductList";
+} from "@/app/features/admin/shared";
 
 type Me = { can: { productCreate?: boolean } };
 

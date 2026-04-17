@@ -9,28 +9,8 @@ import {
 } from "@/app/features/user/components/client/http";
 import { useUser } from "@/app/features/user/components/client/UserContext";
 import { formatPriceRM } from "@/app/lib/format-price";
+import { getUserOrderStatusLabel } from "@/app/lib/order-status";
 import type { OrderListItem } from "@/app/features/user/types";
-
-function statusLabel(s: OrderListItem["status"]): string {
-  switch (s) {
-    case "pending":
-      return "Pending";
-    case "paid":
-      return "Paid";
-    case "processing":
-      return "Processing";
-    case "shipped":
-      return "Shipped";
-    case "delivered":
-      return "Delivered";
-    case "fulfilled":
-      return "Completed";
-    case "cancelled":
-      return "Cancelled";
-    default:
-      return s;
-  }
-}
 
 export default function OrdersPage() {
   const { user } = useUser();
@@ -40,6 +20,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // Loads the first page of orders (used on mount and after realtime refresh).
   const loadInitial = useCallback(async () => {
     try {
       setLoading(true);
@@ -58,6 +39,7 @@ export default function OrdersPage() {
     }
   }, []);
 
+  // Fetches the next cursor page and appends results to the existing list.
   const loadMore = useCallback(async () => {
     if (nextCursor == null) return;
     try {
@@ -75,6 +57,7 @@ export default function OrdersPage() {
     }
   }, [nextCursor]);
 
+  // Clears state when signed out, otherwise triggers initial load.
   useEffect(() => {
     if (!user) {
       setLoading(false);
@@ -93,6 +76,7 @@ export default function OrdersPage() {
     };
   }, [user, loadInitial]);
 
+  // Subscribes to order status updates (SSE) and refreshes the list on change.
   useEffect(() => {
     if (!user) return;
     const es = new EventSource("/features/user/api/events?channels=orders");
@@ -198,7 +182,7 @@ export default function OrdersPage() {
                                   : ""}
                               </p>
                               <span className="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-800">
-                                {statusLabel(o.status)}
+                                {getUserOrderStatusLabel(o.status)}
                               </span>
                             </div>
                           </div>

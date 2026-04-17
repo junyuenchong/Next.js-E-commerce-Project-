@@ -10,6 +10,7 @@ import { resolveUserId } from "@/backend/core/session";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+// Parses `[id]` route param into a positive integer.
 function parseParamId(raw: string | undefined): number | null {
   const n = raw ? Number.parseInt(raw, 10) : NaN;
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -17,6 +18,7 @@ function parseParamId(raw: string | undefined): number | null {
 
 export const dynamic = "force-dynamic";
 
+// Returns invoice text preview/download for an order owned by the user.
 export async function GET(request: Request, context: RouteContext) {
   const userId = await resolveUserId();
   if (!userId) {

@@ -12,6 +12,7 @@ import {
   filterAdminNavLinks,
 } from "@/app/features/admin/nav/admin-nav";
 
+// Fetch current admin identity for nav filtering.
 async function fetchAdminMe(): Promise<AdminMe> {
   const { data } = await http.get<AdminMe>("/features/admin/api/me");
   return data;
@@ -36,11 +37,13 @@ export default function AdminMobileNav() {
 
   const links = useMemo(() => filterAdminNavLinks(ADMIN_NAV_LINKS, me), [me]);
 
+  // Close the mobile drawer.
   const close = useCallback(() => setOpen(false), []);
+  // Toggle the mobile drawer open state.
   const toggle = useCallback(() => setOpen((v) => !v), []);
 
+  // Close drawer whenever route changes.
   useEffect(() => {
-    // Close drawer on route change.
     close();
   }, [pathname, close]);
 

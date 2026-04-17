@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: events/categories.
+ */
+
 import {
   createRedisSubscriber,
   ADMIN_SSE_CHANNELS,
@@ -8,76 +12,81 @@ import { jsonInternalServerError } from "@/backend/lib/api-error";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Open an SSE stream for category-related admin events.
 export async function GET(request: Request) {
   try {
-    const g = await adminApiRequireCatalogAccess();
-    if (!g.ok) return g.response;
+    const guard = await adminApiRequireCatalogAccess();
+    if (!guard.ok) return guard.response;
 
     const encoder = new TextEncoder();
     const channel = ADMIN_SSE_CHANNELS.categories;
-    const ignoreError = (error: unknown) => {
+    const swallowError = (error: unknown) => {
       void error;
     };
 
     const stream = new ReadableStream({
       async start(controller) {
-        const send = (obj: unknown) => {
+        const sendSseEvent = (obj: unknown) => {
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify(obj)}\n\n`),
           );
         };
 
-        const ping = () => {
+        const sendPing = () => {
           controller.enqueue(encoder.encode(`: ping\n\n`));
         };
 
-        const sub = await createRedisSubscriber();
-        if (!sub) {
-          send({
+        const redisSub = await createRedisSubscriber();
+        if (!redisSub) {
+          sendSseEvent({
             type: "status",
             realtime: false,
             message:
               "REDIS_URL not set — realtime disabled (SSE heartbeats only).",
           });
-          const iv = setInterval(ping, 25000);
+          const iv = setInterval(sendPing, 25000);
           request.signal.addEventListener("abort", () => {
             clearInterval(iv);
             try {
               controller.close();
             } catch (error: unknown) {
-              ignoreError(error);
+              swallowError(error);
             }
           });
           return;
         }
 
-        send({ type: "status", realtime: true, resource: "categories" });
+        sendSseEvent({
+          type: "status",
+          realtime: true,
+          resource: "categories",
+        });
 
-        const listener = (message: string) => {
+        const onRedisMessage = (message: string) => {
           try {
-            send(JSON.parse(message));
+            sendSseEvent(JSON.parse(message));
           } catch (error: unknown) {
-            ignoreError(error);
-            send({ type: "raw", raw: message });
+            swallowError(error);
+            sendSseEvent({ type: "raw", raw: message });
           }
         };
 
-        await sub.subscribe(channel, listener);
-        const pingIv = setInterval(ping, 25000);
+        await redisSub.subscribe(channel, onRedisMessage);
+        const pingIv = setInterval(sendPing, 25000);
 
         request.signal.addEventListener("abort", () => {
           clearInterval(pingIv);
           void (async () => {
             try {
-              await sub.unsubscribe(channel);
-              await sub.quit();
+              await redisSub.unsubscribe(channel);
+              await redisSub.quit();
             } catch (error: unknown) {
-              ignoreError(error);
+              swallowError(error);
             }
             try {
               controller.close();
             } catch (error: unknown) {
-              ignoreError(error);
+              swallowError(error);
             }
           })();
         });

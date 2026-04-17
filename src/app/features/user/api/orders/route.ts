@@ -4,6 +4,7 @@ import { listOrdersForUserService } from "@/backend/modules/order";
 import { moneyToNumber } from "@/backend/core/money";
 import { resolveUserId } from "@/backend/core/session";
 
+// Parses cursor-based pagination params from query string.
 function parseCursorParams(request: Request) {
   const { searchParams } = new URL(request.url);
   const cursorRaw = searchParams.get("cursor");
@@ -19,6 +20,7 @@ function parseCursorParams(request: Request) {
   return { cursor, take };
 }
 
+// Returns the authenticated user's order list (cursor-paginated).
 export async function GET(request: Request) {
   const userId = await resolveUserId();
   if (!userId) {
@@ -33,13 +35,13 @@ export async function GET(request: Request) {
       cursor,
       take,
     );
-    const payload = rows.map((o) => ({
-      id: String(o.id),
-      status: o.status.toLowerCase() as OrderListItem["status"],
-      total: moneyToNumber(o.total),
-      currency: o.currency,
-      paypalOrderId: o.paypalOrderId,
-      createdAt: o.createdAt.toISOString(),
+    const payload = rows.map((orderRow) => ({
+      id: String(orderRow.id),
+      status: orderRow.status.toLowerCase() as OrderListItem["status"],
+      total: moneyToNumber(orderRow.total),
+      currency: orderRow.currency,
+      paypalOrderId: orderRow.paypalOrderId,
+      createdAt: orderRow.createdAt.toISOString(),
     }));
 
     return NextResponse.json(
@@ -52,8 +54,8 @@ export async function GET(request: Request) {
         },
       },
     );
-  } catch (e) {
-    console.error("[orders GET]", e);
+  } catch (error) {
+    console.error("[orders GET]", error);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 }

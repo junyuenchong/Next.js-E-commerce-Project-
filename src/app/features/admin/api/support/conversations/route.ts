@@ -1,3 +1,7 @@
+/**
+ * Admin HTTP route: support/conversations.
+ */
+
 import { NextResponse } from "next/server";
 import prisma from "@/app/lib/prisma";
 import { adminApiRequire } from "@/backend/core/admin-api-guard";
@@ -5,10 +9,11 @@ import { jsonInternalServerError } from "@/backend/lib/api-error";
 
 export const dynamic = "force-dynamic";
 
+// Return support conversations for admin inbox, with optional status/text filters.
 export async function GET(req: Request) {
   try {
-    const g = await adminApiRequire("order.read");
-    if (!g.ok) return g.response;
+    const guard = await adminApiRequire("order.read");
+    if (!guard.ok) return guard.response;
 
     const url = new URL(req.url);
     const status = url.searchParams.get("status");

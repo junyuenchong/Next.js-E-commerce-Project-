@@ -5,51 +5,26 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import http, { getErrorMessage } from "@/app/utils/http";
 import { formatPriceRM } from "@/app/lib/format-price";
-import { useAdminResourceSSE } from "@/app/features/admin/hooks";
+import { useAdminResourceSSE } from "@/app/features/admin/shared";
+import type {
+  AdminAnalyticsPayload,
+  AdminAnalyticsSalesMonth,
+} from "@/shared/types";
 
-type TopProduct = {
-  productId: number;
-  quantity: number;
-  product: { id: number; title: string; price: number } | null;
-};
-
-type RecentOrder = {
-  id: number;
-  status: string;
-  total: number;
-  currency: string;
-  createdAt: string;
-  emailSnapshot: string | null;
-  user: { email: string | null; name: string | null } | null;
-};
-
-type SalesMonth = {
-  month: string;
-  label: string;
-  revenue: number;
-  orderCount: number;
-};
-
-type AnalyticsPayload = {
-  revenueTotal: number;
-  orderCount: number;
-  userCount: number;
-  productCount: number;
-  topProducts: TopProduct[];
-  recentOrders: RecentOrder[];
-  salesByMonth: SalesMonth[];
-};
-
-async function fetchAnalytics(): Promise<AnalyticsPayload> {
-  const { data } = await http.get<AnalyticsPayload>(
+async function fetchAnalytics(): Promise<AdminAnalyticsPayload> {
+  // Reuse the shared payload type so both admin pages stay in sync.
+  const { data } = await http.get<AdminAnalyticsPayload>(
     "/features/admin/api/analytics",
   );
   return data;
 }
 
-function RevenueLineChart({ data }: { data: SalesMonth[] }) {
+// Lightweight line chart for monthly revenue trend.
+function RevenueLineChart({ data }: { data: AdminAnalyticsSalesMonth[] }) {
   if (data.length === 0) {
-    return <p className="text-sm text-gray-500">No paid order history yet.</p>;
+    return (
+      <p className="text-sm text-gray-500">No completed order history yet.</p>
+    );
   }
   const w = 480;
   const h = 160;
@@ -99,7 +74,7 @@ function RevenueLineChart({ data }: { data: SalesMonth[] }) {
 
 export default function AdminDashboardClient() {
   const [showDeferredSections, setShowDeferredSections] = useState(false);
-  const q = useQuery({
+  const analyticsQuery = useQuery({
     queryKey: ["admin-analytics-dashboard"],
     queryFn: fetchAnalytics,
     staleTime: 10_000,
@@ -107,6 +82,7 @@ export default function AdminDashboardClient() {
     refetchOnWindowFocus: false,
   });
 
+  // Defer heavier sections slightly to improve initial paint.
   useEffect(() => {
     const id = window.setTimeout(() => setShowDeferredSections(true), 120);
     return () => window.clearTimeout(id);
@@ -115,13 +91,13 @@ export default function AdminDashboardClient() {
   useAdminResourceSSE(
     "/features/admin/api/events/orders",
     () => {
-      void q.refetch();
+      void analyticsQuery.refetch();
     },
     15000,
   );
 
-  const d = q.data;
-  const showSkeleton = q.isLoading || !d;
+  const analyticsData = analyticsQuery.data;
+  const showSkeleton = analyticsQuery.isLoading || !analyticsData;
 
   return (
     <div className="space-y-8">
@@ -130,9 +106,9 @@ export default function AdminDashboardClient() {
         <p className="mt-1 text-sm text-gray-600">
           Overview of sales, orders, and quick links to admin tools.
         </p>
-        {q.isError ? (
+        {analyticsQuery.isError ? (
           <p className="mt-2 text-sm text-red-600">
-            {getErrorMessage(q.error, "Could not load dashboard.")}
+            {getErrorMessage(analyticsQuery.error, "Could not load dashboard.")}
           </p>
         ) : null}
       </div>
@@ -146,7 +122,7 @@ export default function AdminDashboardClient() {
             {showSkeleton ? (
               <span className="inline-block h-8 w-28 animate-pulse rounded bg-gray-200" />
             ) : (
-              formatPriceRM(d.revenueTotal)
+              formatPriceRM(analyticsData.revenueTotal)
             )}
           </p>
           <p className="mt-1 text-xs text-gray-500">Fulfilled orders only</p>
@@ -159,7 +135,7 @@ export default function AdminDashboardClient() {
             {showSkeleton ? (
               <span className="inline-block h-8 w-16 animate-pulse rounded bg-gray-200" />
             ) : (
-              d.orderCount
+              analyticsData.orderCount
             )}
           </p>
           <Link
@@ -177,7 +153,7 @@ export default function AdminDashboardClient() {
             {showSkeleton ? (
               <span className="inline-block h-8 w-16 animate-pulse rounded bg-gray-200" />
             ) : (
-              d.userCount
+              analyticsData.userCount
             )}
           </p>
           <Link
@@ -195,7 +171,7 @@ export default function AdminDashboardClient() {
             {showSkeleton ? (
               <span className="inline-block h-8 w-16 animate-pulse rounded bg-gray-200" />
             ) : (
-              d.productCount
+              analyticsData.productCount
             )}
           </p>
           <Link
@@ -235,13 +211,13 @@ export default function AdminDashboardClient() {
             Revenue by month
           </h2>
           <p className="mt-1 text-sm text-gray-600">
-            Last 12 months with paid activity
+            Last 12 months with fulfilled orders
           </p>
           <div className="mt-4">
             {showSkeleton ? (
               <div className="h-40 w-full animate-pulse rounded bg-gray-100" />
             ) : (
-              <RevenueLineChart data={d.salesByMonth} />
+              <RevenueLineChart data={analyticsData.salesByMonth} />
             )}
           </div>
         </div>
@@ -251,10 +227,10 @@ export default function AdminDashboardClient() {
           <ul className="mt-4 space-y-2 text-sm">
             {showSkeleton ? (
               <li className="h-20 animate-pulse rounded bg-gray-100" />
-            ) : d.topProducts.length === 0 ? (
+            ) : analyticsData.topProducts.length === 0 ? (
               <li className="text-gray-500">No line items yet.</li>
             ) : (
-              d.topProducts.map((row) => (
+              analyticsData.topProducts.map((row) => (
                 <li
                   key={row.productId}
                   className="flex justify-between gap-2 border-b border-gray-100 py-2 last:border-0"
@@ -321,7 +297,7 @@ export default function AdminDashboardClient() {
                         </td>
                       </tr>
                     ))
-                  : d.recentOrders.map((o) => {
+                  : analyticsData.recentOrders.map((o) => {
                       const email = o.user?.email ?? o.emailSnapshot ?? "—";
                       return (
                         <tr key={o.id}>
