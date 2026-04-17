@@ -236,8 +236,10 @@ export async function transitionPaymentStatusRepo(params: {
     data: {
       status: params.toStatus,
       version: { increment: 1 },
+      // Keep original gateway snapshot (checkoutSnapshot/provider ids) intact.
+      // Metadata is stored in status history for auditing, not as replacement payload.
       gatewayResponse: toJsonInput(
-        params.metadata ?? (current.gatewayResponse as Prisma.InputJsonValue),
+        current.gatewayResponse as Prisma.InputJsonValue,
       ),
     },
   });

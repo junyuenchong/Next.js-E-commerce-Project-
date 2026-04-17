@@ -26,10 +26,18 @@ type Params = {
   onError: (message: string) => void;
 };
 
+type PersistedOrderPollResult =
+  | { kind: "resolved"; orderId: number }
+  | {
+      kind: "failed";
+      reason: "failed_or_cancelled" | "timeout" | "still_processing";
+    };
+
 async function waitForPersistedOrderId(
   paypalOrderId: string,
-): Promise<number | null> {
-  const maxAttempts = 10;
+): Promise<PersistedOrderPollResult> {
+  // Give webhook-first mode enough time before showing an actionable fallback.
+  const maxAttempts = 25;
   for (let i = 0; i < maxAttempts; i += 1) {
     const response = await fetch(
       `/features/user/api/paypal/orders/${encodeURIComponent(paypalOrderId)}/status`,
@@ -37,7 +45,11 @@ async function waitForPersistedOrderId(
     );
     const payload = (await response.json().catch(() => null)) as {
       order?: { id?: number };
-      payment?: { orderId?: number | null; status?: string };
+      payment?: {
+        orderId?: number | null;
+        status?: string;
+        expiresAt?: string | null;
+      };
     } | null;
     const orderId =
       payload?.order?.id ??
@@ -45,11 +57,31 @@ async function waitForPersistedOrderId(
         ? payload.payment.orderId
         : null);
     if (typeof orderId === "number" && Number.isFinite(orderId)) {
-      return orderId;
+      return { kind: "resolved", orderId };
     }
-    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    const paymentStatus = String(payload?.payment?.status ?? "").toUpperCase();
+    if (paymentStatus === "FAILED" || paymentStatus === "CANCELLED") {
+      return { kind: "failed", reason: "failed_or_cancelled" };
+    }
+
+    const expiresAt = payload?.payment?.expiresAt
+      ? new Date(payload.payment.expiresAt).getTime()
+      : null;
+    const shouldTimeoutByExpiry =
+      paymentStatus === "PENDING" || paymentStatus === "PROCESSING";
+    if (
+      shouldTimeoutByExpiry &&
+      expiresAt &&
+      Number.isFinite(expiresAt) &&
+      Date.now() > expiresAt
+    ) {
+      return { kind: "failed", reason: "timeout" };
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1200));
   }
-  return null;
+  return { kind: "failed", reason: "still_processing" };
 }
 
 // Component-level hook: isolates PayPal SDK loading + button rendering from UI.
@@ -59,25 +91,72 @@ export function usePayPalCheckoutButtons(params: Params) {
 
   const hostRef = useRef<HTMLDivElement>(null);
   const createOrderIdempotencyKeyRef = useRef<string | null>(null);
+  const mountedButtonsRef = useRef(false);
+  const lastUserErrorRef = useRef<{ message: string; atMs: number } | null>(
+    null,
+  );
   const [sdkReady, setSdkReady] = useState(false);
+
+  const emitUserError = useCallback(
+    (message: string) => {
+      const now = Date.now();
+      const last = lastUserErrorRef.current;
+      if (last && last.message === message && now - last.atMs < 2000) return;
+      lastUserErrorRef.current = { message, atMs: now };
+      onError(message);
+    },
+    [onError],
+  );
 
   // Loads PayPal SDK once and marks the hook ready for button rendering.
   useEffect(() => {
     if (!clientId.trim()) return;
     const id = "paypal-sdk-script";
-    if (document.getElementById(id)) {
+    const desiredSrc = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
+      clientId,
+    )}&currency=${encodeURIComponent(currencyCode)}&intent=capture`;
+    const existing = document.getElementById(id) as HTMLScriptElement | null;
+
+    // Reset readiness when SDK params change.
+    setSdkReady(false);
+    mountedButtonsRef.current = false;
+
+    if (window.paypal && existing?.src === desiredSrc) {
       setSdkReady(true);
       return;
     }
-    const script = document.createElement("script");
+
+    if (existing && existing.src !== desiredSrc) {
+      existing.remove();
+    }
+
+    const script =
+      existing && existing.src === desiredSrc
+        ? existing
+        : document.createElement("script");
     script.id = id;
     script.async = true;
-    script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
-      clientId,
-    )}&currency=${encodeURIComponent(currencyCode)}&intent=capture`;
-    script.onload = () => setSdkReady(true);
-    script.onerror = () => onError("Could not load PayPal.");
-    document.body.appendChild(script);
+    script.src = desiredSrc;
+
+    const onLoad = () => {
+      if (window.paypal?.Buttons) setSdkReady(true);
+      else onError("PayPal loaded but is not ready yet. Please refresh.");
+    };
+    const onScriptError = () => onError("Could not load PayPal.");
+
+    script.addEventListener("load", onLoad);
+    script.addEventListener("error", onScriptError);
+    if (!script.isConnected) {
+      document.body.appendChild(script);
+    } else if (window.paypal?.Buttons) {
+      // Existing loaded script path.
+      setSdkReady(true);
+    }
+
+    return () => {
+      script.removeEventListener("load", onLoad);
+      script.removeEventListener("error", onScriptError);
+    };
   }, [clientId, currencyCode, onError]);
 
   // Creates and renders the PayPal Buttons instance with create/capture handlers.
@@ -85,6 +164,7 @@ export function usePayPalCheckoutButtons(params: Params) {
     const el = hostRef.current;
     const paypal = window.paypal;
     if (!el || !paypal?.Buttons || disabled) return;
+    if (mountedButtonsRef.current) return;
     el.innerHTML = "";
     await paypal
       .Buttons({
@@ -160,10 +240,15 @@ export function usePayPalCheckoutButtons(params: Params) {
                     ? (capturePayload?.hint ??
                       "Payment may have succeeded; please contact support.")
                     : "Payment capture failed. You can try again.";
-            throw new Error(errorMessage);
+            emitUserError(errorMessage);
+            return;
           }
-          if (!capturePayload?.ok)
-            throw new Error("Payment was not completed.");
+          if (!capturePayload?.ok) {
+            emitUserError(
+              "Payment was not completed. You can retry checkout now.",
+            );
+            return;
+          }
           const directOrderId = capturePayload?.order?.id;
           if (
             typeof directOrderId === "number" &&
@@ -173,35 +258,56 @@ export function usePayPalCheckoutButtons(params: Params) {
             return;
           }
           // Webhook-first safety: wait briefly for server-side order/payment reconciliation.
-          const persistedOrderId = await waitForPersistedOrderId(data.orderID);
-          if (typeof persistedOrderId !== "number") {
-            throw new Error(
-              "Payment is processing. Please open your orders page and refresh shortly.",
+          const persisted = await waitForPersistedOrderId(data.orderID);
+          if (persisted.kind === "failed") {
+            if (persisted.reason === "failed_or_cancelled") {
+              emitUserError(
+                "Payment was not completed. You can retry checkout now.",
+              );
+              return;
+            }
+            if (persisted.reason === "timeout") {
+              emitUserError(
+                "Payment timed out and was auto-cancelled. Please retry checkout.",
+              );
+              return;
+            }
+            emitUserError(
+              "Payment is still processing on server. Please check My Orders in a moment.",
             );
+            return;
           }
-          onPaid({ orderId: persistedOrderId });
+          onPaid({ orderId: persisted.orderId });
         },
         onCancel: () => {
           createOrderIdempotencyKeyRef.current = null;
-          onError("Payment was cancelled. Your cart is still saved.");
+          emitUserError("Payment was cancelled. Your cart is still saved.");
         },
         onError: (error) => {
-          console.error("[PayPal]", error);
+          // Keep console clean and avoid repeating same message loops.
           const errorMessage =
             error instanceof Error && error.message.trim()
               ? error.message
               : "PayPal reported an error. Try again.";
-          onError(errorMessage);
+          emitUserError(errorMessage);
         },
       })
       .render(el);
-  }, [disabled, onError, onPaid, shipping, smsTo]);
+    mountedButtonsRef.current = true;
+  }, [disabled, emitUserError, onPaid, shipping, smsTo]);
 
   // Re-renders buttons when SDK readiness or checkout state changes.
   useEffect(() => {
-    if (!sdkReady || disabled) return;
-    void renderButtons();
-  }, [sdkReady, disabled, renderButtons]);
+    if (!sdkReady || disabled) {
+      mountedButtonsRef.current = false;
+      return;
+    }
+    void renderButtons().catch((error) => {
+      mountedButtonsRef.current = false;
+      console.error("[PayPal render]", error);
+      emitUserError("Could not render PayPal button. Please try again.");
+    });
+  }, [sdkReady, disabled, renderButtons, emitUserError]);
 
   return { hostRef, sdkReady };
 }

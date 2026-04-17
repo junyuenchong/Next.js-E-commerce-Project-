@@ -91,17 +91,20 @@ async function validateCouponRedemptionScope(
   couponId: number,
   userId: number | null,
 ): Promise<string | null> {
-  // Guard: targeted vouchers require authenticated assigned users with unused rows.
-  if (scope !== "ASSIGNED_USERS") {
-    return null;
-  }
+  // Guard: enforce one-time-per-user policy for every coupon type.
   if (!userId) return "coupon_requires_login";
+
   const a = await prisma.userCouponAssignment.findUnique({
     where: { userId_couponId: { userId, couponId } },
     select: { usedAt: true },
   });
-  if (!a) return "coupon_not_assigned";
-  if (a.usedAt) return "coupon_already_used";
+
+  // ASSIGNED_USERS coupons must be pre-assigned to the user.
+  if (scope === "ASSIGNED_USERS" && !a) return "coupon_not_assigned";
+
+  // Any existing usedAt means this user has already redeemed this coupon once.
+  if (a?.usedAt) return "coupon_already_used";
+
   return null;
 }
 

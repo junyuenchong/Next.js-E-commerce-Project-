@@ -21,6 +21,9 @@ function hashPasswordForSeed(password: string): string {
 
 /** Inventory for demo / checkout (PayPal validates stock vs cart quantity). */
 const DEFAULT_PRODUCT_STOCK = 100;
+const ANALYTICS_SEED_EMAIL = "seed-analytics@example.com";
+const ANALYTICS_PAYPAL_PREFIX = "SEED-ANALYTICS-";
+const ANALYTICS_MONTHS = 12;
 
 const categories = [
   { name: "Electronics", slug: "electronics" },
@@ -39,6 +42,108 @@ async function getCategoryId(slug: string): Promise<number> {
     throw new Error(`Category "${slug}" was not found after upsert.`);
   }
   return category.id;
+}
+
+function startOfMonthUtc(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+function addMonthsUtc(date: Date, months: number): Date {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1),
+  );
+}
+
+function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+async function seedMonthlyRevenueOrders() {
+  const allProducts = await prisma.product.findMany({
+    where: { isActive: true },
+    select: { id: true, title: true, price: true, imageUrl: true },
+    take: 40,
+  });
+  if (allProducts.length < 3) {
+    console.log("Skipping analytics monthly seed: not enough products.");
+    return;
+  }
+
+  // Keep seeding idempotent for local/dev reruns.
+  await prisma.order.deleteMany({
+    where: {
+      OR: [
+        { emailSnapshot: ANALYTICS_SEED_EMAIL },
+        { paypalOrderId: { startsWith: ANALYTICS_PAYPAL_PREFIX } },
+      ],
+    },
+  });
+
+  const now = new Date();
+  const currentMonth = startOfMonthUtc(now);
+  const firstMonth = addMonthsUtc(currentMonth, -(ANALYTICS_MONTHS - 1));
+
+  let createdOrderCount = 0;
+  for (let monthIndex = 0; monthIndex < ANALYTICS_MONTHS; monthIndex += 1) {
+    const monthStart = addMonthsUtc(firstMonth, monthIndex);
+    const orderCountThisMonth = randomInt(2, 5);
+
+    for (
+      let orderIndex = 0;
+      orderIndex < orderCountThisMonth;
+      orderIndex += 1
+    ) {
+      const selected = [...allProducts]
+        .sort(() => Math.random() - 0.5)
+        .slice(0, randomInt(1, 3));
+
+      const lines = selected.map((product) => ({
+        productId: product.id,
+        title: product.title,
+        unitPrice: product.price,
+        quantity: randomInt(1, 3),
+        imageUrl: product.imageUrl,
+      }));
+
+      const total = lines.reduce(
+        (sum, line) => sum + Number(line.unitPrice) * line.quantity,
+        0,
+      );
+      const createdAt = new Date(
+        Date.UTC(
+          monthStart.getUTCFullYear(),
+          monthStart.getUTCMonth(),
+          randomInt(3, 24),
+          randomInt(9, 19),
+          randomInt(0, 59),
+          randomInt(0, 59),
+        ),
+      );
+      const paypalOrderId = `${ANALYTICS_PAYPAL_PREFIX}${monthStart.getUTCFullYear()}${String(monthStart.getUTCMonth() + 1).padStart(2, "0")}-${orderIndex + 1}`;
+
+      await prisma.order.create({
+        data: {
+          status: "fulfilled",
+          currency: "MYR",
+          total,
+          paypalOrderId,
+          paypalCaptureId: `${paypalOrderId}-CAPTURE`,
+          emailSnapshot: ANALYTICS_SEED_EMAIL,
+          createdAt,
+          updatedAt: createdAt,
+          items: {
+            create: lines,
+          },
+        },
+      });
+
+      createdOrderCount += 1;
+    }
+  }
+
+  console.log(
+    `Monthly analytics seed ready: ${createdOrderCount} fulfilled orders across ${ANALYTICS_MONTHS} months.`,
+  );
 }
 
 async function seedDatabase() {
@@ -249,6 +354,8 @@ async function seedDatabase() {
         "\nSkipping admin user: set ADMIN_SEED_EMAIL and ADMIN_SEED_PASSWORD in .env, then run db:seed again.",
       );
     }
+
+    await seedMonthlyRevenueOrders();
 
     console.log("\nDatabase seeding completed.");
   } catch (error: unknown) {

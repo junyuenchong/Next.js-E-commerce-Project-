@@ -47,6 +47,9 @@ export async function createPaidOrderRepo(
     });
 
     if (input.couponId != null) {
+      if (!input.userId) {
+        throw new Error("coupon_requires_login_at_capture");
+      }
       const c = await tx.coupon.findUnique({ where: { id: input.couponId } });
       if (!c?.isActive) {
         throw new Error("coupon_invalid_at_capture");
@@ -54,25 +57,38 @@ export async function createPaidOrderRepo(
       if (c.usageLimit != null && c.usedCount >= c.usageLimit) {
         throw new Error("coupon_exhausted_at_capture");
       }
-      if (c.redemptionScope === "ASSIGNED_USERS") {
-        if (!input.userId) {
-          throw new Error("coupon_requires_login_at_capture");
-        }
-        const a = await tx.userCouponAssignment.findUnique({
-          where: {
-            userId_couponId: { userId: input.userId, couponId: input.couponId },
-          },
-          select: { usedAt: true },
-        });
-        if (!a) throw new Error("coupon_not_assigned_at_capture");
-        if (a.usedAt) throw new Error("coupon_already_used_at_capture");
+      const assignment = await tx.userCouponAssignment.findUnique({
+        where: {
+          userId_couponId: { userId: input.userId, couponId: input.couponId },
+        },
+        select: { usedAt: true },
+      });
+
+      if (c.redemptionScope === "ASSIGNED_USERS" && !assignment) {
+        throw new Error("coupon_not_assigned_at_capture");
+      }
+      if (assignment?.usedAt) {
+        throw new Error("coupon_already_used_at_capture");
+      }
+
+      if (assignment) {
         await tx.userCouponAssignment.update({
           where: {
             userId_couponId: { userId: input.userId, couponId: input.couponId },
           },
           data: { usedAt: new Date() },
         });
+      } else {
+        // PUBLIC coupons also become one-time per authenticated user.
+        await tx.userCouponAssignment.create({
+          data: {
+            userId: input.userId,
+            couponId: input.couponId,
+            usedAt: new Date(),
+          },
+        });
       }
+
       await tx.coupon.update({
         where: { id: input.couponId },
         data: { usedCount: { increment: 1 } },

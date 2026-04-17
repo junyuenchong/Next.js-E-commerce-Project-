@@ -22,6 +22,10 @@ const DEFAULT_CURRENCY = (
   process.env.NEXT_PUBLIC_PAYPAL_CURRENCY ||
   "MYR"
 ).trim();
+const PAYMENT_EXPIRE_MINUTES = Math.max(
+  1,
+  Number.parseInt(process.env.PAYMENT_EXPIRE_MINUTES ?? "5", 10) || 5,
+);
 
 function resolveIdempotencyKey(request: Request, fallbackSeed: string) {
   const provided = request.headers.get("x-idempotency-key")?.trim();
@@ -87,7 +91,7 @@ export async function POST(request: Request) {
       subtotal: totalPrice,
       discount: priced.discountAmount,
       total: priced.total,
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      expiresAt: new Date(Date.now() + PAYMENT_EXPIRE_MINUTES * 60 * 1000),
       gatewayResponse: {
         checkoutSnapshot,
       } as Prisma.InputJsonValue,

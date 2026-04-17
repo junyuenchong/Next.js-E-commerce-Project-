@@ -187,6 +187,8 @@ PAYPAL_CURRENCY="MYR"
 NEXT_PUBLIC_PAYPAL_CURRENCY="MYR"
 # 1 = strict webhook-truth mode (capture returns processing; webhook finalizes payment/order)
 PAYMENT_WEBHOOK_TRUTH="0"
+# Auto-cancel stale PENDING/PROCESSING payments after N minutes.
+PAYMENT_EXPIRE_MINUTES="5"
 # Inventory deduction mode:
 # - FULFILLED: deduct stock when order enters fulfilled
 # - PAID: Shopee-like, deduct stock when paid order is persisted

@@ -20,6 +20,7 @@ import {
   paypalExtractCaptureId,
   paypalGetOrder,
   paypalOrderAmount,
+  transitionPaymentStatusRepo,
 } from "@/backend/modules/payment";
 import { sendTransactionalEmail } from "@/backend/modules/notification";
 import { sendTwilioSms } from "@/backend/modules/notification";
@@ -415,6 +416,14 @@ export async function postPayPalCaptureRoute(
     if (WEBHOOK_TRUTH_MODE) {
       // In webhook-truth mode, capture only acknowledges gateway capture.
       // Final paid/cancelled/refunded transitions and order linking happen in webhook.
+      if (payment) {
+        await transitionPaymentStatusRepo({
+          paymentId: payment.id,
+          toStatus: "PAID",
+          reason: "capture_ack_pending_webhook_link",
+          metadata: json as Prisma.InputJsonValue,
+        }).catch(() => null);
+      }
       const processingRes = NextResponse.json({
         ok: true,
         processing: true,
