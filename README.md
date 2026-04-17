@@ -41,18 +41,24 @@ _(Replace with your own domain when you deploy.)_
 
 **Frontend** lives under `src/app/`.
 
-- **`modules/user/`** — Everything for shoppers: pages, UI, and APIs under `/features/user/...`.
-- **`modules/admin/`** — Same idea for staff: dashboard and APIs under `/features/admin/...`.
+- **`features/user/`** — Storefront: pages, UI, hooks, and APIs under `/features/user/...`.
+- **`features/admin/`** — Admin dashboard: pages, UI, shared client logic, and APIs under `/features/admin/...`.
 
-Inside each module, roughly:
+Inside each feature, roughly:
 
 | Folder        | Purpose                                                           |
 | ------------- | ----------------------------------------------------------------- |
 | `(routes)/`   | Page components                                                   |
 | `api/`        | Server routes (REST handlers)                                     |
 | `components/` | React UI (split into `components/client` and `components/server`) |
-| `hooks/`      | Reusable React logic                                              |
-| `lib/`        | Small helpers for that module                                     |
+| `hooks/`      | Feature hooks (business logic, data fetching, side effects)       |
+| `shared/`     | Feature-shared client helpers (admin uses this heavily)           |
+| `nav/`        | Navigation model + filter rules (no React components)             |
+
+Frontend layering rule:
+
+- **Components are UI-only** (rendering + props).
+- **Hooks/shared own the logic** (queries, mutations, state, effects).
 
 Shared code used by both modules is in **`src/app/utils/`** and **`src/app/providers/`**. Cart state is in **`src/app/redux/`**.
 
@@ -107,9 +113,9 @@ Notes:
 src/app/
 ├─ providers/     # QueryProvider + ReduxProvider
 ├─ utils/         # app-layer helpers (http, auth, realtime query, etc.)
-├─ modules/
-│  ├─ user/       # storefront: (routes)/, api/, components/{client,server}, …
-│  └─ admin/      # dashboard: same pattern
+├─ features/
+│  ├─ user/       # storefront: (routes)/, api/, components/, hooks/, …
+│  └─ admin/      # dashboard: (main)/, api/, components/, shared/, nav/, …
 ├─ redux/         # cart store
 └─ layout.tsx     # root layout
 
