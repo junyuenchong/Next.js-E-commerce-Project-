@@ -1,4 +1,8 @@
-// Feature: Implements authentication and password-reset service logic with role-aware access checks.
+/**
+ * auth service
+ * handle auth service logic
+ */
+// implements authentication and password-reset service logic with role-aware access checks.
 import { createHash, randomBytes } from "crypto";
 import type { UserRole } from "@prisma/client";
 import type { AppPermissionRole } from "@/backend/modules/access-control";
@@ -27,11 +31,11 @@ export function normalizeAdminLoginIdentifier(raw: string): string {
   return `${value}@${INTERNAL_ADMIN_LOGIN_DOMAIN}`;
 }
 
-// Feature: create password-reset token for known user email.
+// create password-reset token for known user email.
 export async function createPasswordResetForEmail(email: string): Promise<{
   rawToken: string;
 } | null> {
-  // Guard: only issue reset token for users that own a local password hash.
+  // only issue reset token for users that own a local password hash.
   const user = await findUserByEmailForPasswordReset(email);
   if (!user?.passwordHash) return null;
 
@@ -47,12 +51,12 @@ export async function createPasswordResetForEmail(email: string): Promise<{
   return { rawToken };
 }
 
-// Guard: validate and consume reset token, then update password hash.
+// validate and consume reset token, then update password hash.
 export async function consumePasswordResetToken(
   rawToken: string,
   newPasswordHash: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  // Guard: reject invalid/expired token before password mutation transaction.
+  // reject invalid/expired token before password mutation transaction.
   const tokenHash = hashResetToken(rawToken);
   const row = await findPasswordResetTokenWithUser(tokenHash);
   if (!row || row.expiresAt.getTime() < Date.now()) {
@@ -92,7 +96,7 @@ export function postAuthRedirectPath(
   role: UserRole | string,
   returnUrl?: string | null,
 ): string {
-  // Feature: resolve safe post-login redirect by role and sanitized returnUrl.
+  // resolve safe post-login redirect by role and sanitized returnUrl.
   if (String(role) === "SUPER_ADMIN") return ADMIN_DASHBOARD;
 
   if (canAccessAdminPanel(role as UserRole)) {

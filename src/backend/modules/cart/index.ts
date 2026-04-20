@@ -1,4 +1,8 @@
-// Feature: Cart — cart CRUD, merging guest carts, and live product hydration.
+/**
+ * cart module
+ * export cart members
+ */
+// cart — cart CRUD, merging guest carts, and live product hydration.
 export * from "./cart.action";
 export * from "./cart.service";
 export * from "./cart.repo";

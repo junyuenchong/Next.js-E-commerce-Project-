@@ -1,3 +1,7 @@
+/**
+ * money
+ * handle money logic
+ */
 export function moneyToNumber(value: unknown): number {
   if (value == null) return 0;
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;

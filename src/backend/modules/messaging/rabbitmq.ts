@@ -1,8 +1,12 @@
-// Feature: Publishes order-related background jobs to RabbitMQ queues for async processing.
+/**
+ * rabbitmq
+ * handle rabbitmq logic
+ */
+// publishes order-related background jobs to RabbitMQ queues for async processing.
 import amqp, { Channel } from "amqplib";
 import { runSafely } from "@/backend/shared/async-safety";
 
-// Note: default queue names when env overrides are absent.
+// default queue names when env overrides are absent.
 const DEFAULT_QUEUE_EMAIL = "order.email";
 const DEFAULT_QUEUE_PAYMENT = "order.payment";
 const DEFAULT_QUEUE_ANALYTICS = "order.analytics";
@@ -10,25 +14,25 @@ const DEFAULT_QUEUE_ANALYTICS = "order.analytics";
 let channel: Channel | null = null;
 let connecting = false;
 
-// Feature: resolve email queue name from env or default.
+// resolve email queue name from env or default.
 function queueEmail(): string {
   const q = process.env.RABBITMQ_QUEUE_ORDER_EMAIL?.trim();
   return q && q.length > 0 ? q : DEFAULT_QUEUE_EMAIL;
 }
 
-// Feature: resolve payment queue name from env or default.
+// resolve payment queue name from env or default.
 function queuePayment(): string {
   const q = process.env.RABBITMQ_QUEUE_ORDER_PAYMENT?.trim();
   return q && q.length > 0 ? q : DEFAULT_QUEUE_PAYMENT;
 }
 
-// Feature: resolve analytics queue name from env or default.
+// resolve analytics queue name from env or default.
 function queueAnalytics(): string {
   const q = process.env.RABBITMQ_QUEUE_ORDER_ANALYTICS?.trim();
   return q && q.length > 0 ? q : DEFAULT_QUEUE_ANALYTICS;
 }
 
-// Feature: shared RabbitMQ channel bootstrap with reconnect safety hooks.
+// shared RabbitMQ channel bootstrap with reconnect safety hooks.
 async function getChannel(): Promise<Channel | null> {
   if (!process.env.RABBITMQ_URL) return null;
   if (channel) return channel;
@@ -61,7 +65,7 @@ async function getChannel(): Promise<Channel | null> {
   }
 }
 
-// Note: queue payloads are always persisted JSON for background workers.
+// queue payloads are always persisted JSON for background workers.
 function sendJson(queue: string, payload: Record<string, unknown>) {
   const body = Buffer.from(JSON.stringify(payload));
   channel!.sendToQueue(queue, body, {
@@ -70,7 +74,7 @@ function sendJson(queue: string, payload: Record<string, unknown>) {
   });
 }
 
-// Note: email job payload shape.
+// email job payload shape.
 export type OrderEmailJobPayload = {
   v: 1;
   orderId: number;
@@ -79,23 +83,23 @@ export type OrderEmailJobPayload = {
   text: string;
 };
 
-// Note: payment job payload shape.
+// payment job payload shape.
 export type OrderPaymentJobPayload = {
   v: 1;
   orderId: number;
   lines: { productId: number; quantity: number }[];
 };
 
-// Note: analytics job payload shape.
+// analytics job payload shape.
 export type OrderAnalyticsJobPayload = {
   v: 1;
   orderId: number;
   status?: "paid" | "processing" | "shipped" | "delivered" | "cancelled";
 };
 
-// Feature: enqueue email job.
+// enqueue email job.
 export async function enqueueOrderEmailJob(payload: OrderEmailJobPayload) {
-  // Guard: fail hard only when MQ is configured but unreachable.
+  // fail hard only when MQ is configured but unreachable.
   return runSafely(
     async () => {
       const ch = await getChannel();
@@ -114,9 +118,9 @@ export async function enqueueOrderEmailJob(payload: OrderEmailJobPayload) {
   );
 }
 
-// Feature: enqueue payment job.
+// enqueue payment job.
 export async function enqueueOrderPaymentJob(payload: OrderPaymentJobPayload) {
-  // Feature: payment-side effects are offloaded to worker pipeline via queue.
+  // payment-side effects are offloaded to worker pipeline via queue.
   return runSafely(
     async () => {
       const ch = await getChannel();
@@ -135,11 +139,11 @@ export async function enqueueOrderPaymentJob(payload: OrderPaymentJobPayload) {
   );
 }
 
-// Feature: enqueue analytics job.
+// enqueue analytics job.
 export async function enqueueOrderAnalyticsJob(
   payload: OrderAnalyticsJobPayload,
 ) {
-  // Feature: analytics refresh is offloaded to worker pipeline via queue.
+  // analytics refresh is offloaded to worker pipeline via queue.
   return runSafely(
     async () => {
       const ch = await getChannel();

@@ -1,4 +1,8 @@
-// Feature: Handles PayPal capture webhook-like route flow with auth, validation, and order finalization.
+/**
+ * paypal capture route handler
+ * handle paypal capture route handler logic
+ */
+// handles PayPal capture webhook-like route flow with auth, validation, and order finalization.
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
@@ -61,7 +65,7 @@ function parseCaptureBody(raw: string): {
   };
 } {
   try {
-    // Guard: accept optional payload so capture still works with empty body.
+    // accept optional payload so capture still works with empty body.
     if (!raw.trim()) return { smsTo: "", shipping: {} };
     const j = JSON.parse(raw) as Record<string, unknown>;
     const smsTo = typeof j.smsTo === "string" ? j.smsTo.trim() : "";
@@ -80,17 +84,17 @@ function parseCaptureBody(raw: string): {
 }
 
 function amountsMatch(a: string, b: string): boolean {
-  // Guard: decimal-safe equality check for money values represented as strings.
+  // decimal-safe equality check for money values represented as strings.
   return Math.abs(Number(a) - Number(b)) < 0.0001;
 }
 
 function jsonError(status: number, body: Record<string, unknown>) {
-  // Feature: normalized JSON error helper for all early-return guards.
+  // normalized JSON error helper for all early-return guards.
   return NextResponse.json(body, { status });
 }
 
 async function resolveCartOrError() {
-  // Guard: capture requires a non-empty cart snapshot from current session.
+  // capture requires a non-empty cart snapshot from current session.
   const cart = await getCartWithLiveProductsService();
   if (!cart?.items?.length) {
     return {
@@ -102,7 +106,7 @@ async function resolveCartOrError() {
 }
 
 function validateCartStockOrError(cartItems: unknown) {
-  // Guard: block capture when any item stock is stale/insufficient before charge.
+  // block capture when any item stock is stale/insufficient before charge.
   const cartLines = cartItems as Parameters<
     typeof validateCartStockForOrder
   >[0];
@@ -123,7 +127,7 @@ async function resolveExpectedTotalOrError(params: {
   cartItems: CartItemRowData[];
   resolvedUserId: number | null;
 }) {
-  // Guard: recompute totals server-side so coupon/subtotal are authoritative.
+  // recompute totals server-side so coupon/subtotal are authoritative.
   const { totalPrice } = summarizeCartLines(params.cartItems);
   const couponCode = await readCheckoutCouponCode();
   const priced = await resolveCheckoutCouponPricing({
@@ -144,7 +148,7 @@ async function verifyRemoteAmountOrError(params: {
   orderId: string;
   expectedValue: string;
 }) {
-  // Guard: compare PayPal amount with local pricing to prevent amount drift.
+  // compare PayPal amount with local pricing to prevent amount drift.
   const remote = await paypalGetOrder(params.orderId);
   const remoteAmt = paypalOrderAmount(remote);
   if (
@@ -161,7 +165,7 @@ async function verifyRemoteAmountOrError(params: {
 }
 
 async function capturePayPalOrError(orderId: string) {
-  // Guard: perform PayPal capture only after all local preconditions succeed.
+  // perform PayPal capture only after all local preconditions succeed.
   const { ok, json } = await paypalCaptureOrder(orderId);
   if (!ok) {
     return {
@@ -193,7 +197,7 @@ async function persistPaidOrderOrError(params: {
   skipStockDecrement: boolean;
 }) {
   try {
-    // Guard: persist order and coupon consumption atomically via service/repo transaction.
+    // persist order and coupon consumption atomically via service/repo transaction.
     const orderRow = await createPaidOrderAfterCaptureService(
       {
         userId: params.resolvedUserId,
@@ -231,7 +235,7 @@ async function persistPaidOrderOrError(params: {
 function resolveSessionEmail(
   session: Awaited<ReturnType<typeof getServerSession>>,
 ): string | null {
-  // Note: email is optional; notifications are best-effort, not payment-critical.
+  // email is optional; notifications are best-effort, not payment-critical.
   const sessionUser =
     (session as { user?: { email?: string | null } } | null)?.user ?? null;
   return sessionUser?.email?.trim() ?? null;
@@ -268,7 +272,7 @@ async function runFulfillmentFlow(params: {
   });
 
   if (params.useAsyncFulfillment) {
-    // Feature: prefer async fulfillment when MQ is enabled for faster capture responses.
+    // prefer async fulfillment when MQ is enabled for faster capture responses.
     let emailEnqueued = false;
     let analyticsEnqueued = false;
     try {
@@ -290,7 +294,7 @@ async function runFulfillmentFlow(params: {
         emailEnqueued = true;
       }
     } catch (e) {
-      // Fallback: keep order consistency if queue writes fail.
+      // keep order consistency if queue writes fail.
       console.error(
         "[paypal/capture] RabbitMQ enqueue failed; applying sync payment + analytics + email",
         e,
@@ -339,7 +343,7 @@ export async function postPayPalCaptureRoute(
   req: Request,
   ctx: { params: Promise<{ orderId: string }> },
 ) {
-  // Feature: guard-style early returns keep capture error mapping deterministic.
+  // guard-style early returns keep capture error mapping deterministic.
   const rawBody = await req.text().catch(() => "");
   const { smsTo, shipping } = parseCaptureBody(rawBody);
 
@@ -376,7 +380,7 @@ export async function postPayPalCaptureRoute(
     const session = await getServerSession(authOptions);
     const sessionEmail = resolveSessionEmail(session);
 
-    // Guard: keep chain linear so each failure returns the most specific HTTP error.
+    // keep chain linear so each failure returns the most specific HTTP error.
     const cartResolved = await resolveCartOrError();
     if (!cartResolved.ok) return cartResolved.response;
     const cart = cartResolved.cart;

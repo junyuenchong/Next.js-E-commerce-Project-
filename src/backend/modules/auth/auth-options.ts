@@ -1,4 +1,8 @@
-// Feature: NextAuth configuration for providers, sessions, and user auth flow.
+/**
+ * auth options
+ * handle auth options logic
+ */
+// nextAuth configuration for providers, sessions, and user auth flow.
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -10,7 +14,7 @@ import { verifyPasswordUserService } from "@/backend/modules/user/user.service";
 import { loginProvidersFromRow } from "./dto/login-providers.dto";
 import { normalizeAdminLoginIdentifier } from "./auth.service";
 
-// Note: minimal user fields fetched during auth hydration.
+// minimal user fields fetched during auth hydration.
 const userAuthSelect = {
   id: true,
   role: true,
@@ -20,7 +24,7 @@ const userAuthSelect = {
   accounts: { select: { provider: true } },
 } as const;
 
-// Fallback: parse login providers JSON, return [] on malformed input.
+// parse login providers JSON, return [] on malformed input.
 function loginProvidersFromJson(
   json: unknown,
 ): ("local" | "google" | "facebook")[] {
@@ -104,24 +108,24 @@ export const authOptions: AuthOptions = {
     signIn: "/features/user/auth/sign-in",
   },
   providers: [
-    // Feature: enable Google login provider.
+    // enable Google login provider.
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
-    // Feature: enable Facebook login provider.
+    // enable Facebook login provider.
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID!,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
-    // Feature: local credentials login (email/password).
+    // local credentials login (email/password).
     CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { label: "Email or username", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      // Guard: check username/password only for local-provider users.
+      // check username/password only for local-provider users.
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
         const email = normalizeAdminLoginIdentifier(credentials.email);
@@ -140,14 +144,14 @@ export const authOptions: AuthOptions = {
     }),
   ],
   session: {
-    strategy: "jwt", // Note: store session state in JWT token.
-    maxAge: 30 * 24 * 60 * 60, // Note: session validity window is 30 days.
-    updateAge: 24 * 60 * 60, // Note: refresh JWT token state every 24 hours.
+    strategy: "jwt", // store session state in JWT token.
+    maxAge: 30 * 24 * 60 * 60, // session validity window is 30 days.
+    updateAge: 24 * 60 * 60, // refresh JWT token state every 24 hours.
   },
   secret: process.env.NEXTAUTH_SECRET,
   debug: false,
   callbacks: {
-    // Feature: each JWT issuance refreshes token with DB-backed role/provider data.
+    // each JWT issuance refreshes token with DB-backed role/provider data.
     async jwt({ token, user }) {
       if (user) {
         applyAuthUserToToken(token as Record<string, unknown>, user);
@@ -159,7 +163,7 @@ export const authOptions: AuthOptions = {
       }
       return token;
     },
-    // Guard: block inactive users from completing sign-in.
+    // block inactive users from completing sign-in.
     async signIn({ user }) {
       const email = user?.email?.trim().toLowerCase();
       if (!email) return true;
@@ -198,7 +202,7 @@ export const authOptions: AuthOptions = {
       if (email) session.user.email = email;
       return session;
     },
-    // Guard: allow only same-origin/safe redirects after login.
+    // allow only same-origin/safe redirects after login.
     async redirect({ url, baseUrl }) {
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       if (new URL(url).origin === baseUrl) return url;

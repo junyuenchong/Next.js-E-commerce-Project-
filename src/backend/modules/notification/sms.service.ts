@@ -1,4 +1,8 @@
-// Feature: Sends transactional SMS messages through Twilio and normalizes provider error outcomes.
+/**
+ * sms service
+ * handle sms service logic
+ */
+// sends transactional SMS messages through Twilio and normalizes provider error outcomes.
 export type SendSmsResult =
   | { ok: true; sid: string }
   | { ok: false; error: string; status?: number };

@@ -1,4 +1,8 @@
-// Feature: Implements order persistence for paid-order creation, stock updates, and admin queries.
+/**
+ * order repo
+ * handle order repo logic
+ */
+// implements order persistence for paid-order creation, stock updates, and admin queries.
 import { Prisma, type OrderStatus } from "@prisma/client";
 import prisma from "@/backend/core/db/prisma";
 import {
@@ -7,12 +11,12 @@ import {
 } from "@/backend/core/stock-policy";
 import type { CreatePaidOrderInput } from "@/shared/types";
 
-// Guard: persist paid order and optional stock decrement in single transaction.
+// persist paid order and optional stock decrement in single transaction.
 export async function createPaidOrderRepo(
   input: CreatePaidOrderInput,
   options?: { skipStockDecrement?: boolean },
 ) {
-  // Guard: one transaction keeps order row, coupon usage, and stock decrement consistent.
+  // one transaction keeps order row, coupon usage, and stock decrement consistent.
   const discount = input.discountAmount ?? 0;
 
   return prisma.$transaction(async (tx) => {
@@ -129,7 +133,7 @@ export async function createPaidOrderRepo(
   });
 }
 
-// Fallback: apply stock decrements when RabbitMQ is disabled or enqueue fails.
+// apply stock decrements when RabbitMQ is disabled or enqueue fails.
 export async function decrementStockForOrderLinesRepo(
   lines: { productId: number; quantity: number }[],
 ) {
@@ -148,7 +152,7 @@ export async function decrementStockForOrderLinesRepo(
 const DEFAULT_PAGE = 40;
 const MAX_PAGE = 100;
 
-// Note: shared cursor-page builder keeps list endpoint behavior consistent.
+// shared cursor-page builder keeps list endpoint behavior consistent.
 function pageFromRows<T extends { id: number }>(rows: T[], limit: number) {
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;
@@ -156,13 +160,13 @@ function pageFromRows<T extends { id: number }>(rows: T[], limit: number) {
   return { page, nextCursor };
 }
 
-// Feature: list user's orders using cursor pagination.
+// list user's orders using cursor pagination.
 export async function listOrdersForUserRepo(
   userId: number,
   cursorId?: number,
   take = DEFAULT_PAGE,
 ) {
-  // Guard: hard clamp protects API against abusive `take` values.
+  // hard clamp protects API against abusive `take` values.
   const limit = Math.min(Math.max(1, take), MAX_PAGE);
   const rows = await prisma.order.findMany({
     where: {
@@ -184,7 +188,7 @@ export async function listOrdersForUserRepo(
   return { orders: page, nextCursor };
 }
 
-// Feature: look up internal order id by PayPal order id.
+// look up internal order id by PayPal order id.
 export async function findOrderByPayPalIdRepo(paypalOrderId: string) {
   return prisma.order.findUnique({
     where: { paypalOrderId },
@@ -192,7 +196,7 @@ export async function findOrderByPayPalIdRepo(paypalOrderId: string) {
   });
 }
 
-// Feature: fetch single user order including coupon and items.
+// fetch single user order including coupon and items.
 export async function findOrderForUserByIdRepo(
   userId: number,
   orderId: number,
@@ -219,7 +223,7 @@ function orderAdminListWhere(
   cursorId?: number,
   q?: string,
 ): Prisma.OrderWhereInput {
-  // Feature: centralized admin-search predicate keeps list and count semantics aligned.
+  // centralized admin-search predicate keeps list and count semantics aligned.
   const parts: Prisma.OrderWhereInput[] = [];
   if (cursorId != null) parts.push({ id: { lt: cursorId } });
   const trimmed = q?.trim() ?? "";
@@ -236,7 +240,7 @@ function orderAdminListWhere(
   return parts.length ? { AND: parts } : {};
 }
 
-// Feature: list admin dashboard orders with cursor pagination and optional search.
+// list admin dashboard orders with cursor pagination and optional search.
 export async function listAllOrdersAdminRepo(
   cursorId?: number,
   take = DEFAULT_PAGE,
@@ -256,7 +260,7 @@ export async function listAllOrdersAdminRepo(
   return { orders: page, nextCursor };
 }
 
-// Feature: fetch single admin-view order including user and items.
+// fetch single admin-view order including user and items.
 export async function findOrderAdminByIdRepo(id: number) {
   return prisma.order.findUnique({
     where: { id },
@@ -387,7 +391,7 @@ export async function ensureInvoiceForOrderRepo(orderId: number) {
   });
 }
 
-// Feature: update order status field.
+// update order status field.
 export async function updateOrderStatusRepo(
   orderId: number,
   status: OrderStatus,
@@ -458,7 +462,7 @@ export async function updateOrderStatusRepo(
   });
 }
 
-// Feature: update order shipment/tracking fields.
+// update order shipment/tracking fields.
 export async function updateOrderShipmentRepo(
   orderId: number,
   input: {
@@ -468,7 +472,7 @@ export async function updateOrderShipmentRepo(
     shippedAt?: Date | null;
   },
 ) {
-  // Note: `undefined` preserves DB values; null semantics are validated in service layer.
+  // `undefined` preserves DB values; null semantics are validated in service layer.
   return prisma.order.update({
     where: { id: orderId },
     data: {

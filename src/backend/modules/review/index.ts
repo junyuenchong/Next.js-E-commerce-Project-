@@ -1,4 +1,8 @@
-// Feature: Reviews — product review create/update and admin replies.
+/**
+ * review module
+ * export review members
+ */
+// reviews — product review create/update and admin replies.
 export * from "./review.action";
 export * from "./review.service";
 export * from "./review.repo";

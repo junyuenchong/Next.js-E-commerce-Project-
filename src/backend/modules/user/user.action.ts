@@ -1,4 +1,8 @@
-// Feature: Implements user account actions for authentication, password resets, and profile access.
+/**
+ * user action
+ * handle user action logic
+ */
+// implements user account actions for authentication, password resets, and profile access.
 "use server";
 
 import { cookies } from "next/headers";
@@ -18,9 +22,9 @@ export const hashPassword = hashPasswordUserAction;
 export const verifyPassword = verifyPasswordUserAction;
 export const registerUser = registerUserUserAction;
 
-// Note: admin mutations invoked from admin UI server actions.
+// admin mutations invoked from admin UI server actions.
 async function cookieHeader(): Promise<string> {
-  // Guard: forward current request cookies so admin API keeps same session context.
+  // forward current request cookies so admin API keeps same session context.
   const c = await cookies();
   return c
     .getAll()
@@ -33,7 +37,7 @@ function adminUsersApiUrl() {
 }
 
 async function patchUsers(body: unknown) {
-  // Feature: use internal API so server actions and route handlers share one RBAC path.
+  // use internal API so server actions and route handlers share one RBAC path.
   const res = await fetch(adminUsersApiUrl(), {
     method: "PATCH",
     headers: {
@@ -46,20 +50,20 @@ async function patchUsers(body: unknown) {
   return { ok: res.ok, error: data.error };
 }
 
-// Feature: activate/deactivate user via RBAC-protected admin users API.
+// activate/deactivate user via RBAC-protected admin users API.
 export async function setUserActiveAction(userId: number, isActive: boolean) {
-  // Feature: toggle team account active state via shared admin users API.
+  // toggle team account active state via shared admin users API.
   const { ok } = await patchUsers({ action: "active", userId, isActive });
   return { ok };
 }
 
-// Feature: update user email/name via RBAC-protected admin users API.
+// update user email/name via RBAC-protected admin users API.
 export async function updateUserProfileAdminAction(
   userId: number,
   email: string,
   name: string,
 ) {
-  // Note: normalize profile fields before forwarding to admin users API.
+  // normalize profile fields before forwarding to admin users API.
   return patchUsers({
     action: "profile",
     userId,

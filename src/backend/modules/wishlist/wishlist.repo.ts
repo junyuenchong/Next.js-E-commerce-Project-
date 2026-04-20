@@ -1,7 +1,11 @@
-// Feature: Executes wishlist persistence operations for user-scoped product wish entries.
+/**
+ * wishlist repo
+ * handle wishlist repo logic
+ */
+// executes wishlist persistence operations for user-scoped product wish entries.
 import prisma from "@/backend/core/db/prisma";
 
-// Feature: list active wishlist items for user with product snapshots.
+// list active wishlist items for user with product snapshots.
 export async function listWishlistForUserRepo(userId: number) {
   return prisma.wishlistItem.findMany({
     where: { userId, isActive: true },
@@ -22,9 +26,9 @@ export async function listWishlistForUserRepo(userId: number) {
   });
 }
 
-// Feature: add wishlist item and reactivate inactive row when present.
+// add wishlist item and reactivate inactive row when present.
 export async function addWishlistItemRepo(userId: number, productId: number) {
-  // Guard: reactivate existing row instead of creating duplicate (user,product) records.
+  // reactivate existing row instead of creating duplicate (user,product) records.
   const existing = await prisma.wishlistItem.findUnique({
     where: { userId_productId: { userId, productId } },
   });
@@ -42,12 +46,12 @@ export async function addWishlistItemRepo(userId: number, productId: number) {
   });
 }
 
-// Guard: soft-remove wishlist item for user/product pair.
+// soft-remove wishlist item for user/product pair.
 export async function removeWishlistItemRepo(
   userId: number,
   productId: number,
 ) {
-  // Feature: soft-remove preserves user history and enables quick restore.
+  // soft-remove preserves user history and enables quick restore.
   return prisma.wishlistItem.updateMany({
     where: { userId, productId, isActive: true },
     data: { isActive: false },

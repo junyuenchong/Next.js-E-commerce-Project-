@@ -1,4 +1,8 @@
-// Feature: Implements category services for CRUD management, slug rules, and cached reads.
+/**
+ * category service
+ * handle category service logic
+ */
+// implements category services for CRUD management, slug rules, and cached reads.
 import slugify from "slugify";
 import { categorySchema, categorySlugSchema } from "@/shared/schema";
 import { attachPublicListStats } from "@/backend/modules/product/product.repo";
@@ -47,12 +51,12 @@ export async function getCategoryByIdService(id: number) {
   return findCategoryById(id);
 }
 
-// Guard: admin category list returns active categories only.
+// admin category list returns active categories only.
 export async function getAllCategoriesService() {
   return listCategoriesActive();
 }
 
-// Feature: storefront/public category list API.
+// storefront/public category list API.
 export async function getStorefrontCategoriesService() {
   return listCategoriesActive();
 }

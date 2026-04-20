@@ -1,4 +1,8 @@
-// Feature: Handles admin authorization checks and permission-gated response helpers.
+/**
+ * access control action
+ * handle access control action logic
+ */
+// handles admin authorization checks and permission-gated response helpers.
 import { NextResponse } from "next/server";
 import type { UserRole } from "@prisma/client";
 import {
@@ -10,11 +14,11 @@ import {
   type AdminSessionUser,
 } from "@/backend/modules/auth/session";
 
-// Note: standard forbidden/unauthorized messages for admin API responses.
+// standard forbidden/unauthorized messages for admin API responses.
 export const ADMIN_FORBIDDEN_MESSAGE = "You don't have permission to do this.";
 export const ADMIN_UNAUTHORIZED_MESSAGE = "Please sign in to continue.";
 
-// Feature: return 401 JSON response for unauthorized (not logged in).
+// return 401 JSON response for unauthorized (not logged in).
 export function adminJsonUnauthorized() {
   return NextResponse.json(
     { error: "unauthorized", message: ADMIN_UNAUTHORIZED_MESSAGE },
@@ -22,7 +26,7 @@ export function adminJsonUnauthorized() {
   );
 }
 
-// Feature: return 403 JSON response for forbidden (user lacks permission).
+// return 403 JSON response for forbidden (user lacks permission).
 export function adminJsonForbidden(
   message: string = ADMIN_FORBIDDEN_MESSAGE,
   errorCode: string = "forbidden",
@@ -30,10 +34,10 @@ export function adminJsonForbidden(
   return NextResponse.json({ error: errorCode, message }, { status: 403 });
 }
 
-// Note: success result shape for admin permission guard.
+// success result shape for admin permission guard.
 export type AdminGuardOk = { ok: true; user: AdminSessionUser };
 
-// Note: failure result shape for admin permission guard with response.
+// failure result shape for admin permission guard with response.
 export type AdminGuardFail = { ok: false; response: NextResponse };
 
 async function requireAdminUserOrResponse(): Promise<
@@ -44,7 +48,7 @@ async function requireAdminUserOrResponse(): Promise<
   return { ok: true, user };
 }
 
-// Guard: require a single admin permission key.
+// require a single admin permission key.
 export async function adminApiRequire(
   permission: string,
 ): Promise<AdminGuardOk | AdminGuardFail> {
@@ -57,7 +61,7 @@ export async function adminApiRequire(
   return { ok: true, user };
 }
 
-// Guard: require at least one permission from the provided list.
+// require at least one permission from the provided list.
 export async function adminApiRequireAny(
   permissions: string[],
 ): Promise<AdminGuardOk | AdminGuardFail> {
@@ -71,7 +75,7 @@ export async function adminApiRequireAny(
   return { ok: false, response: adminJsonForbidden() };
 }
 
-// Guard: require catalog access capability for current admin.
+// require catalog access capability for current admin.
 export async function adminApiRequireCatalogAccess(): Promise<
   AdminGuardOk | AdminGuardFail
 > {
@@ -89,7 +93,7 @@ export async function adminApiRequireCatalogAccess(): Promise<
   return { ok: true, user };
 }
 
-// Guard: returns whether acting role can assign target role (never SUPER_ADMIN).
+// returns whether acting role can assign target role (never SUPER_ADMIN).
 export function canAssignTargetUserRole(
   _actingRole: UserRole,
   targetRole: UserRole,
@@ -97,7 +101,7 @@ export function canAssignTargetUserRole(
   return targetRole !== "SUPER_ADMIN";
 }
 
-// Guard: validate assignable target role and return typed forbidden response.
+// validate assignable target role and return typed forbidden response.
 export function assertCanAssignUserRole(
   _actingRole: UserRole,
   targetRole: UserRole,
@@ -114,7 +118,7 @@ export function assertCanAssignUserRole(
   return { ok: true };
 }
 
-// Note: error type for unauthorized admin action (not logged in).
+// error type for unauthorized admin action (not logged in).
 export class AdminActionUnauthorizedError extends Error {
   constructor() {
     super("Unauthorized");
@@ -122,7 +126,7 @@ export class AdminActionUnauthorizedError extends Error {
   }
 }
 
-// Note: error type for forbidden admin action (permission missing).
+// error type for forbidden admin action (permission missing).
 export class AdminActionForbiddenError extends Error {
   constructor(message = "You don't have permission to do this.") {
     super(message);
@@ -130,7 +134,7 @@ export class AdminActionForbiddenError extends Error {
   }
 }
 
-// Guard: throw when current admin lacks required permission.
+// throw when current admin lacks required permission.
 export async function requireAdminPermission(
   permission: string,
 ): Promise<void> {
@@ -141,7 +145,7 @@ export async function requireAdminPermission(
   }
 }
 
-// Guard: throw when current admin lacks catalog access.
+// throw when current admin lacks catalog access.
 export async function requireAdminCatalogAccess(): Promise<void> {
   const user = await getCurrentAdminUser();
   if (!user) throw new AdminActionUnauthorizedError();

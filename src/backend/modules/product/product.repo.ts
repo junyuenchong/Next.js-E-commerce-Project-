@@ -1,4 +1,8 @@
-// Feature: Handles product and review data access for catalog listing and admin operations.
+/**
+ * product repo
+ * handle product repo logic
+ */
+// handles product and review data access for catalog listing and admin operations.
 import prisma from "@/app/lib/prisma";
 import { productReviewHasIsActiveColumn } from "@/backend/modules/review/review-schema-capability";
 import { moneyToNumber } from "@/backend/core/money";
@@ -26,13 +30,13 @@ export const productListSelect = {
     },
   },
 } satisfies Prisma.ProductSelect;
-// Note: shared select shape for product list endpoints (admin + storefront variants).
+// shared select shape for product list endpoints (admin + storefront variants).
 
 export type ProductListItem = Prisma.ProductGetPayload<{
   select: typeof productListSelect;
 }>;
 
-// Feature: find product by slug with optional storefront visibility guard.
+// find product by slug with optional storefront visibility guard.
 export async function findProductBySlug(
   slug: string,
   options?: { activeOnly?: boolean },
@@ -50,7 +54,7 @@ export async function findProductBySlug(
   });
 }
 
-// Feature: find product by id with optional storefront visibility guard.
+// find product by id with optional storefront visibility guard.
 export async function findProductById(
   id: number,
   options?: { activeOnly?: boolean },
@@ -68,7 +72,7 @@ export async function findProductById(
   });
 }
 
-// Feature: list storefront-visible products with offset pagination.
+// list storefront-visible products with offset pagination.
 export async function findProducts(params: { take: number; skip: number }) {
   return prisma.product.findMany({
     where: { isActive: true },
@@ -79,7 +83,7 @@ export async function findProducts(params: { take: number; skip: number }) {
   });
 }
 
-// Feature: list storefront-visible products with cursor pagination.
+// list storefront-visible products with cursor pagination.
 export async function findProductsCursor(params: {
   take: number;
   cursorId?: number;
@@ -98,7 +102,7 @@ export async function findProductsCursor(params: {
   });
 }
 
-// Feature: search storefront-visible products across title/description/category fields.
+// search storefront-visible products across title/description/category fields.
 export async function searchProductsQuery(query: string) {
   return prisma.product.findMany({
     where: {
@@ -137,7 +141,7 @@ function orderByFromSort(
   }
 }
 
-// Feature: search storefront-visible products using optional facets and sorting.
+// search storefront-visible products using optional facets and sorting.
 export async function searchProductsWithFiltersQuery(params: {
   query?: string;
   categorySlug?: string;
@@ -182,7 +186,7 @@ export async function searchProductsWithFiltersQuery(params: {
   });
 }
 
-// Feature: insert new product row.
+// insert new product row.
 export async function createProductRecord(data: {
   title: string;
   slug: string;
@@ -196,7 +200,7 @@ export async function createProductRecord(data: {
   return prisma.product.create({ data });
 }
 
-// Feature: update product row by id.
+// update product row by id.
 export async function updateProductRecord(
   id: number,
   data: {
@@ -213,7 +217,7 @@ export async function updateProductRecord(
   return prisma.product.update({ where: { id }, data });
 }
 
-// Guard: soft delete hides product from storefront while preserving FK history.
+// soft delete hides product from storefront while preserving FK history.
 export async function softDeactivateProductById(id: number) {
   return prisma.product.update({
     where: { id },
@@ -221,7 +225,7 @@ export async function softDeactivateProductById(id: number) {
   });
 }
 
-// Guard: check whether product slug is already in use.
+// check whether product slug is already in use.
 export async function slugExists(slug: string) {
   const existing = await prisma.product.findFirst({
     where: { slug },
@@ -230,7 +234,7 @@ export async function slugExists(slug: string) {
   return Boolean(existing);
 }
 
-// Note: storefront card stats include review metrics and paid-order volume only.
+// storefront card stats include review metrics and paid-order volume only.
 export type ProductPublicListStats = {
   reviewCount: number;
   avgRating: number | null;
@@ -255,7 +259,7 @@ function likelyMissingColumnError(error: unknown): boolean {
   );
 }
 
-// Feature: batch-load review aggregates and paid units sold in the last 24 hours.
+// batch-load review aggregates and paid units sold in the last 24 hours.
 export async function getProductPublicListStats(
   productIds: number[],
 ): Promise<Map<number, ProductPublicListStats>> {
@@ -325,7 +329,7 @@ export async function getProductPublicListStats(
   return map;
 }
 
-// Feature: attach public list stats to product rows for storefront cards/lists.
+// attach public list stats to product rows for storefront cards/lists.
 export async function attachPublicListStats<T extends { id: number }>(
   items: T[],
 ): Promise<Array<T & ProductPublicListStats>> {
@@ -349,7 +353,7 @@ export async function attachPublicListStats<T extends { id: number }>(
   });
 }
 
-// Note: serialize admin product row to JSON-safe shape (`Decimal` -> `number`).
+// serialize admin product row to JSON-safe shape (`Decimal` -> `number`).
 export function serializeAdminProductListItem(
   row: ProductListItem & ProductPublicListStats,
 ) {

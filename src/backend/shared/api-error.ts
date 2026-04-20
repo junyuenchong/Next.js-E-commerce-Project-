@@ -1,3 +1,7 @@
+/**
+ * api error
+ * handle api error logic
+ */
 import { NextResponse } from "next/server";
 
 export function unknownErrorMessage(error: unknown): string {

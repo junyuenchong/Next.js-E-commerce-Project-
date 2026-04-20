@@ -1,4 +1,8 @@
-// Feature: Wishlist — user wishlist read/toggle operations.
+/**
+ * wishlist module
+ * export wishlist members
+ */
+// wishlist — user wishlist read/toggle operations.
 export * from "./wishlist.action";
 export * from "./wishlist.service";
 export * from "./wishlist.repo";

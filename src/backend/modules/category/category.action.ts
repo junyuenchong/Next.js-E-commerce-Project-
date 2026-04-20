@@ -1,4 +1,8 @@
-// Feature: Exposes category actions for admin management and cached category reads.
+/**
+ * category action
+ * handle category action logic
+ */
+// exposes category actions for admin management and cached category reads.
 "use server";
 
 import { Prisma } from "@prisma/client";
@@ -24,7 +28,7 @@ import {
 } from "./category.service";
 
 function mapCategoryMutationError(error: unknown): unknown {
-  // Fallback: normalize Prisma write errors to stable UI-facing category messages.
+  // normalize Prisma write errors to stable UI-facing category messages.
   if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return error;
   if (error.code === "P2002") {
     return new Error("A category with this name or slug already exists.");
@@ -36,7 +40,7 @@ function mapCategoryMutationError(error: unknown): unknown {
 }
 
 export async function getCategoryBySlugAction(slug: string) {
-  // Feature: read-through cache for category detail lookups by slug.
+  // read-through cache for category detail lookups by slug.
   const cacheKey = cacheKeys.categoryBySlug(slug);
   const cached = await getCachedJson<unknown>(cacheKey);
   if (cached) return cached;
@@ -49,7 +53,7 @@ export async function getAllProductsByCategoryAction(
   limit?: number,
   page?: number,
 ) {
-  // Note: legacy paged product list cache path used by category/product UIs.
+  // legacy paged product list cache path used by category/product UIs.
   const take = limit && limit > 0 ? limit : 20;
   const cacheKey = cacheKeys.productsList(take, page || 1);
   const cached = await getCachedJson<unknown[]>(cacheKey);
@@ -64,7 +68,7 @@ export async function getProductsByCategorySlugAction(
   limit?: number,
   page?: number,
 ) {
-  // Feature: category-scoped listing with cache keys partitioned by slug and paging.
+  // category-scoped listing with cache keys partitioned by slug and paging.
   const take = (limit ?? "all") as number | "all";
   const p = page || 1;
   const cacheKey = cacheKeys.productsByCategory(slug, take, p);
@@ -80,12 +84,12 @@ export async function getProductsByCategorySlugCursorAction(
   limit?: number,
   cursorId?: number,
 ) {
-  // Feature: cursor variant for infinite-scroll category product pages.
+  // cursor variant for infinite-scroll category product pages.
   return getProductsByCategorySlugCursorService(slug, limit, cursorId);
 }
 
 export async function createCategoryAction(name: string) {
-  // Guard: admin create path is permission-gated before any mutation.
+  // admin create path is permission-gated before any mutation.
   await requireAdminPermission("product.update");
   try {
     const category = await createCategoryService(name);
@@ -102,17 +106,17 @@ export async function createCategoryAction(name: string) {
 }
 
 export async function getAllCategoriesAction() {
-  // Feature: shared action wrapper for admin/public category list reads.
+  // shared action wrapper for admin/public category list reads.
   return getAllCategoriesService();
 }
 
 export async function getCategoryByIdAction(id: number) {
-  // Feature: internal/admin lookup by numeric category id.
+  // internal/admin lookup by numeric category id.
   return getCategoryByIdService(id);
 }
 
 export async function updateCategoryAction(id: number, name: string) {
-  // Feature: admin update path invalidates current and previous slug cache keys.
+  // admin update path invalidates current and previous slug cache keys.
   const existing = await getCategoryByIdService(id);
   try {
     const updated = await updateCategoryService(id, name);
@@ -143,7 +147,7 @@ export async function updateCategoryAction(id: number, name: string) {
 }
 
 export async function deleteCategoryAction(id: number) {
-  // Feature: soft-delete with related product-list cache and event invalidation.
+  // soft-delete with related product-list cache and event invalidation.
   await requireAdminPermission("product.delete");
   try {
     const deleted = await deleteCategoryService(id);
@@ -171,7 +175,7 @@ export async function deleteCategoryAction(id: number) {
 }
 
 export async function searchCategoriesAction(query: string) {
-  // Feature: lightweight admin search for selectors/autocomplete.
+  // lightweight admin search for selectors/autocomplete.
   return searchCategoriesService(query);
 }
 

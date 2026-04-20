@@ -1,4 +1,8 @@
-// Feature: Users — user auth helpers, profile updates, and safe DTOs.
+/**
+ * user module
+ * export user members
+ */
+// users — user auth helpers, profile updates, and safe DTOs.
 export * from "./user.action";
 export * from "./user.service";
 export * from "./user.repo";

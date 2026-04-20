@@ -1,4 +1,8 @@
+/**
+ * update product dto
+ * handle update product dto logic
+ */
 import type { CreateProductDto } from "./create-product.dto";
 
-// Feature: admin PATCH product DTO (partial create fields + required id).
+// admin PATCH product DTO (partial create fields + required id).
 export type UpdateProductDto = Partial<CreateProductDto> & { id: number };

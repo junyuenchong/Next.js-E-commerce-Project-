@@ -1,4 +1,8 @@
-// Feature: Implements product actions for admin CRUD, search, and review workflows.
+/**
+ * product action
+ * handle product action logic
+ */
+// implements product actions for admin CRUD, search, and review workflows.
 "use server";
 
 import {
@@ -48,7 +52,7 @@ async function runSearchSafely<T>(task: () => Promise<T>): Promise<T | []> {
   }
 }
 
-// Feature: create new product from validated admin input.
+// create new product from validated admin input.
 export async function createProductAction(data: unknown) {
   // Permission gate is enforced at action entry to protect all call paths.
   await requireAdminPermission("product.create");
@@ -73,9 +77,9 @@ export async function createProductAction(data: unknown) {
   return product;
 }
 
-// Feature: read storefront product by slug with caching.
+// read storefront product by slug with caching.
 export async function getProductBySlugAction(slug: string) {
-  // Feature: read-through cache for storefront product detail lookups.
+  // read-through cache for storefront product detail lookups.
   const cacheKey = cacheKeys.productBySlug(slug);
   const cached = await getCachedJson<unknown>(cacheKey);
   if (cached) return cached;
@@ -84,7 +88,7 @@ export async function getProductBySlugAction(slug: string) {
   return product;
 }
 
-// Feature: read product by id with caching (admin/detail use).
+// read product by id with caching (admin/detail use).
 export async function getProductByIdAction(id: string) {
   // Admin/detail read path uses id-based cache key.
   const productId = Number(id);
@@ -96,7 +100,7 @@ export async function getProductByIdAction(id: string) {
   return product;
 }
 
-// Feature: list products with page-based pagination and caching.
+// list products with page-based pagination and caching.
 export async function getAllProductsAction(limit?: number, page?: number) {
   // Keep legacy page-based cache contract while service supports pagination.
   const take = limit && limit > 0 ? limit : 20;
@@ -108,7 +112,7 @@ export async function getAllProductsAction(limit?: number, page?: number) {
   return products;
 }
 
-// Feature: list products using cursor pagination.
+// list products using cursor pagination.
 export async function getAllProductsCursorAction(
   limit?: number,
   cursorId?: number,
@@ -116,7 +120,7 @@ export async function getAllProductsCursorAction(
   return listProductsCursorService(limit, cursorId);
 }
 
-// Feature: update existing product and bust related caches.
+// update existing product and bust related caches.
 export async function updateProductAction(id: number, data: unknown) {
   await requireAdminPermission("product.update");
   let previousSlug: string | undefined;
@@ -159,7 +163,7 @@ export async function updateProductAction(id: number, data: unknown) {
   return product;
 }
 
-// Guard: soft-delete product and invalidate list/detail caches.
+// soft-delete product and invalidate list/detail caches.
 export async function deleteProductAction(id: number) {
   await requireAdminPermission("product.delete");
   const actor = await getCurrentAdminUser();
@@ -192,13 +196,13 @@ export async function deleteProductAction(id: number) {
   }
 }
 
-// Fallback: search products by query string and fail open to empty list.
+// search products by query string and fail open to empty list.
 export async function searchProductsAction(query: string) {
   // Query-only search path used by lightweight admin/storefront search UIs.
   return runSearchSafely(() => searchProductsService(query));
 }
 
-// Fallback: search products with query/facets and fail open to empty list.
+// search products with query/facets and fail open to empty list.
 export async function searchProductsWithFiltersAction(
   filters: Parameters<typeof searchProductsWithFiltersService>[0],
 ) {

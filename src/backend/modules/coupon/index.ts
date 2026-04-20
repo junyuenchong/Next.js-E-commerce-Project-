@@ -1,4 +1,8 @@
-// Feature: Coupons — coupon CRUD and checkout pricing resolution.
+/**
+ * coupon module
+ * export coupon members
+ */
+// coupons — coupon CRUD and checkout pricing resolution.
 export * from "./coupon.action";
 export * from "./coupon.service";
 export * from "./coupon.repo";

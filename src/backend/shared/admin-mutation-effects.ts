@@ -1,3 +1,7 @@
+/**
+ * admin mutation effects
+ * handle admin mutation effects logic
+ */
 import { revalidatePath, revalidateTag } from "next/cache";
 import {
   deleteCacheKeys,

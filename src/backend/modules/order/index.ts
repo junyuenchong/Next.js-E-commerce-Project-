@@ -1,4 +1,8 @@
-// Feature: Orders — order creation, status/shipment updates, and admin/user queries.
+/**
+ * order module
+ * export order members
+ */
+// orders — order creation, status/shipment updates, and admin/user queries.
 export * from "./order.action";
 export * from "./order.service";
 export * from "./order.repo";

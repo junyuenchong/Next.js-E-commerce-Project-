@@ -1,4 +1,8 @@
-// Feature: Provides category persistence for hierarchical catalog structures and lookup helpers.
+/**
+ * category repo
+ * handle category repo logic
+ */
+// provides category persistence for hierarchical catalog structures and lookup helpers.
 import prisma from "@/app/lib/prisma";
 
 export async function findCategoryBySlug(
@@ -16,7 +20,7 @@ export async function findCategoryById(id: number) {
   return prisma.category.findUnique({ where: { id } });
 }
 
-// Guard: storefront/nav category lists return active categories only.
+// storefront/nav category lists return active categories only.
 export async function listCategoriesActive() {
   return prisma.category.findMany({
     where: { isActive: true },

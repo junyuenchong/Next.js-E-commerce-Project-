@@ -1,3 +1,7 @@
+/**
+ * resolve database url
+ * handle resolve database url logic
+ */
 // Ensure DATABASE_URL is compatible with PgBouncer poolers for Prisma
 export function resolveDatabaseUrlForPrisma(): string | undefined {
   const raw = process.env.DATABASE_URL;

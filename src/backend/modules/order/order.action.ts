@@ -1,4 +1,8 @@
-// Feature: Provides order actions for checkout creation, stock updates, and admin order access.
+/**
+ * order action
+ * handle order action logic
+ */
+// provides order actions for checkout creation, stock updates, and admin order access.
 import type { OrderStatus } from "@prisma/client";
 import {
   buildPaidOrderLinesFromCart,
@@ -18,7 +22,7 @@ import {
 } from "./order.service";
 
 export {
-  // Note: re-export service primitives so existing API imports remain stable.
+  // re-export service primitives so existing API imports remain stable.
   buildPaidOrderLinesFromCart,
   createPaidOrderAfterCaptureService,
   decrementStockForOrderLinesService,
@@ -38,7 +42,7 @@ export async function updateOrderStatusAdminAction(
   orderId: number,
   status: OrderStatus,
 ) {
-  // Feature: thin adapter so API routes and server actions share order service logic.
+  // thin adapter so API routes and server actions share order service logic.
   return updateOrderStatusAdminService(orderId, status);
 }
 

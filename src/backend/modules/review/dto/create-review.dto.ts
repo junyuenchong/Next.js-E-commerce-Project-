@@ -1,4 +1,8 @@
+/**
+ * create review dto
+ * handle create review dto logic
+ */
 import type { ReviewInput } from "@/shared/types";
 
-// Feature: storefront POST review DTO (after auth).
+// storefront POST review DTO (after auth).
 export type CreateReviewDto = ReviewInput;

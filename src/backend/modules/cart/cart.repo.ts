@@ -1,4 +1,8 @@
-// Feature: Performs cart persistence operations for sessions, items, and merge/update workflows.
+/**
+ * cart repo
+ * handle cart repo logic
+ */
+// performs cart persistence operations for sessions, items, and merge/update workflows.
 import prisma from "@/app/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { moneyToNumber } from "@/backend/core/money";
@@ -12,7 +16,7 @@ type ProductStockRow = {
   isActive: boolean;
 };
 
-// Feature: load active cart for user with line items.
+// load active cart for user with line items.
 export async function findUserCart(
   userId: number,
 ): Promise<CartWithItems | null> {
@@ -26,7 +30,7 @@ export async function findUserCart(
   });
 }
 
-// Feature: load active cart for guest session with line items.
+// load active cart for guest session with line items.
 export async function findGuestCart(
   guestCartId: string,
 ): Promise<CartWithItems | null> {
@@ -40,7 +44,7 @@ export async function findGuestCart(
   });
 }
 
-// Feature: create new cart row for user.
+// create new cart row for user.
 export async function createUserCart(userId: number): Promise<CartWithItems> {
   return prisma.cart.create({
     data: {
@@ -55,7 +59,7 @@ export async function createUserCart(userId: number): Promise<CartWithItems> {
   });
 }
 
-// Feature: create new cart row for guest session.
+// create new cart row for guest session.
 export async function createGuestCart(
   guestCartId: string,
 ): Promise<CartWithItems> {
@@ -72,15 +76,15 @@ export async function createGuestCart(
   });
 }
 
-// Guard: fetch minimal product state needed for cart mutation validation.
+// fetch minimal product state needed for cart mutation validation.
 export async function getProductSnapshot(productId: number) {
-  // Guard: snapshot query only returns active products for cart mutations.
+  // snapshot query only returns active products for cart mutations.
   return prisma.product.findFirst({
     where: { id: productId, isActive: true },
   });
 }
 
-// Feature: create cart line item for cart/product pair.
+// create cart line item for cart/product pair.
 export async function createCartLineItem(data: {
   cartId: string;
   productId: number;
@@ -94,26 +98,26 @@ export async function createCartLineItem(data: {
   });
 }
 
-// Feature: update quantity on existing cart line item.
+// update quantity on existing cart line item.
 export async function updateCartLineItemQuantity(id: string, quantity: number) {
-  // Note: isolate quantity updates so service code stays declarative.
+  // isolate quantity updates so service code stays declarative.
   return prisma.cartLineItem.update({
     where: { id },
     data: { quantity },
   });
 }
 
-// Feature: delete single cart line item by id.
+// delete single cart line item by id.
 export async function deleteCartLineItem(id: string) {
   return prisma.cartLineItem.delete({ where: { id } });
 }
 
-// Feature: delete all line items belonging to cart.
+// delete all line items belonging to cart.
 export async function clearCartLineItems(cartId: string) {
   return prisma.cartLineItem.deleteMany({ where: { cartId } });
 }
 
-// Guard: clamp line quantities to current stock and drop inactive/zero-stock lines.
+// clamp line quantities to current stock and drop inactive/zero-stock lines.
 export async function reconcileCartLineItemsToStock(cartId: string) {
   const cart = await prisma.cart.findUnique({
     where: { id: cartId },
@@ -143,12 +147,12 @@ export async function reconcileCartLineItemsToStock(cartId: string) {
   });
 }
 
-// Feature: convert guest cart into user cart by assigning ownership.
+// convert guest cart into user cart by assigning ownership.
 export async function assignGuestCartToUser(
   guestCartId: string,
   userId: number,
 ) {
-  // Feature: rebind guest cart ownership to user while clearing guest identifier.
+  // rebind guest cart ownership to user while clearing guest identifier.
   const guestCart = await prisma.cart.findFirst({ where: { guestCartId } });
   if (!guestCart) return null;
   return prisma.cart.update({
@@ -162,12 +166,12 @@ export async function assignGuestCartToUser(
   });
 }
 
-// Feature: combine guest/user cart items and remove guest cart.
+// combine guest/user cart items and remove guest cart.
 export async function mergeGuestIntoUserCart(
   guestCartId: string,
   userId: number,
 ) {
-  // Feature: merge strategy sums quantities by product id, then clamps to live stock.
+  // merge strategy sums quantities by product id, then clamps to live stock.
   const [guestCart, userCart] = await Promise.all([
     prisma.cart.findFirst({
       where: { guestCartId },
@@ -239,7 +243,7 @@ export async function mergeGuestIntoUserCart(
   }
 
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    // Guard: replace user cart lines atomically to avoid partial merge states.
+    // replace user cart lines atomically to avoid partial merge states.
     await tx.cartLineItem.deleteMany({ where: { cartId: userCart.id } });
     if (mergedByProductId.size > 0) {
       await tx.cartLineItem.createMany({
@@ -268,9 +272,9 @@ export async function mergeGuestIntoUserCart(
   });
 }
 
-// Feature: fetch hydrated cart with related products for user.
+// fetch hydrated cart with related products for user.
 export async function getCartWithProductsByUser(userId: number) {
-  // Feature: hydrated cart read path for authenticated users.
+  // hydrated cart read path for authenticated users.
   return prisma.cart.findUnique({
     where: { userId },
     include: {
@@ -282,9 +286,9 @@ export async function getCartWithProductsByUser(userId: number) {
   });
 }
 
-// Feature: fetch hydrated cart with related products for guest session.
+// fetch hydrated cart with related products for guest session.
 export async function getCartWithProductsByGuest(guestCartId: string) {
-  // Feature: hydrated cart read path for anonymous sessions.
+  // hydrated cart read path for anonymous sessions.
   return prisma.cart.findFirst({
     where: { guestCartId },
     include: {

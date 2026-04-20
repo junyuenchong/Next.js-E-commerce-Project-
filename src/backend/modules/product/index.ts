@@ -1,4 +1,8 @@
-// Feature: Products — catalog CRUD, search, and public/admin queries.
+/**
+ * product module
+ * export product members
+ */
+// products — catalog CRUD, search, and public/admin queries.
 export * from "./product.action";
 export * from "./product.service";
 export * from "./product.repo";

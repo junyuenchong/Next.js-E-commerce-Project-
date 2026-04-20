@@ -1,3 +1,7 @@
+/**
+ * invoice format
+ * handle invoice format logic
+ */
 type InvoiceLine = {
   title?: string;
   quantity?: number;

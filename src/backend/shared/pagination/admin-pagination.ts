@@ -1,3 +1,7 @@
+/**
+ * admin pagination
+ * handle admin pagination logic
+ */
 // Admin pagination settings and utility functions
 
 export const ADMIN_LIST_LIMIT_MIN = 1;

@@ -1,3 +1,7 @@
+/**
+ * login providers dto
+ * handle login providers dto logic
+ */
 export type LoginProviderId = "local" | "google" | "facebook";
 
 const ORDER: LoginProviderId[] = ["local", "google", "facebook"];

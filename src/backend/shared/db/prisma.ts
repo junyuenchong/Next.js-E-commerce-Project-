@@ -1,3 +1,7 @@
+/**
+ * prisma
+ * handle prisma logic
+ */
 // Initialize and cache Prisma client
 import { PrismaClient } from "@prisma/client";
 import { resolveDatabaseUrlForPrisma } from "./resolve-database-url";

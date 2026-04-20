@@ -1,4 +1,8 @@
-// Feature: Categories — category CRUD and category→product listing queries.
+/**
+ * category module
+ * export category members
+ */
+// categories — category CRUD and category→product listing queries.
 export * from "./category.action";
 export * from "./category.service";
 export * from "./category.repo";

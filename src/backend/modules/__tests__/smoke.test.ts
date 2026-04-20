@@ -1,3 +1,7 @@
+/**
+ * smoke test
+ * handle smoke test logic
+ */
 import { describe, expect, it } from "vitest";
 
 describe("backend smoke", () => {

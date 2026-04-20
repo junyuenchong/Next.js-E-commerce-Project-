@@ -1,3 +1,7 @@
+/**
+ * order dto
+ * handle order dto logic
+ */
 import type { OrderStatus } from "@prisma/client";
 
 export type UpdateOrderStatusInput = {

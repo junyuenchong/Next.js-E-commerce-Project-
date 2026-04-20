@@ -1,4 +1,8 @@
-// Feature: Manages user account lifecycle services including lookup, password, and session token flows.
+/**
+ * user service
+ * handle user service logic
+ */
+// manages user account lifecycle services including lookup, password, and session token flows.
 import { sha256 } from "@oslojs/crypto/sha2";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import {
@@ -11,7 +15,7 @@ import type { AuthResult } from "@/shared/types";
 export type { AuthResult } from "@/shared/types";
 
 export const hashPasswordUserService = async (password: string) => {
-  // Note: deterministic hash flow keeps compatibility with existing auth storage.
+  // deterministic hash flow keeps compatibility with existing auth storage.
   return encodeHexLowerCase(sha256(new TextEncoder().encode(password)));
 };
 
@@ -19,7 +23,7 @@ export const verifyPasswordUserService = async (
   password: string,
   hash: string,
 ) => {
-  // Guard: verify by re-hashing input and comparing against stored hash.
+  // verify by re-hashing input and comparing against stored hash.
   const passwordHash = await hashPasswordUserService(password);
   return passwordHash === hash;
 };
@@ -28,7 +32,7 @@ export const registerUserUserService = async (
   email: string,
   password: string,
 ): Promise<AuthResult> => {
-  // Guard: return safe DTO so password hash never leaks to callers.
+  // return safe DTO so password hash never leaks to callers.
   const passwordHash = await hashPasswordUserService(password);
   try {
     const user = await createUserRepo(email, passwordHash);
@@ -45,7 +49,7 @@ export async function changePasswordUserService(
   currentPassword: string,
   newPassword: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  // Guard: validate current password before overwriting stored hash.
+  // validate current password before overwriting stored hash.
   const user = await findUserByIdRepo(userId);
   if (!user) return { ok: false, error: "user_not_found" };
   if (!user.passwordHash) {

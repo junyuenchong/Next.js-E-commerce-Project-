@@ -1,4 +1,8 @@
-// Feature: Exposes coupon actions for admin management and storefront voucher retrieval.
+/**
+ * coupon action
+ * handle coupon action logic
+ */
+// exposes coupon actions for admin management and storefront voucher retrieval.
 import type { Prisma } from "@prisma/client";
 import {
   createCouponAdminService,
@@ -15,25 +19,25 @@ export {
   listCouponsAdminService,
 };
 
-// Feature: create coupon from admin input.
+// create coupon from admin input.
 export async function createCouponAdminAction(
   data: Parameters<typeof createCouponAdminService>[0],
 ) {
-  // Feature: keep action layer thin while service owns validation/persistence rules.
+  // keep action layer thin while service owns validation/persistence rules.
   return createCouponAdminService(data);
 }
 
-// Feature: update existing coupon from admin input.
+// update existing coupon from admin input.
 export async function updateCouponAdminAction(
   id: number,
   data: Prisma.CouponUpdateInput,
 ) {
-  // Guard: service enforces business constraints; action forwards typed payload.
+  // service enforces business constraints; action forwards typed payload.
   return updateCouponAdminService(id, data);
 }
 
-// Guard: deactivate coupon so it can no longer be applied.
+// deactivate coupon so it can no longer be applied.
 export async function deactivateCouponAdminAction(id: number) {
-  // Note: soft deactivate keeps history while removing active checkout usage.
+  // soft deactivate keeps history while removing active checkout usage.
   return deactivateCouponAdminService(id);
 }

@@ -1,4 +1,8 @@
-// Feature: Exposes payment server actions that orchestrate PayPal order creation and capture flows.
+/**
+ * payment action
+ * handle payment action logic
+ */
+// exposes payment server actions that orchestrate PayPal order creation and capture flows.
 import {
   paypalCaptureOrder,
   paypalCreateOrder,
@@ -21,6 +25,6 @@ export async function postPayPalCaptureAction(
   req: Request,
   ctx: { params: Promise<{ orderId: string }> },
 ) {
-  // Feature: delegate to route-handler so API and server action share capture behavior.
+  // delegate to route-handler so API and server action share capture behavior.
   return postPayPalCaptureRoute(req, ctx);
 }

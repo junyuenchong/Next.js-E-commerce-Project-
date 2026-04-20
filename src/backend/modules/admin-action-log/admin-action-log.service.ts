@@ -1,4 +1,8 @@
-// Feature: Records structured admin audit entries and normalizes actor identifiers for logs.
+/**
+ * admin action log service
+ * handle admin action log service logic
+ */
+// records structured admin audit entries and normalizes actor identifiers for logs.
 import type { AdminActionLogInput } from "@/shared/types";
 import { createAdminActionLogRecord } from "./admin-action-log.repo";
 

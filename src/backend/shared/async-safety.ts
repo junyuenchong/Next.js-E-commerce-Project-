@@ -1,3 +1,7 @@
+/**
+ * async safety
+ * handle async safety logic
+ */
 export function logErrorWithContext(prefix: string, error: unknown): void {
   console.error(prefix, error);
 }

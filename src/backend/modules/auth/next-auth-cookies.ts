@@ -1,3 +1,7 @@
+/**
+ * next auth cookies
+ * handle next auth cookies logic
+ */
 function secureCookieFromEnv(): boolean {
   return (
     process.env.NEXTAUTH_URL?.startsWith("https://") ?? !!process.env.VERCEL

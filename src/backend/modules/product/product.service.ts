@@ -1,4 +1,8 @@
-// Feature: Handles product domain services for admin maintenance and storefront product retrieval.
+/**
+ * product service
+ * handle product service logic
+ */
+// handles product domain services for admin maintenance and storefront product retrieval.
 import slugify from "slugify";
 import { productSchema, productSlugSchema } from "@/shared/schema";
 import {
@@ -37,7 +41,7 @@ export function normalizeProductInput(data: unknown) {
     compareAtPrice = null;
   } else {
     const n = Number(capRaw);
-    // Guard: keep invalid compare-at values null; schema enforces compareAtPrice > price when set.
+    // keep invalid compare-at values null; schema enforces compareAtPrice > price when set.
     compareAtPrice = Number.isFinite(n) && n > 0 ? n : null;
   }
 
@@ -61,7 +65,7 @@ export function normalizeProductInput(data: unknown) {
   return validated.data;
 }
 
-// Feature: generate unique URL-safe product slug for title.
+// generate unique URL-safe product slug for title.
 export async function generateUniqueProductSlug(
   name: string,
   excludeSlug?: string,
@@ -76,26 +80,26 @@ export async function generateUniqueProductSlug(
   return slug;
 }
 
-// Feature: create product record after schema validation and slug generation.
+// create product record after schema validation and slug generation.
 export async function createProductService(data: unknown) {
   const validated = normalizeProductInput(data);
   const slug = await generateUniqueProductSlug(validated.title);
   return createProductRecord({ ...validated, slug });
 }
 
-// Feature: update product record after schema validation and slug regeneration.
+// update product record after schema validation and slug regeneration.
 export async function updateProductService(id: number, data: unknown) {
   const validated = normalizeProductInput(data);
   const slug = await generateUniqueProductSlug(validated.title);
   return updateProductRecord(id, { ...validated, slug });
 }
 
-// Guard: soft-deactivate product so it no longer appears on storefront.
+// soft-deactivate product so it no longer appears on storefront.
 export async function deleteProductService(id: number) {
   return softDeactivateProductById(id);
 }
 
-// Guard: fetch storefront-visible product by slug (throws if missing).
+// fetch storefront-visible product by slug (throws if missing).
 export async function getProductBySlugService(slug: string) {
   const parsed = productSlugSchema.parse({ slug });
   const product = await findProductBySlug(parsed.slug);
@@ -103,7 +107,7 @@ export async function getProductBySlugService(slug: string) {
   return product;
 }
 
-// Guard: storefront mode returns active products only; admin mode may read inactive rows by id.
+// storefront mode returns active products only; admin mode may read inactive rows by id.
 export async function getProductByIdService(
   id: string,
   options?: { storefront?: boolean },
@@ -118,14 +122,14 @@ export async function getProductByIdService(
   return withStats;
 }
 
-// Feature: list storefront products using page-based pagination.
+// list storefront products using page-based pagination.
 export async function listProductsService(limit?: number, page?: number) {
   const { take, skip } = normalizePagination(limit, page);
   const rows = await findProducts({ take, skip });
   return attachPublicListStats(rows);
 }
 
-// Feature: list storefront products using cursor-based pagination.
+// list storefront products using cursor-based pagination.
 export async function listProductsCursorService(
   limit?: number,
   cursorId?: number,
@@ -135,14 +139,14 @@ export async function listProductsCursorService(
   return attachPublicListStats(rows);
 }
 
-// Fallback: search storefront products by keyword, falling back to default list.
+// search storefront products by keyword, falling back to default list.
 export async function searchProductsService(query: string) {
   if (!query.trim()) return listProductsService();
   const rows = await searchProductsQuery(query.trim());
   return attachPublicListStats(rows);
 }
 
-// Feature: search storefront products with optional facets and sorting.
+// search storefront products with optional facets and sorting.
 export async function searchProductsWithFiltersService(filters: {
   query?: string;
   categorySlug?: string;

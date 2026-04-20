@@ -1,4 +1,8 @@
-// Feature: payment persistence helpers (idempotency, status transitions, audit history).
+/**
+ * payment repo
+ * handle payment repo logic
+ */
+// payment persistence helpers (idempotency, status transitions, audit history).
 import type { PaymentProvider, PaymentStatus, Prisma } from "@prisma/client";
 import prisma from "@/app/lib/prisma";
 import {

@@ -1,4 +1,8 @@
-// Feature: Sends transactional emails via SMTP with resilient error-safe wrappers.
+/**
+ * email service
+ * handle email service logic
+ */
+// sends transactional emails via SMTP with resilient error-safe wrappers.
 import nodemailer from "nodemailer";
 import { runSafely } from "@/backend/shared/async-safety";
 
