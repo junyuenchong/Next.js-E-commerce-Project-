@@ -1,7 +1,3 @@
-/**
- * email service
- * handle email service logic
- */
 // sends transactional emails via SMTP with resilient error-safe wrappers.
 import nodemailer from "nodemailer";
 import { runSafely } from "@/backend/shared/async-safety";
@@ -12,7 +8,9 @@ function smtpPass(): string {
   return raw.replace(/\s+/g, "");
 }
 
-// Send a transactional email via SMTP, returning a structured result.
+/**
+ * Send a transactional email via SMTP, returning a structured result.
+ */
 export async function sendTransactionalEmail(params: {
   to: string;
   subject: string;

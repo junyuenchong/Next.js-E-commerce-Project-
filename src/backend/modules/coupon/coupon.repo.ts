@@ -1,7 +1,3 @@
-/**
- * coupon repo
- * handle coupon repo logic
- */
 // implements coupon repository reads and writes for checkout and admin management.
 import type {
   CouponDiscountType,
@@ -16,12 +12,16 @@ function toDecimal(n: number): Decimal {
   return new Decimal(n.toFixed(2));
 }
 
-// fetch coupon row by code.
+/**
+ * Handles find coupon by code repo.
+ */
 export async function findCouponByCodeRepo(code: string) {
   return prisma.coupon.findUnique({ where: { code } });
 }
 
-// fetch user's assignment row for targeted coupon.
+/**
+ * Handles find user coupon assignment repo.
+ */
 export async function findUserCouponAssignmentRepo(
   userId: number,
   couponId: number,
@@ -32,7 +32,9 @@ export async function findUserCouponAssignmentRepo(
   });
 }
 
-// list active public coupons surfaced on storefront.
+/**
+ * Handles list active storefront coupons repo.
+ */
 export async function listActiveStorefrontCouponsRepo() {
   // storefront only shows public coupons explicitly surfaced as vouchers.
   return prisma.coupon.findMany({
@@ -45,14 +47,18 @@ export async function listActiveStorefrontCouponsRepo() {
   });
 }
 
-// list all coupons for admin management UI.
+/**
+ * Handles list coupons admin repo.
+ */
 export async function listCouponsAdminRepo() {
   return prisma.coupon.findMany({
     orderBy: [{ isActive: "desc" }, { code: "asc" }],
   });
 }
 
-// create coupon record from normalized admin payload.
+/**
+ * Handles create coupon admin repo.
+ */
 export async function createCouponAdminRepo(data: {
   code: string;
   description?: string | null;
@@ -90,7 +96,9 @@ export async function createCouponAdminRepo(data: {
   });
 }
 
-// update coupon record by id.
+/**
+ * Handles update coupon admin repo.
+ */
 export async function updateCouponAdminRepo(
   id: number,
   data: Prisma.CouponUpdateInput,
@@ -98,7 +106,9 @@ export async function updateCouponAdminRepo(
   return prisma.coupon.update({ where: { id }, data });
 }
 
-// deactivate coupon record by id.
+/**
+ * Handles deactivate coupon admin repo.
+ */
 export async function deactivateCouponAdminRepo(id: number) {
   return prisma.coupon.update({
     where: { id },

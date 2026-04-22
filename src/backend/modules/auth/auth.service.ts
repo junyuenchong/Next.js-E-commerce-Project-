@@ -1,7 +1,3 @@
-/**
- * auth service
- * handle auth service logic
- */
 // implements authentication and password-reset service logic with role-aware access checks.
 import { createHash, randomBytes } from "crypto";
 import type { UserRole } from "@prisma/client";
@@ -17,6 +13,9 @@ import {
 const HOUR_MS = 60 * 60 * 1000;
 const INTERNAL_ADMIN_LOGIN_DOMAIN = "admin.local";
 
+/**
+ * Handles hash reset token.
+ */
 export function hashResetToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
@@ -25,13 +24,18 @@ function isEmailLikeIdentifier(value: string): boolean {
   return value.includes("@");
 }
 
+/**
+ * Handles normalize admin login identifier.
+ */
 export function normalizeAdminLoginIdentifier(raw: string): string {
   const value = raw.trim().toLowerCase();
   if (isEmailLikeIdentifier(value)) return value;
   return `${value}@${INTERNAL_ADMIN_LOGIN_DOMAIN}`;
 }
 
-// create password-reset token for known user email.
+/**
+ * Create a password-reset token for a known user email.
+ */
 export async function createPasswordResetForEmail(email: string): Promise<{
   rawToken: string;
 } | null> {
@@ -51,7 +55,9 @@ export async function createPasswordResetForEmail(email: string): Promise<{
   return { rawToken };
 }
 
-// validate and consume reset token, then update password hash.
+/**
+ * Validate and consume a reset token, then update password hash.
+ */
 export async function consumePasswordResetToken(
   rawToken: string,
   newPasswordHash: string,
@@ -71,6 +77,9 @@ export async function consumePasswordResetToken(
   return { ok: true };
 }
 
+/**
+ * Handles permission app role from user role.
+ */
 export function permissionAppRoleFromUserRole(
   role: UserRole,
 ): AppPermissionRole | null {
@@ -86,12 +95,18 @@ export function permissionAppRoleFromUserRole(
   }
 }
 
+/**
+ * Return true when a user role can access the admin panel.
+ */
 export function canAccessAdminPanel(role: UserRole): boolean {
   return permissionAppRoleFromUserRole(role) != null;
 }
 
 const ADMIN_DASHBOARD = "/features/admin/dashboard";
 
+/**
+ * Handles post auth redirect path.
+ */
 export function postAuthRedirectPath(
   role: UserRole | string,
   returnUrl?: string | null,

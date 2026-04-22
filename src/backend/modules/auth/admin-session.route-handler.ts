@@ -1,7 +1,3 @@
-/**
- * admin session route handler
- * handle admin session route handler logic
- */
 // implements admin session HTTP route handlers for login, lookup, and logout lifecycle.
 import { NextResponse } from "next/server";
 import { verifyPasswordUserService } from "@/backend/modules/user/user.service";
@@ -47,7 +43,9 @@ function jsonAdminForbidden() {
   return NextResponse.json(ADMIN_FORBIDDEN_RESPONSE, { status: 403 });
 }
 
-// validate admin session via cookie token.
+/**
+ * Handles get admin session route.
+ */
 export async function getAdminSessionRoute(request: Request) {
   try {
     // parse cookie header to extract admin session token.
@@ -104,7 +102,9 @@ export async function getAdminSessionRoute(request: Request) {
   }
 }
 
-// create admin session cookie when credentials are valid.
+/**
+ * Handles post admin session route.
+ */
 export async function postAdminSessionRoute(request: Request) {
   try {
     // parse request body as `{ email, password }`.
@@ -184,7 +184,9 @@ export async function postAdminSessionRoute(request: Request) {
   }
 }
 
-// destroy admin session cookie for logout.
+/**
+ * Handles delete admin session route.
+ */
 export async function deleteAdminSessionRoute() {
   try {
     // expire admin-scoped cookie to complete admin logout.

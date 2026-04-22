@@ -1,7 +1,3 @@
-/**
- * coupon action
- * handle coupon action logic
- */
 // exposes coupon actions for admin management and storefront voucher retrieval.
 import type { Prisma } from "@prisma/client";
 import {
@@ -19,7 +15,9 @@ export {
   listCouponsAdminService,
 };
 
-// create coupon from admin input.
+/**
+ * Handles create coupon admin action.
+ */
 export async function createCouponAdminAction(
   data: Parameters<typeof createCouponAdminService>[0],
 ) {
@@ -27,7 +25,9 @@ export async function createCouponAdminAction(
   return createCouponAdminService(data);
 }
 
-// update existing coupon from admin input.
+/**
+ * Handles update coupon admin action.
+ */
 export async function updateCouponAdminAction(
   id: number,
   data: Prisma.CouponUpdateInput,
@@ -36,7 +36,9 @@ export async function updateCouponAdminAction(
   return updateCouponAdminService(id, data);
 }
 
-// deactivate coupon so it can no longer be applied.
+/**
+ * Handles deactivate coupon admin action.
+ */
 export async function deactivateCouponAdminAction(id: number) {
   // soft deactivate keeps history while removing active checkout usage.
   return deactivateCouponAdminService(id);

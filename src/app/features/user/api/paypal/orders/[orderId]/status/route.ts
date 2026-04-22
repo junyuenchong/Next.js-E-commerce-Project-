@@ -40,34 +40,58 @@ function readCheckoutSnapshot(value: unknown): CheckoutSnapshot | null {
 type RouteContext = { params: Promise<{ orderId: string }> };
 
 // Returns server-side payment/order status for a PayPal order id.
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   const { orderId } = await context.params;
   if (!orderId?.trim()) {
     return NextResponse.json({ error: "missing_order_id" }, { status: 400 });
   }
 
-  const payment = await findPaymentByProviderOrderIdRepo("PAYPAL", orderId);
+  const paymentRecord = await findPaymentByProviderOrderIdRepo(
+    "PAYPAL",
+    orderId,
+  );
   let persistedOrderId = await getOrderIdByPayPalOrderIdService(orderId);
+  const isPaymentPending =
+    paymentRecord?.status === "PENDING" ||
+    paymentRecord?.status === "PROCESSING";
+  // allow status checks with the same idempotency key used during create/capture.
+  const requestedIdempotencyKey =
+    request.headers.get("x-idempotency-key")?.trim() ||
+    new URL(request.url).searchParams.get("idempotencyKey")?.trim() ||
+    null;
+  if (
+    requestedIdempotencyKey &&
+    paymentRecord &&
+    requestedIdempotencyKey !== paymentRecord.idempotencyKey
+  ) {
+    return NextResponse.json(
+      {
+        error: "idempotency_key_mismatch",
+        message: "idempotency key does not match this transaction",
+      },
+      { status: 409 },
+    );
+  }
 
   // Fallback reconcile: if payment is already PAID but webhook order-linking is delayed,
   // create/link the order from stored checkout snapshot so checkout can complete.
   if (
-    payment &&
-    payment.status === "PAID" &&
+    paymentRecord &&
+    paymentRecord.status === "PAID" &&
     persistedOrderId == null &&
-    payment.orderId == null
+    paymentRecord.orderId == null
   ) {
-    const snapshot = readCheckoutSnapshot(payment.gatewayResponse);
+    const snapshot = readCheckoutSnapshot(paymentRecord.gatewayResponse);
     if (snapshot) {
       try {
         const order = await createPaidOrderAfterCaptureService(
           {
-            userId: payment.userId,
+            userId: paymentRecord.userId,
             emailSnapshot: null,
             currency: snapshot.currency,
             total: snapshot.total,
             paypalOrderId: orderId,
-            paypalCaptureId: payment.providerCaptureId,
+            paypalCaptureId: paymentRecord.providerCaptureId,
             lines: snapshot.lines,
             couponId: snapshot.couponId,
             couponCodeSnapshot: snapshot.couponCodeSnapshot,
@@ -77,9 +101,9 @@ export async function GET(_request: Request, context: RouteContext) {
         );
         persistedOrderId = order.id;
         await markPaymentPaidAndLinkOrderRepo({
-          paymentId: payment.id,
+          paymentId: paymentRecord.id,
           orderId: order.id,
-          providerCaptureId: payment.providerCaptureId,
+          providerCaptureId: paymentRecord.providerCaptureId,
         }).catch(() => null);
       } catch {
         // Race-safe: another request/webhook may have already created the order.
@@ -90,12 +114,24 @@ export async function GET(_request: Request, context: RouteContext) {
 
   return NextResponse.json({
     ok: true,
-    payment: payment
+    pending: isPaymentPending,
+    // internal unique transaction id for tracking this payment across logs.
+    transactionId: paymentRecord ? `PAYPAL-${paymentRecord.id}` : null,
+    idempotency: paymentRecord
       ? {
-          id: payment.id,
-          status: payment.status,
-          orderId: payment.orderId ?? persistedOrderId ?? null,
-          expiresAt: payment.expiresAt,
+          key: paymentRecord.idempotencyKey,
+          statusChecked: true,
+          matched:
+            !requestedIdempotencyKey ||
+            requestedIdempotencyKey === paymentRecord.idempotencyKey,
+        }
+      : null,
+    payment: paymentRecord
+      ? {
+          id: paymentRecord.id,
+          status: paymentRecord.status,
+          orderId: paymentRecord.orderId ?? persistedOrderId ?? null,
+          expiresAt: paymentRecord.expiresAt,
         }
       : null,
     order: persistedOrderId ? { id: persistedOrderId } : null,

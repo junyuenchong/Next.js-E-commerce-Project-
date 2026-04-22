@@ -1,7 +1,3 @@
-/**
- * invoice format
- * handle invoice format logic
- */
 type InvoiceLine = {
   title?: string;
   quantity?: number;
@@ -28,6 +24,9 @@ function parseLines(value: unknown): InvoiceLine[] {
   );
 }
 
+/**
+ * Handles render invoice text.
+ */
 export function renderInvoiceText(invoice: InvoiceLike): string {
   const lines = parseLines(invoice.lineItems);
   const bodyLines = lines.length

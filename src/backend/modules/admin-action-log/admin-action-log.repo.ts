@@ -1,7 +1,3 @@
-/**
- * admin action log repo
- * handle admin action log repo logic
- */
 // persists admin action log records with JSON-safe metadata normalization.
 import prisma from "@/app/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -15,7 +11,9 @@ function toJsonValue(
   return input as Prisma.InputJsonValue;
 }
 
-// insert new admin action log record into database.
+/**
+ * Handles create admin action log record.
+ */
 export async function createAdminActionLogRecord(
   input: AdminActionLogInput,
 ): Promise<void> {

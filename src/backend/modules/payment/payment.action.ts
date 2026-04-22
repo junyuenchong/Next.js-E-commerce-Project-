@@ -1,7 +1,3 @@
-/**
- * payment action
- * handle payment action logic
- */
 // exposes payment server actions that orchestrate PayPal order creation and capture flows.
 import {
   paypalCaptureOrder,
@@ -20,7 +16,9 @@ export {
   paypalOrderAmount,
 };
 
-// Run the PayPal capture flow and persist the resulting paid order.
+/**
+ * Handles post pay pal capture action.
+ */
 export async function postPayPalCaptureAction(
   req: Request,
   ctx: { params: Promise<{ orderId: string }> },

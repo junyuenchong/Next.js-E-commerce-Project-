@@ -1,7 +1,3 @@
-/**
- * order repo
- * handle order repo logic
- */
 // implements order persistence for paid-order creation, stock updates, and admin queries.
 import { Prisma, type OrderStatus } from "@prisma/client";
 import prisma from "@/backend/core/db/prisma";
@@ -9,9 +5,147 @@ import {
   shouldDeductForTransition,
   shouldRestockForTransition,
 } from "@/backend/core/stock-policy";
-import type { CreatePaidOrderInput } from "@/shared/types";
+import type {
+  CreatePaidOrderInput,
+  CreatePendingOrderInput,
+} from "@/shared/types";
 
-// persist paid order and optional stock decrement in single transaction.
+async function applyCouponRedemptionOrThrow(params: {
+  tx: Prisma.TransactionClient;
+  couponId: number | null | undefined;
+  userId: number | null;
+}) {
+  if (params.couponId == null) return;
+  if (!params.userId) {
+    throw new Error("coupon_requires_login_at_capture");
+  }
+  const c = await params.tx.coupon.findUnique({
+    where: { id: params.couponId },
+  });
+  if (!c?.isActive) {
+    throw new Error("coupon_invalid_at_capture");
+  }
+  if (c.usageLimit != null && c.usedCount >= c.usageLimit) {
+    throw new Error("coupon_exhausted_at_capture");
+  }
+  const assignment = await params.tx.userCouponAssignment.findUnique({
+    where: {
+      userId_couponId: { userId: params.userId, couponId: params.couponId },
+    },
+    select: { usedAt: true },
+  });
+
+  if (c.redemptionScope === "ASSIGNED_USERS" && !assignment) {
+    throw new Error("coupon_not_assigned_at_capture");
+  }
+  if (assignment?.usedAt) {
+    throw new Error("coupon_already_used_at_capture");
+  }
+
+  if (assignment) {
+    await params.tx.userCouponAssignment.update({
+      where: {
+        userId_couponId: { userId: params.userId, couponId: params.couponId },
+      },
+      data: { usedAt: new Date() },
+    });
+  } else {
+    // PUBLIC coupons also become one-time per authenticated user.
+    await params.tx.userCouponAssignment.create({
+      data: {
+        userId: params.userId,
+        couponId: params.couponId,
+        usedAt: new Date(),
+      },
+    });
+  }
+
+  await params.tx.coupon.update({
+    where: { id: params.couponId },
+    data: { usedCount: { increment: 1 } },
+  });
+}
+
+async function createOrReplaceInvoiceForOrder(params: {
+  tx: Prisma.TransactionClient;
+  orderId: number;
+  input: CreatePaidOrderInput;
+}) {
+  const subtotal = params.input.lines.reduce(
+    (sum, line) => sum + line.unitPrice * line.quantity,
+    0,
+  );
+  const discount = params.input.discountAmount ?? 0;
+  const invoiceNumber = `INV-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${params.orderId}`;
+  await params.tx.invoice.upsert({
+    where: { orderId: params.orderId },
+    create: {
+      orderId: params.orderId,
+      invoiceNumber,
+      billedEmail: params.input.emailSnapshot,
+      currency: params.input.currency,
+      subtotal: new Prisma.Decimal(subtotal.toFixed(2)),
+      discount: new Prisma.Decimal(discount.toFixed(2)),
+      total: new Prisma.Decimal(Number(params.input.total).toFixed(2)),
+      couponCode: params.input.couponCodeSnapshot ?? undefined,
+      lineItems: params.input.lines,
+    },
+    update: {
+      billedEmail: params.input.emailSnapshot,
+      currency: params.input.currency,
+      subtotal: new Prisma.Decimal(subtotal.toFixed(2)),
+      discount: new Prisma.Decimal(discount.toFixed(2)),
+      total: new Prisma.Decimal(Number(params.input.total).toFixed(2)),
+      couponCode: params.input.couponCodeSnapshot ?? undefined,
+      lineItems: params.input.lines,
+    },
+  });
+}
+
+/**
+ * Handles create pending order repo.
+ */
+export async function createPendingOrderRepo(input: CreatePendingOrderInput) {
+  const discount = input.discountAmount ?? 0;
+  return prisma.order.upsert({
+    where: { paypalOrderId: input.paypalOrderId },
+    create: {
+      userId: input.userId,
+      emailSnapshot: input.emailSnapshot,
+      status: "pending",
+      currency: input.currency,
+      total: input.total,
+      paypalOrderId: input.paypalOrderId,
+      paypalCaptureId: null,
+      couponId: input.couponId ?? undefined,
+      couponCodeSnapshot: input.couponCodeSnapshot ?? undefined,
+      discountAmount: new Prisma.Decimal(discount.toFixed(2)),
+      items: {
+        create: input.lines.map((line) => ({
+          productId: line.productId,
+          title: line.title,
+          unitPrice: line.unitPrice,
+          quantity: line.quantity,
+          imageUrl: line.imageUrl,
+        })),
+      },
+    },
+    update: {
+      userId: input.userId ?? undefined,
+      emailSnapshot: input.emailSnapshot ?? undefined,
+      currency: input.currency,
+      total: input.total,
+      couponId: input.couponId ?? undefined,
+      couponCodeSnapshot: input.couponCodeSnapshot ?? undefined,
+      discountAmount: new Prisma.Decimal(discount.toFixed(2)),
+    },
+    include: { items: true },
+  });
+}
+
+/**
+ * Handles create paid order repo.
+ */
 export async function createPaidOrderRepo(
   input: CreatePaidOrderInput,
   options?: { skipStockDecrement?: boolean },
@@ -20,84 +154,91 @@ export async function createPaidOrderRepo(
   const discount = input.discountAmount ?? 0;
 
   return prisma.$transaction(async (tx) => {
-    const order = await tx.order.create({
-      data: {
-        userId: input.userId,
-        emailSnapshot: input.emailSnapshot,
-        status: "paid",
-        currency: input.currency,
-        total: input.total,
-        paypalOrderId: input.paypalOrderId,
-        paypalCaptureId: input.paypalCaptureId,
-        couponId: input.couponId ?? undefined,
-        couponCodeSnapshot: input.couponCodeSnapshot ?? undefined,
-        discountAmount: new Prisma.Decimal(discount.toFixed(2)),
-        shippingLine1: input.shippingLine1 ?? undefined,
-        shippingCity: input.shippingCity ?? undefined,
-        shippingPostcode: input.shippingPostcode ?? undefined,
-        shippingCountry: input.shippingCountry ?? undefined,
-        shippingMethod: input.shippingMethod ?? undefined,
-        items: {
-          create: input.lines.map((line) => ({
-            productId: line.productId,
-            title: line.title,
-            unitPrice: line.unitPrice,
-            quantity: line.quantity,
-            imageUrl: line.imageUrl,
-          })),
-        },
-      },
-      include: { items: true },
+    const existingOrder = await tx.order.findUnique({
+      where: { paypalOrderId: input.paypalOrderId },
+      select: { id: true, status: true },
     });
 
-    if (input.couponId != null) {
-      if (!input.userId) {
-        throw new Error("coupon_requires_login_at_capture");
-      }
-      const c = await tx.coupon.findUnique({ where: { id: input.couponId } });
-      if (!c?.isActive) {
-        throw new Error("coupon_invalid_at_capture");
-      }
-      if (c.usageLimit != null && c.usedCount >= c.usageLimit) {
-        throw new Error("coupon_exhausted_at_capture");
-      }
-      const assignment = await tx.userCouponAssignment.findUnique({
-        where: {
-          userId_couponId: { userId: input.userId, couponId: input.couponId },
-        },
-        select: { usedAt: true },
-      });
-
-      if (c.redemptionScope === "ASSIGNED_USERS" && !assignment) {
-        throw new Error("coupon_not_assigned_at_capture");
-      }
-      if (assignment?.usedAt) {
-        throw new Error("coupon_already_used_at_capture");
-      }
-
-      if (assignment) {
-        await tx.userCouponAssignment.update({
-          where: {
-            userId_couponId: { userId: input.userId, couponId: input.couponId },
-          },
-          data: { usedAt: new Date() },
-        });
-      } else {
-        // PUBLIC coupons also become one-time per authenticated user.
-        await tx.userCouponAssignment.create({
-          data: {
-            userId: input.userId,
-            couponId: input.couponId,
-            usedAt: new Date(),
-          },
-        });
-      }
-
-      await tx.coupon.update({
-        where: { id: input.couponId },
-        data: { usedCount: { increment: 1 } },
+    if (existingOrder && existingOrder.status !== "pending") {
+      return tx.order.findUniqueOrThrow({
+        where: { id: existingOrder.id },
+        include: { items: true },
       });
     }
+
+    let orderId: number;
+    if (existingOrder) {
+      await tx.orderLineItem.deleteMany({
+        where: { orderId: existingOrder.id },
+      });
+      const updated = await tx.order.update({
+        where: { id: existingOrder.id },
+        data: {
+          userId: input.userId,
+          emailSnapshot: input.emailSnapshot,
+          status: "paid",
+          currency: input.currency,
+          total: input.total,
+          paypalCaptureId: input.paypalCaptureId,
+          couponId: input.couponId ?? undefined,
+          couponCodeSnapshot: input.couponCodeSnapshot ?? undefined,
+          discountAmount: new Prisma.Decimal(discount.toFixed(2)),
+          shippingLine1: input.shippingLine1 ?? undefined,
+          shippingCity: input.shippingCity ?? undefined,
+          shippingPostcode: input.shippingPostcode ?? undefined,
+          shippingCountry: input.shippingCountry ?? undefined,
+          shippingMethod: input.shippingMethod ?? undefined,
+        },
+      });
+      await tx.orderLineItem.createMany({
+        data: input.lines.map((line) => ({
+          orderId: updated.id,
+          productId: line.productId,
+          title: line.title,
+          unitPrice: line.unitPrice,
+          quantity: line.quantity,
+          imageUrl: line.imageUrl,
+        })),
+      });
+      orderId = updated.id;
+    } else {
+      const created = await tx.order.create({
+        data: {
+          userId: input.userId,
+          emailSnapshot: input.emailSnapshot,
+          status: "paid",
+          currency: input.currency,
+          total: input.total,
+          paypalOrderId: input.paypalOrderId,
+          paypalCaptureId: input.paypalCaptureId,
+          couponId: input.couponId ?? undefined,
+          couponCodeSnapshot: input.couponCodeSnapshot ?? undefined,
+          discountAmount: new Prisma.Decimal(discount.toFixed(2)),
+          shippingLine1: input.shippingLine1 ?? undefined,
+          shippingCity: input.shippingCity ?? undefined,
+          shippingPostcode: input.shippingPostcode ?? undefined,
+          shippingCountry: input.shippingCountry ?? undefined,
+          shippingMethod: input.shippingMethod ?? undefined,
+          items: {
+            create: input.lines.map((line) => ({
+              productId: line.productId,
+              title: line.title,
+              unitPrice: line.unitPrice,
+              quantity: line.quantity,
+              imageUrl: line.imageUrl,
+            })),
+          },
+        },
+        select: { id: true },
+      });
+      orderId = created.id;
+    }
+
+    await applyCouponRedemptionOrThrow({
+      tx,
+      couponId: input.couponId,
+      userId: input.userId,
+    });
 
     if (!options?.skipStockDecrement) {
       await Promise.all(
@@ -110,30 +251,22 @@ export async function createPaidOrderRepo(
       );
     }
 
-    const subtotal = input.lines.reduce(
-      (sum, line) => sum + line.unitPrice * line.quantity,
-      0,
-    );
-    const invoiceNumber = `INV-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${order.id}`;
-    await tx.invoice.create({
-      data: {
-        orderId: order.id,
-        invoiceNumber,
-        billedEmail: input.emailSnapshot,
-        currency: input.currency,
-        subtotal: new Prisma.Decimal(subtotal.toFixed(2)),
-        discount: new Prisma.Decimal(discount.toFixed(2)),
-        total: new Prisma.Decimal(Number(input.total).toFixed(2)),
-        couponCode: input.couponCodeSnapshot ?? undefined,
-        lineItems: input.lines,
-      },
+    await createOrReplaceInvoiceForOrder({
+      tx,
+      orderId,
+      input,
     });
 
-    return order;
+    return tx.order.findUniqueOrThrow({
+      where: { id: orderId },
+      include: { items: true },
+    });
   });
 }
 
-// apply stock decrements when RabbitMQ is disabled or enqueue fails.
+/**
+ * Handles decrement stock for order lines repo.
+ */
 export async function decrementStockForOrderLinesRepo(
   lines: { productId: number; quantity: number }[],
 ) {
@@ -160,17 +293,21 @@ function pageFromRows<T extends { id: number }>(rows: T[], limit: number) {
   return { page, nextCursor };
 }
 
-// list user's orders using cursor pagination.
+/**
+ * Handles list orders for user repo.
+ */
 export async function listOrdersForUserRepo(
   userId: number,
   cursorId?: number,
   take = DEFAULT_PAGE,
+  status?: OrderStatus,
 ) {
   // hard clamp protects API against abusive `take` values.
   const limit = Math.min(Math.max(1, take), MAX_PAGE);
   const rows = await prisma.order.findMany({
     where: {
       userId,
+      ...(status ? { status } : {}),
       ...(cursorId != null ? { id: { lt: cursorId } } : {}),
     },
     orderBy: { id: "desc" },
@@ -188,7 +325,29 @@ export async function listOrdersForUserRepo(
   return { orders: page, nextCursor };
 }
 
-// look up internal order id by PayPal order id.
+/**
+ * Handles mark order received by user repo.
+ */
+export async function markOrderReceivedByUserRepo(params: {
+  userId: number;
+  orderId: number;
+}) {
+  // User can only confirm receipt for their own order that is already shipped/delivered.
+  // We accept both because different admin workflows may skip explicit "delivered".
+  const updated = await prisma.order.updateMany({
+    where: {
+      id: params.orderId,
+      userId: params.userId,
+      status: { in: ["shipped", "delivered"] },
+    },
+    data: { status: "fulfilled" },
+  });
+  return { ok: updated.count === 1 };
+}
+
+/**
+ * Handles find order by pay pal id repo.
+ */
 export async function findOrderByPayPalIdRepo(paypalOrderId: string) {
   return prisma.order.findUnique({
     where: { paypalOrderId },
@@ -196,7 +355,9 @@ export async function findOrderByPayPalIdRepo(paypalOrderId: string) {
   });
 }
 
-// fetch single user order including coupon and items.
+/**
+ * Handles find order for user by id repo.
+ */
 export async function findOrderForUserByIdRepo(
   userId: number,
   orderId: number,
@@ -240,7 +401,9 @@ function orderAdminListWhere(
   return parts.length ? { AND: parts } : {};
 }
 
-// list admin dashboard orders with cursor pagination and optional search.
+/**
+ * Handles list all orders admin repo.
+ */
 export async function listAllOrdersAdminRepo(
   cursorId?: number,
   take = DEFAULT_PAGE,
@@ -260,7 +423,9 @@ export async function listAllOrdersAdminRepo(
   return { orders: page, nextCursor };
 }
 
-// fetch single admin-view order including user and items.
+/**
+ * Handles find order admin by id repo.
+ */
 export async function findOrderAdminByIdRepo(id: number) {
   return prisma.order.findUnique({
     where: { id },
@@ -279,6 +444,9 @@ export async function findOrderAdminByIdRepo(id: number) {
   });
 }
 
+/**
+ * Handles find invoice by user and order repo.
+ */
 export async function findInvoiceByUserAndOrderRepo(
   userId: number,
   orderId: number,
@@ -302,6 +470,9 @@ export async function findInvoiceByUserAndOrderRepo(
   });
 }
 
+/**
+ * Handles find invoice by order repo.
+ */
 export async function findInvoiceByOrderRepo(orderId: number) {
   return prisma.invoice.findUnique({
     where: { orderId },
@@ -322,6 +493,9 @@ export async function findInvoiceByOrderRepo(orderId: number) {
   });
 }
 
+/**
+ * Handles ensure invoice for order repo.
+ */
 export async function ensureInvoiceForOrderRepo(orderId: number) {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.invoice.findUnique({
@@ -391,7 +565,9 @@ export async function ensureInvoiceForOrderRepo(orderId: number) {
   });
 }
 
-// update order status field.
+/**
+ * Handles update order status repo.
+ */
 export async function updateOrderStatusRepo(
   orderId: number,
   status: OrderStatus,
@@ -462,7 +638,9 @@ export async function updateOrderStatusRepo(
   });
 }
 
-// update order shipment/tracking fields.
+/**
+ * Handles update order shipment repo.
+ */
 export async function updateOrderShipmentRepo(
   orderId: number,
   input: {

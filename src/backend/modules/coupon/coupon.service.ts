@@ -1,7 +1,3 @@
-/**
- * coupon service
- * handle coupon service logic
- */
 // implements coupon validation, discount math, and admin coupon management services.
 import type {
   Coupon,
@@ -15,8 +11,10 @@ import { moneyToNumber } from "@/backend/core/money";
 
 export const MIN_PAYPAL_CHARGE = 0.01;
 
+/**
+ * Normalize coupon code into canonical storage/compare form.
+ */
 export function normalizeCouponCode(raw: string): string {
-  // canonicalize code to avoid case/whitespace mismatches.
   return raw.trim().toUpperCase();
 }
 
@@ -34,9 +32,9 @@ export type ResolvedCheckoutCoupon =
     }
   | { ok: false; error: string };
 
-// checkout pricing helpers (cart + PayPal).
-
-// resolve checkout totals and coupon snapshots for capture validation.
+/**
+ * Resolve checkout totals and coupon snapshots for capture validation.
+ */
 export async function resolveCheckoutCouponPricing(args: {
   subtotal: number;
   couponCode: string | null | undefined;
@@ -112,7 +110,9 @@ async function validateCouponRedemptionScope(
   return null;
 }
 
-// validate coupon schedule and usage only (no minimum spend check).
+/**
+ * Handles validate coupon window.
+ */
 export function validateCouponWindow(
   coupon: Pick<
     Coupon,
@@ -120,7 +120,6 @@ export function validateCouponWindow(
   >,
   now: Date,
 ): string | null {
-  // window checks are shared by storefront display and checkout apply flow.
   if (!coupon.isActive) return "coupon_inactive";
   if (coupon.startsAt && now < coupon.startsAt) return "coupon_not_started";
   if (coupon.endsAt && now > coupon.endsAt) return "coupon_expired";
@@ -130,7 +129,9 @@ export function validateCouponWindow(
   return null;
 }
 
-// return error code or null when coupon is valid for subtotal/time.
+/**
+ * Handles validate coupon for subtotal.
+ */
 export function validateCouponForSubtotal(
   coupon: Pick<
     Coupon,
@@ -154,6 +155,9 @@ export function validateCouponForSubtotal(
   return null;
 }
 
+/**
+ * Format a short coupon offer label for storefront UI.
+ */
 export function formatCouponOfferLabel(
   coupon: Pick<Coupon, "discountType" | "value">,
 ): string {
@@ -175,11 +179,17 @@ export type StorefrontVoucherPublic = {
   meetsMinimumSpend: boolean | null;
 };
 
+type StorefrontVoucherPublicWithId = StorefrontVoucherPublic & {
+  couponId: number;
+};
+
 export type StorefrontVoucherDto = StorefrontVoucherPublic & {
   scope: "USER" | "GLOBAL";
 };
 
-// list active coupons flagged for storefront voucher strip (cart/checkout).
+/**
+ * List active PUBLIC coupons flagged for the storefront voucher strip (cart/checkout).
+ */
 export async function listStorefrontVouchersPublicService(opts?: {
   subtotal?: number | null;
 }): Promise<StorefrontVoucherPublic[]> {
@@ -215,9 +225,48 @@ export async function listStorefrontVouchersPublicService(opts?: {
   return out;
 }
 
-// amazon-like “clip” behavior for assigned vouchers.
-// If the user has any currently redeemable ASSIGNED_USERS coupons, we only show those
-// on cart/checkout voucher strips (hide PUBLIC ones).
+async function listStorefrontVouchersPublicWithIdService(opts?: {
+  subtotal?: number | null;
+}): Promise<StorefrontVoucherPublicWithId[]> {
+  const now = new Date();
+  const rows = await prisma.coupon.findMany({
+    where: {
+      isActive: true,
+      showOnStorefront: true,
+      redemptionScope: "PUBLIC",
+    },
+    orderBy: [{ updatedAt: "desc" }],
+  });
+  const sub = opts?.subtotal;
+  const out: StorefrontVoucherPublicWithId[] = [];
+  for (const c of rows) {
+    if (validateCouponWindow(c, now)) continue;
+    const minSub =
+      c.minOrderSubtotal != null ? moneyToNumber(c.minOrderSubtotal) : null;
+    const meetsMinimumSpend =
+      sub == null || !Number.isFinite(sub)
+        ? null
+        : minSub == null || sub >= minSub;
+    out.push({
+      couponId: c.id,
+      code: c.code,
+      headline: c.voucherHeadline?.trim() || null,
+      detail: c.description?.trim() || null,
+      offerLabel: formatCouponOfferLabel(c),
+      minOrderSubtotal: minSub,
+      endsAt: c.endsAt?.toISOString() ?? null,
+      meetsMinimumSpend,
+    });
+  }
+  return out;
+}
+
+/**
+ * List storefront vouchers visible to a specific user.
+ *
+ * If the user has any redeemable ASSIGNED_USERS vouchers, we only show those and
+ * hide PUBLIC vouchers (Shopee-like “clipped vouchers” behavior).
+ */
 export async function listStorefrontVouchersForUserService(opts?: {
   subtotal?: number | null;
   userId?: number | null;
@@ -286,20 +335,61 @@ export async function listStorefrontVouchersForUserService(opts?: {
     );
   }
 
-  const globalCoupons = await listStorefrontVouchersPublicService({
+  // Hide PUBLIC vouchers already redeemed by this user (one-time-per-user policy).
+  // Redemption is recorded via `UserCouponAssignment.usedAt` even for PUBLIC coupons.
+  const usedPublicCouponIds =
+    userId != null
+      ? new Set(
+          (
+            await prisma.userCouponAssignment.findMany({
+              where: { userId, usedAt: { not: null } },
+              select: {
+                coupon: { select: { id: true, redemptionScope: true } },
+              },
+            })
+          )
+            .map((r) => r.coupon)
+            .filter(
+              (
+                c,
+              ): c is { id: number; redemptionScope: CouponRedemptionScope } =>
+                Boolean(c),
+            )
+            .filter((c) => c.redemptionScope === "PUBLIC")
+            .map((c) => c.id),
+        )
+      : null;
+
+  const globalCoupons = await listStorefrontVouchersPublicWithIdService({
     subtotal: sub,
   });
+  const globalNotUsed =
+    usedPublicCouponIds && usedPublicCouponIds.size > 0
+      ? globalCoupons.filter((v) => !usedPublicCouponIds.has(v.couponId))
+      : globalCoupons;
+
   return [
     ...userCoupons,
-    ...globalCoupons.map((v) => ({ ...v, scope: "GLOBAL" as const })),
+    ...globalNotUsed.map((v) => ({
+      code: v.code,
+      headline: v.headline,
+      detail: v.detail,
+      offerLabel: v.offerLabel,
+      minOrderSubtotal: v.minOrderSubtotal,
+      endsAt: v.endsAt,
+      meetsMinimumSpend: v.meetsMinimumSpend,
+      scope: "GLOBAL" as const,
+    })),
   ];
 }
 
+/**
+ * Handles compute discount amount.
+ */
 export function computeDiscountAmount(
   subtotal: number,
   coupon: Pick<Coupon, "discountType" | "value" | "maxDiscount">,
 ): number {
-  // clamp discount so final charge never drops below PayPal minimum.
   const val = moneyToNumber(coupon.value);
   let discount =
     coupon.discountType === "PERCENT" ? (subtotal * val) / 100 : val;
@@ -316,16 +406,18 @@ function toDecimal(n: number): Decimal {
   return new Decimal(n.toFixed(2));
 }
 
-// admin coupon management helpers.
-
-// list coupons for admin management UI.
+/**
+ * List coupons for admin management UI.
+ */
 export async function listCouponsAdminService() {
   return prisma.coupon.findMany({
     orderBy: [{ isActive: "desc" }, { code: "asc" }],
   });
 }
 
-// create coupon from admin input with normalization applied.
+/**
+ * Create a coupon from admin input with normalization applied.
+ */
 export async function createCouponAdminService(data: {
   code: string;
   description?: string | null;
@@ -341,7 +433,6 @@ export async function createCouponAdminService(data: {
   showOnStorefront?: boolean;
   voucherHeadline?: string | null;
 }) {
-  // admin create normalizes code/decimals to keep persistence deterministic.
   const code = normalizeCouponCode(data.code);
   return prisma.coupon.create({
     data: {
@@ -364,7 +455,9 @@ export async function createCouponAdminService(data: {
   });
 }
 
-// update coupon from admin input.
+/**
+ * Update a coupon from admin input.
+ */
 export async function updateCouponAdminService(
   id: number,
   data: Prisma.CouponUpdateInput,
@@ -372,7 +465,9 @@ export async function updateCouponAdminService(
   return prisma.coupon.update({ where: { id }, data });
 }
 
-// deactivate coupon so it no longer applies at checkout.
+/**
+ * Deactivate a coupon so it no longer applies at checkout.
+ */
 export async function deactivateCouponAdminService(id: number) {
   return prisma.coupon.update({
     where: { id },

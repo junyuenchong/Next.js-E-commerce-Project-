@@ -1,7 +1,3 @@
-/**
- * user action
- * handle user action logic
- */
 // implements user account actions for authentication, password resets, and profile access.
 "use server";
 
@@ -50,14 +46,18 @@ async function patchUsers(body: unknown) {
   return { ok: res.ok, error: data.error };
 }
 
-// activate/deactivate user via RBAC-protected admin users API.
+/**
+ * Handles set user active action.
+ */
 export async function setUserActiveAction(userId: number, isActive: boolean) {
   // toggle team account active state via shared admin users API.
   const { ok } = await patchUsers({ action: "active", userId, isActive });
   return { ok };
 }
 
-// update user email/name via RBAC-protected admin users API.
+/**
+ * Handles update user profile admin action.
+ */
 export async function updateUserProfileAdminAction(
   userId: number,
   email: string,

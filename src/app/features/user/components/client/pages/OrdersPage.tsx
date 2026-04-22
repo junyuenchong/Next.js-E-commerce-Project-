@@ -19,17 +19,16 @@ export default function OrdersPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
 
   // Loads the first page of orders (used on mount and after realtime refresh).
   const loadInitial = useCallback(async () => {
     try {
       setLoading(true);
-      const { orders: list, nextCursor: c } = await fetchOrdersPage(
-        undefined,
-        40,
-      );
-      setOrders(list);
-      setNextCursor(c);
+      const { orders: initialOrders, nextCursor: nextPageCursor } =
+        await fetchOrdersPage(undefined, 40, statusFilter);
+      setOrders(initialOrders);
+      setNextCursor(nextPageCursor);
       setError(null);
     } catch {
       setOrders(null);
@@ -37,25 +36,23 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [statusFilter]);
 
   // Fetches the next cursor page and appends results to the existing list.
   const loadMore = useCallback(async () => {
     if (nextCursor == null) return;
     try {
       setLoadingMore(true);
-      const { orders: more, nextCursor: c } = await fetchOrdersPage(
-        nextCursor,
-        40,
-      );
-      setOrders((prev) => [...(prev ?? []), ...more]);
-      setNextCursor(c);
+      const { orders: nextOrders, nextCursor: nextPageCursor } =
+        await fetchOrdersPage(nextCursor, 40, statusFilter);
+      setOrders((prev) => [...(prev ?? []), ...nextOrders]);
+      setNextCursor(nextPageCursor);
     } catch {
       setError("Could not load more orders.");
     } finally {
       setLoadingMore(false);
     }
-  }, [nextCursor]);
+  }, [nextCursor, statusFilter]);
 
   // Clears state when signed out, otherwise triggers initial load.
   useEffect(() => {
@@ -76,25 +73,33 @@ export default function OrdersPage() {
     };
   }, [user, loadInitial]);
 
+  // Reload list when filter changes (Shopee-like status tabs / dropdown).
+  useEffect(() => {
+    if (!user) return;
+    void loadInitial();
+  }, [statusFilter, user, loadInitial]);
+
   // Subscribes to order status updates (SSE) and refreshes the list on change.
   useEffect(() => {
     if (!user) return;
-    const es = new EventSource("/features/user/api/events?channels=orders");
-    const onMsg = () => {
+    const eventSource = new EventSource(
+      "/features/user/api/events?channels=orders",
+    );
+    const onMessage = () => {
       void fetchAllUserOrders().then((data) => {
         setOrders(data);
         setNextCursor(null);
       });
     };
-    es.addEventListener("message", onMsg);
+    eventSource.addEventListener("message", onMessage);
     return () => {
-      es.removeEventListener("message", onMsg);
-      es.close();
+      eventSource.removeEventListener("message", onMessage);
+      eventSource.close();
     };
   }, [user]);
 
-  const list = orders ?? [];
-  const showSkeleton = loading && list.length === 0;
+  const visibleOrders = orders ?? [];
+  const showSkeleton = loading && visibleOrders.length === 0;
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
@@ -131,6 +136,31 @@ export default function OrdersPage() {
               {error ? <p className="text-sm text-amber-800">{error}</p> : null}
             </div>
 
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm font-medium text-gray-900">
+                Filter by status
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setStatusFilter(v);
+                  setOrders(null);
+                  setNextCursor(null);
+                }}
+                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+              >
+                <option value="all">All</option>
+                <option value="pending">Pending payment</option>
+                <option value="paid">Paid</option>
+                <option value="processing">Processing</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="fulfilled">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
             <div className="min-h-[520px]">
               {showSkeleton ? (
                 <div className="space-y-4">
@@ -141,7 +171,7 @@ export default function OrdersPage() {
                     />
                   ))}
                 </div>
-              ) : list.length === 0 ? (
+              ) : visibleOrders.length === 0 ? (
                 <div className="bg-white rounded-lg shadow-sm p-8 text-center text-gray-600">
                   <p className="mb-4">No orders yet.</p>
                   <Link
@@ -154,42 +184,55 @@ export default function OrdersPage() {
               ) : (
                 <>
                   <ul className="space-y-4">
-                    {list.map((o) => (
-                      <li key={o.id}>
-                        <Link
-                          href={`/features/user/orders/${encodeURIComponent(o.id)}`}
-                          className="block bg-white rounded-lg shadow-sm border border-gray-100 p-5 hover:border-gray-200 hover:shadow transition"
-                        >
+                    {visibleOrders.map((orderItem) => (
+                      <li key={orderItem.id}>
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 hover:border-gray-200 hover:shadow transition">
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
                               <p className="font-semibold text-gray-900">
-                                Order #{o.id}
+                                Order #{orderItem.id}
                               </p>
                               <p className="text-sm text-gray-500">
-                                {new Date(o.createdAt).toLocaleString()}
+                                {new Date(orderItem.createdAt).toLocaleString()}
                               </p>
-                              {o.paypalOrderId ? (
+                              {orderItem.paypalOrderId ? (
                                 <p className="text-xs text-gray-400 mt-1 font-mono truncate max-w-xs">
-                                  PayPal: {o.paypalOrderId}
+                                  PayPal: {orderItem.paypalOrderId}
                                 </p>
                               ) : null}
                             </div>
                             <div className="text-right">
                               <p className="text-lg font-semibold text-blue-600">
-                                {formatPriceRM(o.total)}
-                                {o.currency && o.currency !== "MYR"
-                                  ? ` ${o.currency}`
+                                {formatPriceRM(orderItem.total)}
+                                {orderItem.currency &&
+                                orderItem.currency !== "MYR"
+                                  ? ` ${orderItem.currency}`
                                   : ""}
                               </p>
                               <span className="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-800">
-                                {getUserOrderStatusLabel(o.status)}
+                                {getUserOrderStatusLabel(orderItem.status)}
                               </span>
                             </div>
                           </div>
-                          <div className="mt-3 text-xs text-gray-500">
-                            View details
+
+                          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                            <Link
+                              href={`/features/user/orders/${encodeURIComponent(orderItem.id)}`}
+                              className="text-xs font-medium text-blue-600 hover:underline"
+                            >
+                              View details
+                            </Link>
+                            {String(orderItem.status).toLowerCase() ===
+                            "pending" ? (
+                              <Link
+                                href="/features/user/checkout"
+                                className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                              >
+                                Pay again
+                              </Link>
+                            ) : null}
                           </div>
-                        </Link>
+                        </div>
                       </li>
                     ))}
                   </ul>

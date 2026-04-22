@@ -1,9 +1,8 @@
-/**
- * api error
- * handle api error logic
- */
 import { NextResponse } from "next/server";
 
+/**
+ * Handles unknown error message.
+ */
 export function unknownErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim() !== "")
     return error.message;
@@ -11,6 +10,9 @@ export function unknownErrorMessage(error: unknown): string {
   return "Unknown error";
 }
 
+/**
+ * Handles json internal server error.
+ */
 export function jsonInternalServerError(
   error: unknown,
   logPrefix: string,

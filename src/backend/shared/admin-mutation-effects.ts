@@ -1,7 +1,3 @@
-/**
- * admin mutation effects
- * handle admin mutation effects logic
- */
 import { revalidatePath, revalidateTag } from "next/cache";
 import {
   deleteCacheKeys,
@@ -16,6 +12,9 @@ type AdminMutationEffectsParams = {
   publish?: () => Promise<void> | void;
 };
 
+/**
+ * Handles run admin mutation effects.
+ */
 export async function runAdminMutationEffects(
   params: AdminMutationEffectsParams,
 ): Promise<void> {

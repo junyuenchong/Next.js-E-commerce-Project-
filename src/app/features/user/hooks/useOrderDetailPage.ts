@@ -55,7 +55,7 @@ async function fetchOrder(id: string): Promise<OrderDetailDto> {
 export function useOrderDetailPage() {
   const { user, isLoading: sessionLoading } = useUser();
   const params = useParams<{ id: string }>();
-  const id = String(params?.id ?? "");
+  const orderId = String(params?.id ?? "");
   const searchParams = useSearchParams();
   const router = useRouter();
   const paymentSuccess = searchParams.get("payment") === "success";
@@ -68,11 +68,13 @@ export function useOrderDetailPage() {
   const [reviewComment, setReviewComment] = useState("");
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewErr, setReviewErr] = useState<string | null>(null);
+  const [receivedBusy, setReceivedBusy] = useState(false);
+  const [receivedErr, setReceivedErr] = useState<string | null>(null);
 
-  const query = useQuery({
-    queryKey: ["user-order-detail", id],
-    queryFn: () => fetchOrder(id),
-    enabled: Boolean(user && id),
+  const orderQuery = useQuery({
+    queryKey: ["user-order-detail", orderId],
+    queryFn: () => fetchOrder(orderId),
+    enabled: Boolean(user && orderId),
     staleTime: 5_000,
   });
 
@@ -81,7 +83,7 @@ export function useOrderDetailPage() {
     setShowPaymentSuccessDialog(paymentSuccess);
   }, [paymentSuccess]);
 
-  const order = query.data;
+  const order = orderQuery.data;
   const created = useMemo(
     () => (order ? new Date(order.createdAt).toLocaleString() : ""),
     [order],
@@ -100,6 +102,10 @@ export function useOrderDetailPage() {
     [order],
   );
   const orderComplete = String(order?.status).toLowerCase() === "fulfilled";
+  const orderStatus = String(order?.status).toLowerCase();
+  const canPayAgain = orderStatus === "pending";
+  const canMarkReceived =
+    orderStatus === "shipped" || orderStatus === "delivered";
 
   const openReviewDialog = (item: OrderItemDto) => {
     setReviewTarget(item);
@@ -137,13 +143,38 @@ export function useOrderDetailPage() {
     }
   };
 
+  const markReceived = async () => {
+    if (!order) return;
+    setReceivedBusy(true);
+    setReceivedErr(null);
+    try {
+      await http.post(`/features/user/api/orders/${order.id}/received`, {});
+      await orderQuery.refetch();
+    } catch (error: unknown) {
+      const axiosLike = error as { response?: { data?: { error?: string } } };
+      const code = axiosLike.response?.data?.error;
+      const msg =
+        code === "not_receivable"
+          ? "This order cannot be marked as received yet."
+          : getErrorMessage(error, "Could not mark as received.");
+      setReceivedErr(msg);
+    } finally {
+      setReceivedBusy(false);
+    }
+  };
+
   return {
     created,
-    id,
+    orderId,
+    id: orderId,
     order,
     orderComplete,
+    canPayAgain,
+    canMarkReceived,
+    receivedBusy,
+    receivedErr,
     paymentSuccess,
-    query,
+    query: orderQuery,
     reviewBusy,
     reviewComment,
     reviewDialogOpen,
@@ -161,5 +192,6 @@ export function useOrderDetailPage() {
     setReviewComment,
     setReviewRating,
     submitReview,
+    markReceived,
   };
 }

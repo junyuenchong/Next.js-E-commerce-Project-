@@ -1,11 +1,10 @@
-/**
- * admin action log service
- * handle admin action log service logic
- */
 // records structured admin audit entries and normalizes actor identifiers for logs.
 import type { AdminActionLogInput } from "@/shared/types";
 import { createAdminActionLogRecord } from "./admin-action-log.repo";
 
+/**
+ * Return the numeric actor id for admin audit logging, or null when unavailable.
+ */
 export function adminActorNumericId(
   user: { id?: string | number | null } | null | undefined,
 ): number | null {
@@ -15,6 +14,9 @@ export function adminActorNumericId(
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
+/**
+ * Write an admin action log entry (best-effort).
+ */
 export async function logAdminAction(
   input: AdminActionLogInput,
 ): Promise<void> {

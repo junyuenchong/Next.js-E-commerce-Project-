@@ -1,7 +1,3 @@
-/**
- * cart service
- * handle cart service logic
- */
 // implements cart business rules for item updates, pricing, and checkout preparation.
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
@@ -56,7 +52,9 @@ async function getUserAndGuestContext() {
   return { userId, cookieStore, guestCartId };
 }
 
-// get or create current session cart (user or guest).
+/**
+ * Get or create the current session cart (user or guest).
+ */
 export async function getOrCreateCartService() {
   const { userId, cookieStore, guestCartId } = await getUserAndGuestContext();
 
@@ -81,7 +79,9 @@ export async function getOrCreateCartService() {
   return createGuestCart(gid);
 }
 
-// fetch current session cart without creating one.
+/**
+ * Fetch the current session cart without creating one.
+ */
 export async function getCartService() {
   const { userId, guestCartId } = await getUserAndGuestContext();
   if (userId) return findUserCart(userId);
@@ -89,7 +89,9 @@ export async function getCartService() {
   return null;
 }
 
-// add product quantity with live stock checks.
+/**
+ * Add product quantity with live stock checks.
+ */
 export async function addToCartService(productId: number, quantity = 1) {
   // validate product availability against live snapshot before mutating cart.
   const product = await getProductSnapshot(productId);
@@ -123,7 +125,9 @@ export async function addToCartService(productId: number, quantity = 1) {
   return getOrCreateCartService();
 }
 
-// remove product line from current session cart when present.
+/**
+ * Remove a product line from the current session cart when present.
+ */
 export async function removeFromCartService(productId: number) {
   const cart = await getOrCreateCartService();
   const existing = cart.items.find((item) => item.productId === productId);
@@ -133,7 +137,9 @@ export async function removeFromCartService(productId: number) {
   return getOrCreateCartService();
 }
 
-// update cart line quantity with stock clamping.
+/**
+ * Update cart line quantity with stock clamping.
+ */
 export async function updateCartItemService(
   productId: number,
   quantity: number,
@@ -155,14 +161,18 @@ export async function updateCartItemService(
   return getOrCreateCartService();
 }
 
-// delete all line items from current session cart.
+/**
+ * Delete all line items from the current session cart.
+ */
 export async function clearCartService() {
   const cart = await getOrCreateCartService();
   await clearCartLineItems(cart.id);
   return getOrCreateCartService();
 }
 
-// merge anonymous cart into authenticated cart and clear guest cookie.
+/**
+ * Merge anonymous cart into authenticated cart and clear guest cookie.
+ */
 export async function mergeGuestCartToUserService() {
   const { userId, guestCartId, cookieStore } = await getUserAndGuestContext();
   if (!userId || !guestCartId) return null;
@@ -186,7 +196,9 @@ export async function mergeGuestCartToUserService() {
   return merged;
 }
 
-// return hydrated cart with latest product snapshot per item.
+/**
+ * Return hydrated cart with latest product snapshot per item.
+ */
 export async function getCartWithLiveProductsService() {
   const { userId, guestCartId } = await getUserAndGuestContext();
   const cart = userId

@@ -1,7 +1,3 @@
-/**
- * admin events service
- * handle admin events service logic
- */
 // publishes admin SSE event payloads to Redis channels for dashboard live updates.
 import type { RedisClientType } from "redis";
 import { getRedisClient } from "@/backend/modules/db/redis";
@@ -29,7 +25,9 @@ async function ensureClient() {
   return client.isOpen ? client : null;
 }
 
-// publish product event to products SSE channel.
+/**
+ * Publish product event to products SSE channel.
+ */
 export async function publishAdminProductEvent(payload: {
   kind: "created" | "updated" | "deleted";
   id?: number;
@@ -49,7 +47,9 @@ export async function publishAdminProductEvent(payload: {
   }, "[admin-events] publish products");
 }
 
-// publish category event to categories SSE channel.
+/**
+ * Publish category event to categories SSE channel.
+ */
 export async function publishAdminCategoryEvent(payload: {
   kind: "created" | "updated" | "deleted";
   id?: number;
@@ -69,7 +69,9 @@ export async function publishAdminCategoryEvent(payload: {
   }, "[admin-events] publish categories");
 }
 
-// publish order event to orders SSE channel.
+/**
+ * Publish order event to orders SSE channel.
+ */
 export async function publishAdminOrderEvent(payload: {
   kind: "updated";
   id: number;
@@ -90,7 +92,9 @@ export async function publishAdminOrderEvent(payload: {
   }, "[admin-events] publish orders");
 }
 
-// create Redis subscriber client for event listening.
+/**
+ * Create Redis subscriber client for event listening.
+ */
 export async function createRedisSubscriber(): Promise<RedisClientType | null> {
   const main = await ensureClient();
   if (!main) return null;

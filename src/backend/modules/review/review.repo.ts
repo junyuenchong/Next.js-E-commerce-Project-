@@ -1,7 +1,3 @@
-/**
- * review repo
- * handle review repo logic
- */
 // implements review repository queries and updates for product feedback workflows.
 import type { Prisma } from "@prisma/client";
 import prisma from "@/app/lib/prisma";
@@ -18,7 +14,9 @@ const userInclude = {
   },
 } as const;
 
-// list storefront product reviews, hiding soft-deactivated rows when supported.
+/**
+ * Handles list product reviews.
+ */
 export async function listProductReviews(productId: number) {
   // some environments may not have `ProductReview.isActive` yet.
   const hasIsActive = await productReviewHasIsActiveColumn();
@@ -37,7 +35,9 @@ export async function listProductReviews(productId: number) {
   });
 }
 
-// admin product card list returns active reviews only.
+/**
+ * Handles list product reviews for admin.
+ */
 export async function listProductReviewsForAdmin(productId: number) {
   const hasIsActive = await productReviewHasIsActiveColumn();
   if (hasIsActive) {
@@ -55,7 +55,9 @@ export async function listProductReviewsForAdmin(productId: number) {
   });
 }
 
-// upsert user review and reactivate when previously soft-deactivated.
+/**
+ * Handles upsert product review.
+ */
 export async function upsertProductReview(params: {
   productId: number;
   userId: number;
@@ -96,7 +98,9 @@ export async function upsertProductReview(params: {
   });
 }
 
-// update admin reply field without rating/comment changes.
+/**
+ * Handles update admin reply.
+ */
 export async function updateAdminReply(reviewId: number, adminReply: string) {
   // reply update intentionally avoids rating/comment mutations.
   const hasIsActive = await productReviewHasIsActiveColumn();
@@ -113,7 +117,9 @@ export async function updateAdminReply(reviewId: number, adminReply: string) {
   });
 }
 
-// validate product id existence for service-layer guards.
+/**
+ * Handles find product by id.
+ */
 export async function findProductById(productId: number) {
   return prisma.product.findUnique({
     where: { id: productId },
@@ -121,7 +127,9 @@ export async function findProductById(productId: number) {
   });
 }
 
-// only customers with a fulfilled order containing the product may review it.
+/**
+ * Handles has user purchased product.
+ */
 export async function hasUserPurchasedProduct(
   userId: number,
   productId: number,
@@ -139,7 +147,9 @@ export async function hasUserPurchasedProduct(
   });
 }
 
-// soft-remove when column exists; hard-delete for pre-migration databases.
+/**
+ * Handles soft deactivate product review by id.
+ */
 export async function softDeactivateProductReviewById(reviewId: number) {
   const hasIsActive = await productReviewHasIsActiveColumn();
   if (hasIsActive) {
@@ -153,7 +163,9 @@ export async function softDeactivateProductReviewById(reviewId: number) {
   });
 }
 
-// list admin moderation reviews with optional product/search filters.
+/**
+ * Handles list all reviews admin repo.
+ */
 export async function listAllReviewsAdminRepo(params: {
   skip: number;
   take: number;

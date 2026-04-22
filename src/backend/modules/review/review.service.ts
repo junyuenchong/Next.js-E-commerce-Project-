@@ -1,7 +1,3 @@
-/**
- * review service
- * handle review service logic
- */
 // provides review services for product feedback listing, moderation, and replies.
 import {
   findProductById,
@@ -14,35 +10,43 @@ import {
   upsertProductReview,
 } from "./review.repo";
 
+/**
+ * List public product reviews for storefront product pages.
+ */
 export async function listProductReviewsService(productId: number) {
-  // public review list for storefront product pages with input validation.
   if (!Number.isFinite(productId)) throw new Error("Invalid product id");
   return listProductReviews(productId);
 }
 
+/**
+ * List product reviews for admin review UI.
+ */
 export async function listProductReviewsForAdminService(productId: number) {
-  // admin review list keeps admin-only entrypoint explicit.
   if (!Number.isFinite(productId)) throw new Error("Invalid product id");
   return listProductReviewsForAdmin(productId);
 }
 
+/**
+ * List all reviews for admin moderation (paginated + searchable).
+ */
 export async function listAllReviewsAdminService(params: {
   skip: number;
   take: number;
   productId?: number;
   q?: string;
 }) {
-  // admin paginated search endpoint for moderation workflows.
   return listAllReviewsAdminRepo(params);
 }
 
+/**
+ * Upsert a product review for a given user and product.
+ */
 export async function upsertProductReviewService(params: {
   productId: number;
   userId: number;
   rating: number;
   comment: string;
 }) {
-  // validate review input and ensure product exists before upsert.
   if (!Number.isFinite(params.productId)) throw new Error("Invalid product id");
   if (!Number.isFinite(params.userId)) throw new Error("Invalid user id");
   if (params.rating < 1 || params.rating > 5)
@@ -67,18 +71,22 @@ export async function upsertProductReviewService(params: {
   });
 }
 
+/**
+ * Update admin reply for a review.
+ */
 export async function updateAdminReplyService(
   reviewId: number,
   adminReply: string,
 ) {
-  // admin reply update trims input and rejects empty replies.
   if (!Number.isFinite(reviewId)) throw new Error("Invalid review id");
   if (!adminReply.trim()) throw new Error("Reply is required");
   return updateAdminReply(reviewId, adminReply.trim());
 }
 
+/**
+ * Delete (soft-deactivate) a product review (admin).
+ */
 export async function deleteProductReviewAdminService(reviewId: number) {
-  // soft-remove when supported; otherwise repo performs hard delete.
   if (!Number.isFinite(reviewId)) throw new Error("Invalid review id");
   return softDeactivateProductReviewById(reviewId);
 }

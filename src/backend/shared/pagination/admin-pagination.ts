@@ -1,7 +1,3 @@
-/**
- * admin pagination
- * handle admin pagination logic
- */
 // Admin pagination settings and utility functions
 
 export const ADMIN_LIST_LIMIT_MIN = 1;
@@ -13,7 +9,9 @@ export const ADMIN_LIST_DEFAULT = {
   audit: 40,
 } as const;
 
-// Clamp list limits to valid range for admin queries
+/**
+ * Handles clamp admin list limit.
+ */
 export function clampAdminListLimit(
   limitRaw: string | null,
   fallback: number,
@@ -28,7 +26,9 @@ export function clampAdminListLimit(
   return Math.min(ADMIN_LIST_LIMIT_MAX, Math.max(ADMIN_LIST_LIMIT_MIN, v));
 }
 
-// Parse a cursor ID, returning undefined if invalid
+/**
+ * Handles parse admin cursor id.
+ */
 export function parseAdminCursorId(raw: string | null): number | undefined {
   if (raw == null || raw === "") return undefined;
   const n = Number.parseInt(raw, 10);

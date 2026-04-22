@@ -1,6 +1,5 @@
 /**
- * money
- * handle money logic
+ * Handles money to number.
  */
 export function moneyToNumber(value: unknown): number {
   if (value == null) return 0;

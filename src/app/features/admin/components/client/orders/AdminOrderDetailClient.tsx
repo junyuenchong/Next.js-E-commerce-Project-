@@ -71,6 +71,27 @@ const STATUS_FLOW: OrderStatus[] = [
   "cancelled",
 ];
 
+function adminOrderStatusLabel(status: OrderStatus): string {
+  switch (status) {
+    case "pending":
+      return "Payment pending";
+    case "paid":
+      return "Paid";
+    case "processing":
+      return "Processing";
+    case "shipped":
+      return "Shipped";
+    case "delivered":
+      return "Delivered";
+    case "fulfilled":
+      return "Fulfilled";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return status;
+  }
+}
+
 // Format money safely with a currency fallback.
 function formatMoney(amount: number, currency: string) {
   try {
@@ -349,7 +370,7 @@ export default function AdminOrderDetailClient({
           >
             {STATUS_FLOW.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {adminOrderStatusLabel(s)}
               </option>
             ))}
           </select>

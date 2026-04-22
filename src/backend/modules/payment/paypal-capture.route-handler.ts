@@ -1,7 +1,3 @@
-/**
- * paypal capture route handler
- * handle paypal capture route handler logic
- */
 // handles PayPal capture webhook-like route flow with auth, validation, and order finalization.
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
@@ -24,6 +20,7 @@ import {
   paypalExtractCaptureId,
   paypalGetOrder,
   paypalOrderAmount,
+  reservePaymentForCaptureRepo,
   transitionPaymentStatusRepo,
 } from "@/backend/modules/payment";
 import { sendTransactionalEmail } from "@/backend/modules/notification";
@@ -67,15 +64,29 @@ function parseCaptureBody(raw: string): {
   try {
     // accept optional payload so capture still works with empty body.
     if (!raw.trim()) return { smsTo: "", shipping: {} };
-    const j = JSON.parse(raw) as Record<string, unknown>;
-    const smsTo = typeof j.smsTo === "string" ? j.smsTo.trim() : "";
-    const s = j.shipping as Record<string, unknown> | undefined;
+    const parsedBody = JSON.parse(raw) as Record<string, unknown>;
+    const smsTo =
+      typeof parsedBody.smsTo === "string" ? parsedBody.smsTo.trim() : "";
+    const shippingSource = parsedBody.shipping as
+      | Record<string, unknown>
+      | undefined;
     const shipping = {
-      line1: typeof s?.line1 === "string" ? s.line1 : null,
-      city: typeof s?.city === "string" ? s.city : null,
-      postcode: typeof s?.postcode === "string" ? s.postcode : null,
-      country: typeof s?.country === "string" ? s.country : null,
-      method: typeof s?.method === "string" ? s.method : null,
+      line1:
+        typeof shippingSource?.line1 === "string" ? shippingSource.line1 : null,
+      city:
+        typeof shippingSource?.city === "string" ? shippingSource.city : null,
+      postcode:
+        typeof shippingSource?.postcode === "string"
+          ? shippingSource.postcode
+          : null,
+      country:
+        typeof shippingSource?.country === "string"
+          ? shippingSource.country
+          : null,
+      method:
+        typeof shippingSource?.method === "string"
+          ? shippingSource.method
+          : null,
     };
     return { smsTo, shipping };
   } catch {
@@ -164,9 +175,14 @@ async function verifyRemoteAmountOrError(params: {
   return { ok: true as const, remote };
 }
 
-async function capturePayPalOrError(orderId: string) {
+async function capturePayPalOrError(params: {
+  orderId: string;
+  idempotencyKey?: string;
+}) {
   // perform PayPal capture only after all local preconditions succeed.
-  const { ok, json } = await paypalCaptureOrder(orderId);
+  const { ok, json } = await paypalCaptureOrder(params.orderId, {
+    idempotencyKey: params.idempotencyKey,
+  });
   if (!ok) {
     return {
       ok: false as const,
@@ -338,7 +354,9 @@ async function runFulfillmentFlow(params: {
   }
 }
 
-// Handle PayPal capture: validate cart/totals, capture payment, persist order, and fulfill.
+/**
+ * Handles post pay pal capture route.
+ */
 export async function postPayPalCaptureRoute(
   req: Request,
   ctx: { params: Promise<{ orderId: string }> },
@@ -367,9 +385,18 @@ export async function postPayPalCaptureRoute(
           gatewayResponse: { duplicateOrder: true },
         }).catch(() => null);
       }
+      // duplicate capture request: return same transaction markers and existing order.
       const dupRes = NextResponse.json({
         ok: true,
         duplicate: true,
+        pending: false,
+        transactionId: payment ? `PAYPAL-${payment.id}` : null,
+        idempotency: payment
+          ? {
+              key: payment.idempotencyKey,
+              captureKey: `${payment.idempotencyKey}:capture`,
+            }
+          : null,
         order: { id: existingId },
       });
       clearCheckoutCouponCookie(dupRes);
@@ -402,7 +429,46 @@ export async function postPayPalCaptureRoute(
     });
     if (!remoteOk.ok) return remoteOk.response;
 
-    const captureOk = await capturePayPalOrError(orderId);
+    if (payment) {
+      // reserve capture with optimistic lock so only one request can capture this payment.
+      const reserved = await reservePaymentForCaptureRepo({
+        paymentId: payment.id,
+        reason: "capture_request_started",
+      });
+      if (!reserved.ok && reserved.reason === "already_paid") {
+        const existingOrderId = await getOrderIdByPayPalOrderIdService(orderId);
+        if (existingOrderId != null) {
+          const dupRes = NextResponse.json({
+            ok: true,
+            duplicate: true,
+            order: { id: existingOrderId },
+          });
+          clearCheckoutCouponCookie(dupRes);
+          return dupRes;
+        }
+      }
+      if (
+        !reserved.ok &&
+        reserved.reason === "concurrent_capture_in_progress"
+      ) {
+        // another request is capturing now; caller can retry status polling.
+        return jsonError(409, {
+          error: "capture_in_progress",
+          retryable: true,
+        });
+      }
+      if (!reserved.ok && reserved.reason === "payment_terminal_status") {
+        return jsonError(409, {
+          error: "payment_not_capturable",
+          retryable: false,
+        });
+      }
+    }
+
+    const captureOk = await capturePayPalOrError({
+      orderId,
+      idempotencyKey: payment ? `${payment.idempotencyKey}:capture` : undefined,
+    });
     if (!captureOk.ok) {
       if (payment) {
         await markPaymentFailedRepo({
@@ -428,9 +494,24 @@ export async function postPayPalCaptureRoute(
           metadata: json as Prisma.InputJsonValue,
         }).catch(() => null);
       }
+      // in webhook truth mode, return pending until webhook confirms final status.
       const processingRes = NextResponse.json({
         ok: true,
+        pending: true,
         processing: true,
+        transactionId: payment ? `PAYPAL-${payment.id}` : null,
+        idempotency: payment
+          ? {
+              key: payment.idempotencyKey,
+              captureKey: `${payment.idempotencyKey}:capture`,
+            }
+          : null,
+        payment: {
+          status: "PENDING",
+          providerOrderId: orderId,
+          providerCaptureId: paypalCaptureId,
+        },
+        message: "payment pending webhook confirmation",
       });
       clearCheckoutCouponCookie(processingRes);
       return processingRes;
@@ -494,6 +575,20 @@ export async function postPayPalCaptureRoute(
 
     const okRes = NextResponse.json({
       ok: true,
+      pending: false,
+      // return stable transaction markers for client reconciliation/debug.
+      transactionId: payment ? `PAYPAL-${payment.id}` : null,
+      idempotency: payment
+        ? {
+            key: payment.idempotencyKey,
+            captureKey: `${payment.idempotencyKey}:capture`,
+          }
+        : null,
+      payment: {
+        status: "PAID",
+        providerOrderId: orderId,
+        providerCaptureId: paypalCaptureId,
+      },
       capture: json,
       order: { id: dbOrderId },
     });

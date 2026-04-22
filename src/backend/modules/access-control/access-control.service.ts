@@ -1,7 +1,3 @@
-/**
- * access control service
- * handle access control service logic
- */
 // resolves effective admin permissions and catalog access checks from role configuration.
 import type { AdminSessionUser } from "@/backend/modules/auth/session";
 import { permissionAppRoleFromUserRole } from "@/backend/modules/auth/auth.service";
@@ -73,7 +69,9 @@ const CATALOG_PERMISSION_KEYS = [
   "product.delete",
 ] as const;
 
-// check whether a permission role grants the target permission key.
+/**
+ * Check whether a permission role grants the target permission key.
+ */
 export function roleHasPermission(
   role: AppPermissionRole,
   permission: Permission,
@@ -83,7 +81,9 @@ export function roleHasPermission(
   return list.includes(permission);
 }
 
-// resolve effective permission keys for an admin user.
+/**
+ * Resolve effective permission keys for an admin user.
+ */
 export async function getAdminPermissionKeysForUser(
   user: AdminSessionUser,
 ): Promise<string[]> {
@@ -112,7 +112,9 @@ export async function getAdminPermissionKeysForUser(
   return getEffectivePermissionKeysByRoleId(baseRoleId);
 }
 
-// check whether user has a specific permission key.
+/**
+ * Check whether user has a specific permission key.
+ */
 export async function adminUserHasPermission(
   user: AdminSessionUser,
   permission: string,
@@ -122,7 +124,9 @@ export async function adminUserHasPermission(
   return keys.includes(permission);
 }
 
-// check whether user has any catalog-management capability.
+/**
+ * Check whether user has any catalog-management capability.
+ */
 export async function adminUserHasCatalogAccess(
   user: AdminSessionUser,
 ): Promise<boolean> {

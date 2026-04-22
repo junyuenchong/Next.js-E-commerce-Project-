@@ -1,7 +1,3 @@
-/**
- * redis
- * handle redis logic
- */
 // redis utilities for JSON cache get/set/delete and key patterns.
 import { createClient, type RedisClientType } from "redis";
 import {
@@ -12,6 +8,9 @@ import {
 
 let redis: RedisClientType | null = null;
 
+/**
+ * Handles get redis client.
+ */
 export function getRedisClient() {
   if (!process.env.REDIS_URL) return null;
   if (!redis) {
@@ -38,7 +37,9 @@ async function ensureRedisConnected(): Promise<RedisClientType | null> {
   return client.isOpen ? client : null;
 }
 
-// get JSON value from Redis cache.
+/**
+ * Handles get cached json.
+ */
 export async function getCachedJson<T>(key: string): Promise<T | null> {
   const client = await ensureRedisConnected();
   if (!client) return null;
@@ -55,7 +56,9 @@ export async function getCachedJson<T>(key: string): Promise<T | null> {
   );
 }
 
-// set JSON value in Redis with TTL (default 5 minutes).
+/**
+ * Handles set cached json.
+ */
 export async function setCachedJson(
   key: string,
   value: unknown,
@@ -68,7 +71,9 @@ export async function setCachedJson(
   }, "[Redis] setCachedJson error:");
 }
 
-// delete one or more explicit cache keys.
+/**
+ * Handles delete cache keys.
+ */
 export async function deleteCacheKeys(keys: string[]) {
   const client = await ensureRedisConnected();
   if (!client || keys.length === 0) return;
@@ -77,7 +82,9 @@ export async function deleteCacheKeys(keys: string[]) {
   }, "[Redis] deleteCacheKeys error:");
 }
 
-// delete cache keys that match a pattern.
+/**
+ * Handles delete cache keys by pattern.
+ */
 export async function deleteCacheKeysByPattern(pattern: string) {
   const client = await ensureRedisConnected();
   if (!client) return;

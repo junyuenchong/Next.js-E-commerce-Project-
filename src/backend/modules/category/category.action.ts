@@ -1,7 +1,3 @@
-/**
- * category action
- * handle category action logic
- */
 // exposes category actions for admin management and cached category reads.
 "use server";
 
@@ -39,6 +35,9 @@ function mapCategoryMutationError(error: unknown): unknown {
   return error;
 }
 
+/**
+ * Handles get category by slug action.
+ */
 export async function getCategoryBySlugAction(slug: string) {
   // read-through cache for category detail lookups by slug.
   const cacheKey = cacheKeys.categoryBySlug(slug);
@@ -49,6 +48,9 @@ export async function getCategoryBySlugAction(slug: string) {
   return category;
 }
 
+/**
+ * Handles get all products by category action.
+ */
 export async function getAllProductsByCategoryAction(
   limit?: number,
   page?: number,
@@ -63,6 +65,9 @@ export async function getAllProductsByCategoryAction(
   return products;
 }
 
+/**
+ * Handles get products by category slug action.
+ */
 export async function getProductsByCategorySlugAction(
   slug: string,
   limit?: number,
@@ -79,6 +84,9 @@ export async function getProductsByCategorySlugAction(
   return products;
 }
 
+/**
+ * Handles get products by category slug cursor action.
+ */
 export async function getProductsByCategorySlugCursorAction(
   slug: string,
   limit?: number,
@@ -88,6 +96,9 @@ export async function getProductsByCategorySlugCursorAction(
   return getProductsByCategorySlugCursorService(slug, limit, cursorId);
 }
 
+/**
+ * Handles create category action.
+ */
 export async function createCategoryAction(name: string) {
   // admin create path is permission-gated before any mutation.
   await requireAdminPermission("product.update");
@@ -105,16 +116,25 @@ export async function createCategoryAction(name: string) {
   }
 }
 
+/**
+ * Handles get all categories action.
+ */
 export async function getAllCategoriesAction() {
   // shared action wrapper for admin/public category list reads.
   return getAllCategoriesService();
 }
 
+/**
+ * Handles get category by id action.
+ */
 export async function getCategoryByIdAction(id: number) {
   // internal/admin lookup by numeric category id.
   return getCategoryByIdService(id);
 }
 
+/**
+ * Handles update category action.
+ */
 export async function updateCategoryAction(id: number, name: string) {
   // admin update path invalidates current and previous slug cache keys.
   const existing = await getCategoryByIdService(id);
@@ -146,6 +166,9 @@ export async function updateCategoryAction(id: number, name: string) {
   }
 }
 
+/**
+ * Handles delete category action.
+ */
 export async function deleteCategoryAction(id: number) {
   // soft-delete with related product-list cache and event invalidation.
   await requireAdminPermission("product.delete");
@@ -174,6 +197,9 @@ export async function deleteCategoryAction(id: number) {
   }
 }
 
+/**
+ * Handles search categories action.
+ */
 export async function searchCategoriesAction(query: string) {
   // lightweight admin search for selectors/autocomplete.
   return searchCategoriesService(query);

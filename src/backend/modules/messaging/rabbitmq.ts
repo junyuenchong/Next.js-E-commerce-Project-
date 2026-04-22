@@ -1,7 +1,3 @@
-/**
- * rabbitmq
- * handle rabbitmq logic
- */
 // publishes order-related background jobs to RabbitMQ queues for async processing.
 import amqp, { Channel } from "amqplib";
 import { runSafely } from "@/backend/shared/async-safety";
@@ -97,7 +93,9 @@ export type OrderAnalyticsJobPayload = {
   status?: "paid" | "processing" | "shipped" | "delivered" | "cancelled";
 };
 
-// enqueue email job.
+/**
+ * Handles enqueue order email job.
+ */
 export async function enqueueOrderEmailJob(payload: OrderEmailJobPayload) {
   // fail hard only when MQ is configured but unreachable.
   return runSafely(
@@ -118,7 +116,9 @@ export async function enqueueOrderEmailJob(payload: OrderEmailJobPayload) {
   );
 }
 
-// enqueue payment job.
+/**
+ * Handles enqueue order payment job.
+ */
 export async function enqueueOrderPaymentJob(payload: OrderPaymentJobPayload) {
   // payment-side effects are offloaded to worker pipeline via queue.
   return runSafely(
@@ -139,7 +139,9 @@ export async function enqueueOrderPaymentJob(payload: OrderPaymentJobPayload) {
   );
 }
 
-// enqueue analytics job.
+/**
+ * Handles enqueue order analytics job.
+ */
 export async function enqueueOrderAnalyticsJob(
   payload: OrderAnalyticsJobPayload,
 ) {

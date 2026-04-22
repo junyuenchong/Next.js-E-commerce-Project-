@@ -33,15 +33,33 @@ type PersistedOrderPollResult =
       reason: "failed_or_cancelled" | "timeout" | "still_processing";
     };
 
+function isContainerRemovedError(error: unknown): boolean {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "";
+  return /container element removed from dom/i.test(message);
+}
+
 async function waitForPersistedOrderId(
   paypalOrderId: string,
+  idempotencyKey?: string | null,
 ): Promise<PersistedOrderPollResult> {
   // Give webhook-first mode enough time before showing an actionable fallback.
   const maxAttempts = 25;
   for (let i = 0; i < maxAttempts; i += 1) {
     const response = await fetch(
       `/features/user/api/paypal/orders/${encodeURIComponent(paypalOrderId)}/status`,
-      { credentials: "include", cache: "no-store" },
+      {
+        credentials: "include",
+        cache: "no-store",
+        // pass same idempotency key so status endpoint can verify transaction ownership.
+        headers: idempotencyKey
+          ? { "x-idempotency-key": idempotencyKey }
+          : undefined,
+      },
     );
     const payload = (await response.json().catch(() => null)) as {
       order?: { id?: number };
@@ -164,135 +182,162 @@ export function usePayPalCheckoutButtons(params: Params) {
     const el = hostRef.current;
     const paypal = window.paypal;
     if (!el || !paypal?.Buttons || disabled) return;
+    if (!el.isConnected) return;
     if (mountedButtonsRef.current) return;
     el.innerHTML = "";
-    await paypal
-      .Buttons({
-        createOrder: async () => {
-          if (!createOrderIdempotencyKeyRef.current) {
-            createOrderIdempotencyKeyRef.current =
-              globalThis.crypto?.randomUUID?.() ??
-              `paypal-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-          }
-          const createOrderResponse = await fetch(
-            "/features/user/api/paypal/orders",
-            {
-              method: "POST",
-              headers: {
-                "x-idempotency-key": createOrderIdempotencyKeyRef.current,
-              },
-              credentials: "include",
+    const buttons = paypal.Buttons({
+      createOrder: async () => {
+        // generate one idempotency key per checkout attempt.
+        if (!createOrderIdempotencyKeyRef.current) {
+          createOrderIdempotencyKeyRef.current =
+            globalThis.crypto?.randomUUID?.() ??
+            `paypal-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        }
+        const createOrderHttpResponse = await fetch(
+          "/features/user/api/paypal/orders",
+          {
+            method: "POST",
+            headers: {
+              "x-idempotency-key": createOrderIdempotencyKeyRef.current,
             },
+            credentials: "include",
+          },
+        );
+        const createOrderResponsePayload = (await createOrderHttpResponse
+          .json()
+          .catch(() => null)) as {
+          id?: string;
+          error?: string;
+          transactionId?: string;
+        } | null;
+        if (!createOrderHttpResponse.ok) {
+          const code = createOrderResponsePayload?.error ?? "create_failed";
+          const errorMessage =
+            code === "empty_cart"
+              ? "Your cart is empty."
+              : code === "insufficient_stock"
+                ? "Some items are out of stock. Please refresh your cart."
+                : code === "cart_amount_mismatch_refresh_cart"
+                  ? "Your cart total changed. Please refresh and try again."
+                  : "Could not start PayPal checkout. Try again.";
+          throw new Error(errorMessage);
+        }
+        if (!createOrderResponsePayload?.id)
+          throw new Error("Missing PayPal order id.");
+        // transactionId is returned by backend for trace/debug if needed.
+        if (createOrderResponsePayload.transactionId) {
+          console.info(
+            "[paypal] create transaction",
+            createOrderResponsePayload.transactionId,
           );
-          const createOrderPayload = (await createOrderResponse
-            .json()
-            .catch(() => null)) as { id?: string; error?: string } | null;
-          if (!createOrderResponse.ok) {
-            const code = createOrderPayload?.error ?? "create_failed";
-            const errorMessage =
-              code === "empty_cart"
-                ? "Your cart is empty."
-                : code === "insufficient_stock"
-                  ? "Some items are out of stock. Please refresh your cart."
-                  : code === "cart_amount_mismatch_refresh_cart"
-                    ? "Your cart total changed. Please refresh and try again."
-                    : "Could not start PayPal checkout. Try again.";
-            throw new Error(errorMessage);
-          }
-          if (!createOrderPayload?.id)
-            throw new Error("Missing PayPal order id.");
-          return createOrderPayload.id;
-        },
-        onApprove: async (data) => {
-          // Capture consumes this attempt; next create should use a fresh key.
-          createOrderIdempotencyKeyRef.current = null;
-          const body = JSON.stringify({
-            smsTo: smsTo ?? "",
-            shipping: shipping ?? {},
-          });
-          const captureResponse = await fetch(
-            `/features/user/api/paypal/orders/${encodeURIComponent(
-              data.orderID,
-            )}/capture`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body,
-            },
+        }
+        return createOrderResponsePayload.id;
+      },
+      onApprove: async (data) => {
+        const captureAttemptIdempotencyKey =
+          createOrderIdempotencyKeyRef.current;
+        // Capture consumes this attempt; next create should use a fresh key.
+        createOrderIdempotencyKeyRef.current = null;
+        const body = JSON.stringify({
+          smsTo: smsTo ?? "",
+          shipping: shipping ?? {},
+        });
+        const captureHttpResponse = await fetch(
+          `/features/user/api/paypal/orders/${encodeURIComponent(
+            data.orderID,
+          )}/capture`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body,
+          },
+        );
+        const captureResponsePayload = (await captureHttpResponse
+          .json()
+          .catch(() => null)) as {
+          ok?: boolean;
+          error?: string;
+          hint?: string;
+          pending?: boolean;
+          transactionId?: string;
+          order?: { id?: number };
+        } | null;
+        if (!captureHttpResponse.ok) {
+          const code = captureResponsePayload?.error ?? "capture_failed";
+          const errorMessage =
+            code === "cart_amount_mismatch_refresh_cart"
+              ? "Your cart total changed. Please refresh your cart and try again."
+              : code === "insufficient_stock"
+                ? "Some items are out of stock. Please refresh your cart."
+                : code === "order_persist_failed"
+                  ? (captureResponsePayload?.hint ??
+                    "Payment may have succeeded; please contact support.")
+                  : "Payment capture failed. You can try again.";
+          emitUserError(errorMessage);
+          return;
+        }
+        if (!captureResponsePayload?.ok) {
+          emitUserError(
+            "Payment was not completed. You can retry checkout now.",
           );
-          const capturePayload = (await captureResponse
-            .json()
-            .catch(() => null)) as {
-            ok?: boolean;
-            error?: string;
-            hint?: string;
-            order?: { id?: number };
-          } | null;
-          if (!captureResponse.ok) {
-            const code = capturePayload?.error ?? "capture_failed";
-            const errorMessage =
-              code === "cart_amount_mismatch_refresh_cart"
-                ? "Your cart total changed. Please refresh your cart and try again."
-                : code === "insufficient_stock"
-                  ? "Some items are out of stock. Please refresh your cart."
-                  : code === "order_persist_failed"
-                    ? (capturePayload?.hint ??
-                      "Payment may have succeeded; please contact support.")
-                    : "Payment capture failed. You can try again.";
-            emitUserError(errorMessage);
-            return;
-          }
-          if (!capturePayload?.ok) {
+          return;
+        }
+        if (captureResponsePayload.transactionId) {
+          console.info(
+            "[paypal] capture transaction",
+            captureResponsePayload.transactionId,
+          );
+        }
+        const directOrderId = captureResponsePayload?.order?.id;
+        if (
+          typeof directOrderId === "number" &&
+          Number.isFinite(directOrderId)
+        ) {
+          onPaid({ orderId: directOrderId });
+          return;
+        }
+        // Webhook-first safety: wait briefly for server-side order/payment reconciliation.
+        const persisted = await waitForPersistedOrderId(
+          data.orderID,
+          captureAttemptIdempotencyKey,
+        );
+        if (persisted.kind === "failed") {
+          if (persisted.reason === "failed_or_cancelled") {
             emitUserError(
               "Payment was not completed. You can retry checkout now.",
             );
             return;
           }
-          const directOrderId = capturePayload?.order?.id;
-          if (
-            typeof directOrderId === "number" &&
-            Number.isFinite(directOrderId)
-          ) {
-            onPaid({ orderId: directOrderId });
-            return;
-          }
-          // Webhook-first safety: wait briefly for server-side order/payment reconciliation.
-          const persisted = await waitForPersistedOrderId(data.orderID);
-          if (persisted.kind === "failed") {
-            if (persisted.reason === "failed_or_cancelled") {
-              emitUserError(
-                "Payment was not completed. You can retry checkout now.",
-              );
-              return;
-            }
-            if (persisted.reason === "timeout") {
-              emitUserError(
-                "Payment timed out and was auto-cancelled. Please retry checkout.",
-              );
-              return;
-            }
+          if (persisted.reason === "timeout") {
             emitUserError(
-              "Payment is still processing on server. Please check My Orders in a moment.",
+              "Payment timed out and was auto-cancelled. Please retry checkout.",
             );
             return;
           }
-          onPaid({ orderId: persisted.orderId });
-        },
-        onCancel: () => {
-          createOrderIdempotencyKeyRef.current = null;
-          emitUserError("Payment was cancelled. Your cart is still saved.");
-        },
-        onError: (error) => {
-          // Keep console clean and avoid repeating same message loops.
-          const errorMessage =
-            error instanceof Error && error.message.trim()
-              ? error.message
-              : "PayPal reported an error. Try again.";
-          emitUserError(errorMessage);
-        },
-      })
-      .render(el);
+          emitUserError(
+            "Payment is still processing on server. Please check My Orders in a moment.",
+          );
+          return;
+        }
+        onPaid({ orderId: persisted.orderId });
+      },
+      onCancel: () => {
+        createOrderIdempotencyKeyRef.current = null;
+        emitUserError("Payment was cancelled. Your cart is still saved.");
+      },
+      onError: (error) => {
+        // Keep console clean and avoid repeating same message loops.
+        const errorMessage =
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : "PayPal reported an error. Try again.";
+        emitUserError(errorMessage);
+      },
+    });
+    if (!hostRef.current || hostRef.current !== el || !el.isConnected) return;
+    await buttons.render(el);
+    if (!hostRef.current || hostRef.current !== el || !el.isConnected) return;
     mountedButtonsRef.current = true;
   }, [disabled, emitUserError, onPaid, shipping, smsTo]);
 
@@ -304,6 +349,10 @@ export function usePayPalCheckoutButtons(params: Params) {
     }
     void renderButtons().catch((error) => {
       mountedButtonsRef.current = false;
+      if (isContainerRemovedError(error)) {
+        // Benign race: checkout view changed before PayPal finished mounting.
+        return;
+      }
       console.error("[PayPal render]", error);
       emitUserError("Could not render PayPal button. Please try again.");
     });

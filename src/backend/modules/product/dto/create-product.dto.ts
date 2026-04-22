@@ -1,7 +1,3 @@
-/**
- * create product dto
- * handle create product dto logic
- */
 import type { z } from "zod";
 import type { productSchema } from "@/shared/schema";
 

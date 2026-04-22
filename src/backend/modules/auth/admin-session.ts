@@ -1,7 +1,3 @@
-/**
- * admin session
- * handle admin session logic
- */
 import { decode, encode } from "next-auth/jwt";
 import type { AdminSessionClaims } from "@/shared/types";
 export type { AdminSessionClaims } from "@/shared/types";
@@ -16,7 +12,9 @@ function adminSessionSecret(): string | null {
   return process.env.ADMIN_AUTH_SECRET || process.env.NEXTAUTH_SECRET || null;
 }
 
-// create JWT token for admin session.
+/**
+ * Handles sign admin session token.
+ */
 export async function signAdminSessionToken(
   claims: AdminSessionClaims,
 ): Promise<string> {
@@ -36,7 +34,9 @@ export async function signAdminSessionToken(
   });
 }
 
-// verify JWT token and return admin claims when valid.
+/**
+ * Handles verify admin session token.
+ */
 export async function verifyAdminSessionToken(
   token: string,
 ): Promise<AdminSessionClaims | null> {

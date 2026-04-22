@@ -23,3 +23,15 @@ export type CreatePaidOrderInput = {
   shippingCountry?: string | null;
   shippingMethod?: string | null;
 };
+
+export type CreatePendingOrderInput = {
+  userId: number | null;
+  emailSnapshot: string | null;
+  currency: string;
+  total: number;
+  paypalOrderId: string;
+  lines: PaidOrderLineInput[];
+  couponId?: number | null;
+  couponCodeSnapshot?: string | null;
+  discountAmount?: number;
+};

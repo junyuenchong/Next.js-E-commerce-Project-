@@ -1,13 +1,11 @@
-/**
- * sms service
- * handle sms service logic
- */
 // sends transactional SMS messages through Twilio and normalizes provider error outcomes.
 export type SendSmsResult =
   | { ok: true; sid: string }
   | { ok: false; error: string; status?: number };
 
-// Send an SMS via Twilio, returning a structured provider result.
+/**
+ * Send an SMS via Twilio, returning a structured provider result.
+ */
 export async function sendTwilioSms(params: {
   to: string;
   body: string;

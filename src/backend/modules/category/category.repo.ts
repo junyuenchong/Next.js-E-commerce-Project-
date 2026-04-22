@@ -1,10 +1,9 @@
-/**
- * category repo
- * handle category repo logic
- */
 // provides category persistence for hierarchical catalog structures and lookup helpers.
 import prisma from "@/app/lib/prisma";
 
+/**
+ * Handles find category by slug.
+ */
 export async function findCategoryBySlug(
   slug: string,
   opts?: { activeOnly?: boolean },
@@ -16,11 +15,16 @@ export async function findCategoryBySlug(
   });
 }
 
+/**
+ * Handles find category by id.
+ */
 export async function findCategoryById(id: number) {
   return prisma.category.findUnique({ where: { id } });
 }
 
-// storefront/nav category lists return active categories only.
+/**
+ * Handles list categories active.
+ */
 export async function listCategoriesActive() {
   return prisma.category.findMany({
     where: { isActive: true },
@@ -28,6 +32,9 @@ export async function listCategoriesActive() {
   });
 }
 
+/**
+ * Handles find products by category slug.
+ */
 export async function findProductsByCategorySlug(params: {
   slug: string;
   take?: number;
@@ -66,6 +73,9 @@ export async function findProductsByCategorySlug(params: {
   });
 }
 
+/**
+ * Handles find products by category slug cursor.
+ */
 export async function findProductsByCategorySlugCursor(params: {
   slug: string;
   take?: number;
@@ -109,6 +119,9 @@ export async function findProductsByCategorySlugCursor(params: {
   });
 }
 
+/**
+ * Handles create category record.
+ */
 export async function createCategoryRecord(data: {
   name: string;
   slug: string;
@@ -116,6 +129,9 @@ export async function createCategoryRecord(data: {
   return prisma.category.create({ data });
 }
 
+/**
+ * Handles update category record.
+ */
 export async function updateCategoryRecord(
   id: number,
   data: { name: string; slug: string },
@@ -123,6 +139,9 @@ export async function updateCategoryRecord(
   return prisma.category.update({ where: { id }, data });
 }
 
+/**
+ * Handles soft deactivate category record.
+ */
 export async function softDeactivateCategoryRecord(id: number) {
   // Soft-delete keeps FK references intact (orders/products history).
   return prisma.category.update({
@@ -131,6 +150,9 @@ export async function softDeactivateCategoryRecord(id: number) {
   });
 }
 
+/**
+ * Handles search categories by name.
+ */
 export async function searchCategoriesByName(query: string) {
   return prisma.category.findMany({
     where: {
@@ -141,6 +163,9 @@ export async function searchCategoriesByName(query: string) {
   });
 }
 
+/**
+ * Handles category slug exists.
+ */
 export async function categorySlugExists(slug: string) {
   // Existence check is used by service layer before create/update writes.
   const category = await prisma.category.findUnique({

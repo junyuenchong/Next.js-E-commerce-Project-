@@ -1,7 +1,3 @@
-/**
- * cart action
- * handle cart action logic
- */
 // provides cart server action adapters around cart service operations.
 "use server";
 
@@ -16,24 +12,32 @@ import {
   updateCartItemService,
 } from "./cart.service";
 
-// ensure cart exists before mutations.
+/**
+ * Handles get or create cart action.
+ */
 export async function getOrCreateCartAction() {
   // every cart mutation assumes a persisted cart id exists first.
   return getOrCreateCartService();
 }
 
-// add item to current session cart.
+/**
+ * Handles add to cart action.
+ */
 export async function addToCartAction(productId: number, quantity: number = 1) {
   // numeric coercion happens here; stock/business validation stays in service.
   return addToCartService(Number(productId), quantity);
 }
 
-// remove item from current session cart.
+/**
+ * Handles remove from cart action.
+ */
 export async function removeFromCartAction(productId: number) {
   return removeFromCartService(Number(productId));
 }
 
-// set specific cart line quantity for current session.
+/**
+ * Handles update cart item action.
+ */
 export async function updateCartItemAction(
   productId: number,
   quantity: number,
@@ -41,23 +45,31 @@ export async function updateCartItemAction(
   return updateCartItemService(Number(productId), quantity);
 }
 
-// empty current session cart.
+/**
+ * Handles clear cart action.
+ */
 export async function clearCartAction() {
   return clearCartService();
 }
 
-// merge guest cart into authenticated cart after login.
+/**
+ * Handles merge guest cart to user action.
+ */
 export async function mergeGuestCartToUserAction() {
   // post-login bridge from anonymous cart session to user-owned cart.
   return mergeGuestCartToUserService();
 }
 
-// read current session cart (may be null).
+/**
+ * Handles get cart action.
+ */
 export async function getCartAction() {
   return getCartService();
 }
 
-// read current cart with live product data for UI rendering.
+/**
+ * Handles get cart with live products action.
+ */
 export async function getCartWithLiveProductsAction() {
   // hydrated read path includes latest product state for checkout/cart UI.
   return getCartWithLiveProductsService();

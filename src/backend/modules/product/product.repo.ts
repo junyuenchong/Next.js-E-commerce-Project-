@@ -1,7 +1,3 @@
-/**
- * product repo
- * handle product repo logic
- */
 // handles product and review data access for catalog listing and admin operations.
 import prisma from "@/app/lib/prisma";
 import { productReviewHasIsActiveColumn } from "@/backend/modules/review/review-schema-capability";
@@ -36,7 +32,9 @@ export type ProductListItem = Prisma.ProductGetPayload<{
   select: typeof productListSelect;
 }>;
 
-// find product by slug with optional storefront visibility guard.
+/**
+ * Handles find product by slug.
+ */
 export async function findProductBySlug(
   slug: string,
   options?: { activeOnly?: boolean },
@@ -54,7 +52,9 @@ export async function findProductBySlug(
   });
 }
 
-// find product by id with optional storefront visibility guard.
+/**
+ * Handles find product by id.
+ */
 export async function findProductById(
   id: number,
   options?: { activeOnly?: boolean },
@@ -72,7 +72,9 @@ export async function findProductById(
   });
 }
 
-// list storefront-visible products with offset pagination.
+/**
+ * Handles find products.
+ */
 export async function findProducts(params: { take: number; skip: number }) {
   return prisma.product.findMany({
     where: { isActive: true },
@@ -83,7 +85,9 @@ export async function findProducts(params: { take: number; skip: number }) {
   });
 }
 
-// list storefront-visible products with cursor pagination.
+/**
+ * Handles find products cursor.
+ */
 export async function findProductsCursor(params: {
   take: number;
   cursorId?: number;
@@ -102,7 +106,9 @@ export async function findProductsCursor(params: {
   });
 }
 
-// search storefront-visible products across title/description/category fields.
+/**
+ * Handles search products query.
+ */
 export async function searchProductsQuery(query: string) {
   return prisma.product.findMany({
     where: {
@@ -141,7 +147,9 @@ function orderByFromSort(
   }
 }
 
-// search storefront-visible products using optional facets and sorting.
+/**
+ * Handles search products with filters query.
+ */
 export async function searchProductsWithFiltersQuery(params: {
   query?: string;
   categorySlug?: string;
@@ -186,7 +194,9 @@ export async function searchProductsWithFiltersQuery(params: {
   });
 }
 
-// insert new product row.
+/**
+ * Handles create product record.
+ */
 export async function createProductRecord(data: {
   title: string;
   slug: string;
@@ -200,7 +210,9 @@ export async function createProductRecord(data: {
   return prisma.product.create({ data });
 }
 
-// update product row by id.
+/**
+ * Handles update product record.
+ */
 export async function updateProductRecord(
   id: number,
   data: {
@@ -217,7 +229,9 @@ export async function updateProductRecord(
   return prisma.product.update({ where: { id }, data });
 }
 
-// soft delete hides product from storefront while preserving FK history.
+/**
+ * Handles soft deactivate product by id.
+ */
 export async function softDeactivateProductById(id: number) {
   return prisma.product.update({
     where: { id },
@@ -225,7 +239,9 @@ export async function softDeactivateProductById(id: number) {
   });
 }
 
-// check whether product slug is already in use.
+/**
+ * Handles slug exists.
+ */
 export async function slugExists(slug: string) {
   const existing = await prisma.product.findFirst({
     where: { slug },
@@ -259,7 +275,9 @@ function likelyMissingColumnError(error: unknown): boolean {
   );
 }
 
-// batch-load review aggregates and paid units sold in the last 24 hours.
+/**
+ * Handles get product public list stats.
+ */
 export async function getProductPublicListStats(
   productIds: number[],
 ): Promise<Map<number, ProductPublicListStats>> {
@@ -329,7 +347,9 @@ export async function getProductPublicListStats(
   return map;
 }
 
-// attach public list stats to product rows for storefront cards/lists.
+/**
+ * Handles attach public list stats.
+ */
 export async function attachPublicListStats<T extends { id: number }>(
   items: T[],
 ): Promise<Array<T & ProductPublicListStats>> {
@@ -353,7 +373,9 @@ export async function attachPublicListStats<T extends { id: number }>(
   });
 }
 
-// serialize admin product row to JSON-safe shape (`Decimal` -> `number`).
+/**
+ * Handles serialize admin product list item.
+ */
 export function serializeAdminProductListItem(
   row: ProductListItem & ProductPublicListStats,
 ) {

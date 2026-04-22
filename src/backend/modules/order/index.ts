@@ -1,8 +1,4 @@
-/**
- * order module
- * export order members
- */
-// orders — order creation, status/shipment updates, and admin/user queries.
+// Order module public exports.
 export * from "./order.action";
 export * from "./order.service";
 export * from "./order.repo";

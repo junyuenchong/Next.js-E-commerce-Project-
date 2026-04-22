@@ -1,21 +1,23 @@
-/**
- * auth repo
- * handle auth repo logic
- */
 // provides auth-related persistence for admin sessions and password-reset tokens.
 import prisma from "@/backend/core/db/prisma";
 
-// look up user by email for password-reset eligibility checks.
+/**
+ * Handles find user by email for password reset.
+ */
 export async function findUserByEmailForPasswordReset(email: string) {
   return prisma.user.findUnique({ where: { email: email.trim() } });
 }
 
-// clear outstanding password-reset tokens for user.
+/**
+ * Handles delete password reset tokens for user.
+ */
 export async function deletePasswordResetTokensForUser(userId: number) {
   return prisma.passwordResetToken.deleteMany({ where: { userId } });
 }
 
-// persist a new password-reset token row.
+/**
+ * Handles create password reset token record.
+ */
 export async function createPasswordResetTokenRecord(data: {
   userId: number;
   tokenHash: string;
@@ -24,7 +26,9 @@ export async function createPasswordResetTokenRecord(data: {
   return prisma.passwordResetToken.create({ data });
 }
 
-// fetch password-reset token row with related user.
+/**
+ * Handles find password reset token with user.
+ */
 export async function findPasswordResetTokenWithUser(tokenHash: string) {
   return prisma.passwordResetToken.findUnique({
     where: { tokenHash },
@@ -32,7 +36,9 @@ export async function findPasswordResetTokenWithUser(tokenHash: string) {
   });
 }
 
-// atomically apply password reset and invalidate sessions/tokens.
+/**
+ * Handles apply password reset transaction.
+ */
 export async function applyPasswordResetTransaction(input: {
   userId: number;
   passwordHash: string;
@@ -48,7 +54,9 @@ export async function applyPasswordResetTransaction(input: {
   ]);
 }
 
-// load admin-panel user profile fields for access checks.
+/**
+ * Handles find admin panel user row by id.
+ */
 export async function findAdminPanelUserRowById(id: number) {
   return prisma.user.findUnique({
     where: { id },
@@ -64,7 +72,9 @@ export async function findAdminPanelUserRowById(id: number) {
   });
 }
 
-// fetch user status/role fields for admin session verification.
+/**
+ * Handles find user for admin session route.
+ */
 export async function findUserForAdminSessionRoute(userId: number) {
   // minimal select keeps admin session check endpoint lightweight.
   return prisma.user.findUnique({
@@ -73,7 +83,9 @@ export async function findUserForAdminSessionRoute(userId: number) {
   });
 }
 
-// fetch credential fields for admin password login verification.
+/**
+ * Handles find user for admin password login.
+ */
 export async function findUserForAdminPasswordLogin(email: string) {
   // login query returns only fields required for credential verification.
   return prisma.user.findUnique({

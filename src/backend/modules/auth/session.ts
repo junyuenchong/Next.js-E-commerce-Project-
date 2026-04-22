@@ -1,7 +1,3 @@
-/**
- * session
- * handle session logic
- */
 import { cache } from "react";
 import { getServerSession } from "next-auth/next";
 import { cookies } from "next/headers";
@@ -16,7 +12,9 @@ import {
 
 export type AdminPanelRole = Exclude<UserRole, "USER">;
 
-// read NextAuth server session with React cache.
+/**
+ * Handles get server session cached.
+ */
 export async function getServerSessionCached() {
   // cached session read avoids repeated auth DB work per request/render.
   return getServerSession(authOptions);
@@ -36,14 +34,18 @@ const getAdminUserRow = cache(async (userId: number) => {
   return findAdminPanelUserRowById(userId);
 });
 
-// read currently signed-in user from session (or null).
+/**
+ * Handles get current user.
+ */
 export async function getCurrentUser() {
   // returns raw NextAuth user; callers should validate `isActive` as needed.
   const session = await getServerSessionCached();
   return session?.user ?? null;
 }
 
-// resolve numeric user id from session, or null when inactive/invalid.
+/**
+ * Handles resolve user id.
+ */
 export async function resolveUserId(): Promise<number | null> {
   // used by checkout/user flows that require stable numeric DB ids.
   const session = await getServerSessionCached();
@@ -57,7 +59,9 @@ export async function resolveUserId(): Promise<number | null> {
   return null;
 }
 
-// resolve current admin user from admin cookie token and DB state.
+/**
+ * Handles get current admin user.
+ */
 export async function getCurrentAdminUser(): Promise<AdminSessionUser | null> {
   // admin auth is cookie/JWT-based to stay independent from NextAuth session flow.
   const cookieStore = await cookies();

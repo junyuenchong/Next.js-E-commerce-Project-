@@ -62,6 +62,27 @@ const STATUS_OPTIONS: OrderStatus[] = [
   "cancelled",
 ];
 
+function adminOrderStatusLabel(status: OrderStatus): string {
+  switch (status) {
+    case "pending":
+      return "Payment pending";
+    case "paid":
+      return "Paid";
+    case "processing":
+      return "Processing";
+    case "shipped":
+      return "Shipped";
+    case "delivered":
+      return "Delivered";
+    case "fulfilled":
+      return "Fulfilled";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return status;
+  }
+}
+
 async function fetchAdminMe(): Promise<Me> {
   const { data } = await http.get<Me>("/features/admin/api/me");
   return data;
@@ -329,7 +350,7 @@ export default function AdminOrdersClient() {
           <option value="all">All status</option>
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {adminOrderStatusLabel(s)}
             </option>
           ))}
         </select>
@@ -451,7 +472,7 @@ export default function AdminOrdersClient() {
                         >
                           {STATUS_OPTIONS.map((s) => (
                             <option key={s} value={s}>
-                              {s}
+                              {adminOrderStatusLabel(s)}
                             </option>
                           ))}
                         </select>
@@ -476,7 +497,9 @@ export default function AdminOrdersClient() {
                                 ? "Delivered"
                                 : o.status === "shipped"
                                   ? "Shipped"
-                                  : "Pending shipment"}
+                                  : o.status === "processing"
+                                    ? "Processing"
+                                    : "Payment pending"}
                         </div>
                       </td>
                       <td className="px-3 py-2 space-x-2 whitespace-nowrap">

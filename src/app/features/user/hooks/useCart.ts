@@ -13,10 +13,12 @@ export function useCart() {
   const query = useQuery({
     queryKey: USER_CART_QUERY_KEY,
     queryFn: () => fetchCart(),
-    staleTime: 30_000,
+    // Keep cart data fresh so cross-page/tab updates do not hide recently added items.
+    staleTime: 5_000,
     gcTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   return {

@@ -1,11 +1,8 @@
-/**
- * order action
- * handle order action logic
- */
-// provides order actions for checkout creation, stock updates, and admin order access.
+// Order action layer: route-facing adapters over order services.
 import type { OrderStatus } from "@prisma/client";
 import {
   buildPaidOrderLinesFromCart,
+  createPendingOrderBeforeCaptureService,
   createPaidOrderAfterCaptureService,
   decrementStockForOrderLinesService,
   getOrderAdminByIdService,
@@ -16,6 +13,7 @@ import {
   getOrderIdByPayPalOrderIdService,
   listAllOrdersAdminService,
   listOrdersForUserService,
+  markOrderReceivedByUserService,
   updateOrderShipmentAdminService,
   updateOrderStatusAdminService,
   validateCartStockForOrder,
@@ -24,6 +22,7 @@ import {
 export {
   // re-export service primitives so existing API imports remain stable.
   buildPaidOrderLinesFromCart,
+  createPendingOrderBeforeCaptureService,
   createPaidOrderAfterCaptureService,
   decrementStockForOrderLinesService,
   getOrderAdminByIdService,
@@ -34,10 +33,14 @@ export {
   getOrderIdByPayPalOrderIdService,
   listAllOrdersAdminService,
   listOrdersForUserService,
+  markOrderReceivedByUserService,
   updateOrderShipmentAdminService,
   validateCartStockForOrder,
 };
 
+/**
+ * Handles update order status admin action.
+ */
 export async function updateOrderStatusAdminAction(
   orderId: number,
   status: OrderStatus,

@@ -1,7 +1,3 @@
-/**
- * product service
- * handle product service logic
- */
 // handles product domain services for admin maintenance and storefront product retrieval.
 import slugify from "slugify";
 import { productSchema, productSlugSchema } from "@/shared/schema";
@@ -25,6 +21,9 @@ function normalizePagination(limit?: number, page?: number) {
   return { take, skip };
 }
 
+/**
+ * Normalize and validate product input for create/update flows.
+ */
 export function normalizeProductInput(data: unknown) {
   if (typeof data !== "object" || data === null) {
     throw new Error("Invalid input data");
@@ -65,7 +64,9 @@ export function normalizeProductInput(data: unknown) {
   return validated.data;
 }
 
-// generate unique URL-safe product slug for title.
+/**
+ * Generate a unique URL-safe product slug for the given title.
+ */
 export async function generateUniqueProductSlug(
   name: string,
   excludeSlug?: string,
@@ -80,26 +81,34 @@ export async function generateUniqueProductSlug(
   return slug;
 }
 
-// create product record after schema validation and slug generation.
+/**
+ * Create product record after schema validation and slug generation.
+ */
 export async function createProductService(data: unknown) {
   const validated = normalizeProductInput(data);
   const slug = await generateUniqueProductSlug(validated.title);
   return createProductRecord({ ...validated, slug });
 }
 
-// update product record after schema validation and slug regeneration.
+/**
+ * Update product record after schema validation and slug regeneration.
+ */
 export async function updateProductService(id: number, data: unknown) {
   const validated = normalizeProductInput(data);
   const slug = await generateUniqueProductSlug(validated.title);
   return updateProductRecord(id, { ...validated, slug });
 }
 
-// soft-deactivate product so it no longer appears on storefront.
+/**
+ * Soft-deactivate product so it no longer appears on storefront.
+ */
 export async function deleteProductService(id: number) {
   return softDeactivateProductById(id);
 }
 
-// fetch storefront-visible product by slug (throws if missing).
+/**
+ * Fetch storefront-visible product by slug (throws if missing).
+ */
 export async function getProductBySlugService(slug: string) {
   const parsed = productSlugSchema.parse({ slug });
   const product = await findProductBySlug(parsed.slug);
@@ -107,7 +116,9 @@ export async function getProductBySlugService(slug: string) {
   return product;
 }
 
-// storefront mode returns active products only; admin mode may read inactive rows by id.
+/**
+ * Fetch a product by id, optionally restricting to storefront-visible items.
+ */
 export async function getProductByIdService(
   id: string,
   options?: { storefront?: boolean },
@@ -122,14 +133,18 @@ export async function getProductByIdService(
   return withStats;
 }
 
-// list storefront products using page-based pagination.
+/**
+ * List storefront products using page-based pagination.
+ */
 export async function listProductsService(limit?: number, page?: number) {
   const { take, skip } = normalizePagination(limit, page);
   const rows = await findProducts({ take, skip });
   return attachPublicListStats(rows);
 }
 
-// list storefront products using cursor-based pagination.
+/**
+ * List storefront products using cursor-based pagination.
+ */
 export async function listProductsCursorService(
   limit?: number,
   cursorId?: number,
@@ -139,14 +154,18 @@ export async function listProductsCursorService(
   return attachPublicListStats(rows);
 }
 
-// search storefront products by keyword, falling back to default list.
+/**
+ * Search storefront products by keyword, falling back to default list.
+ */
 export async function searchProductsService(query: string) {
   if (!query.trim()) return listProductsService();
   const rows = await searchProductsQuery(query.trim());
   return attachPublicListStats(rows);
 }
 
-// search storefront products with optional facets and sorting.
+/**
+ * Search storefront products with optional facets and sorting.
+ */
 export async function searchProductsWithFiltersService(filters: {
   query?: string;
   categorySlug?: string;

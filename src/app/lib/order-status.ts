@@ -7,7 +7,7 @@ type UserFacingOrderStatus = OrderListItem["status"] | string;
 export function getUserOrderStatusLabel(status: UserFacingOrderStatus): string {
   switch (String(status).toLowerCase()) {
     case "pending":
-      return "Pending";
+      return "Payment pending";
     case "paid":
       return "Paid";
     case "processing":

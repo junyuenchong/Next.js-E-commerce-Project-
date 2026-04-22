@@ -13,6 +13,7 @@ import { resolveCheckoutCouponPricing } from "@/backend/modules/coupon";
 import { resolveUserId } from "@/backend/core/session";
 import {
   buildPaidOrderLinesFromCart,
+  createPendingOrderBeforeCaptureService,
   validateCartStockForOrder,
 } from "@/backend/modules/order";
 import type { Prisma } from "@prisma/client";
@@ -28,8 +29,11 @@ const PAYMENT_EXPIRE_MINUTES = Math.max(
 );
 
 function resolveIdempotencyKey(request: Request, fallbackSeed: string) {
-  const provided = request.headers.get("x-idempotency-key")?.trim();
-  if (provided) return provided;
+  // client can send its own key; otherwise server builds a stable fallback key.
+  const providedIdempotencyKey = request.headers
+    .get("x-idempotency-key")
+    ?.trim();
+  if (providedIdempotencyKey) return providedIdempotencyKey;
   return `paypal-create:${fallbackSeed}`;
 }
 
@@ -104,16 +108,23 @@ export async function POST(request: Request) {
         currencyCode: DEFAULT_CURRENCY,
         value,
         paymentId: payment.id,
-        idempotencyKey,
+        // internal unique transaction id for support/debug trace.
+        transactionId: `PAYPAL-${payment.id}`,
+        idempotency: {
+          key: idempotencyKey,
+          replay: true,
+        },
+        paymentStatus: payment.status,
       });
     }
 
-    const created = await paypalCreateOrder({
+    const createOrderResult = await paypalCreateOrder({
       currencyCode: DEFAULT_CURRENCY,
       value,
+      idempotencyKey,
     });
 
-    if (!created) {
+    if (!createOrderResult) {
       await markPaymentFailedRepo({
         paymentId: payment.id,
         reason: "paypal_create_failed",
@@ -125,21 +136,41 @@ export async function POST(request: Request) {
       );
     }
 
+    const pendingOrder = await createPendingOrderBeforeCaptureService({
+      userId,
+      emailSnapshot: null,
+      currency: DEFAULT_CURRENCY,
+      total: priced.total,
+      paypalOrderId: createOrderResult.id,
+      lines: checkoutSnapshot.lines,
+      couponId: priced.couponId ?? null,
+      couponCodeSnapshot: priced.codeSnapshot ?? null,
+      discountAmount: priced.discountAmount,
+    });
+
     await markPaymentProcessingRepo({
       paymentId: payment.id,
-      providerOrderId: created.id,
+      orderId: pendingOrder.id,
+      providerOrderId: createOrderResult.id,
       gatewayResponse: {
         checkoutSnapshot,
-        providerOrderId: created.id,
+        pendingOrderId: pendingOrder.id,
+        providerOrderId: createOrderResult.id,
       } as Prisma.InputJsonValue,
     });
 
     return NextResponse.json({
-      id: created.id,
+      id: createOrderResult.id,
       currencyCode: DEFAULT_CURRENCY,
       value,
       paymentId: payment.id,
-      idempotencyKey,
+      // internal unique transaction id for support/debug trace.
+      transactionId: `PAYPAL-${payment.id}`,
+      idempotency: {
+        key: idempotencyKey,
+        replay: false,
+      },
+      paymentStatus: "PROCESSING",
     });
   } catch (error) {
     console.error("[paypal/orders]", error);

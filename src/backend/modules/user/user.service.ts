@@ -1,7 +1,3 @@
-/**
- * user service
- * handle user service logic
- */
 // manages user account lifecycle services including lookup, password, and session token flows.
 import { sha256 } from "@oslojs/crypto/sha2";
 import { encodeHexLowerCase } from "@oslojs/encoding";
@@ -14,25 +10,31 @@ import { toSafeUserDto } from "./dto/safe-user.dto";
 import type { AuthResult } from "@/shared/types";
 export type { AuthResult } from "@/shared/types";
 
+/**
+ * Hash a user password for storage.
+ */
 export const hashPasswordUserService = async (password: string) => {
-  // deterministic hash flow keeps compatibility with existing auth storage.
   return encodeHexLowerCase(sha256(new TextEncoder().encode(password)));
 };
 
+/**
+ * Verify a user password against a stored hash.
+ */
 export const verifyPasswordUserService = async (
   password: string,
   hash: string,
 ) => {
-  // verify by re-hashing input and comparing against stored hash.
   const passwordHash = await hashPasswordUserService(password);
   return passwordHash === hash;
 };
 
+/**
+ * Register a new user and return a safe DTO.
+ */
 export const registerUserUserService = async (
   email: string,
   password: string,
 ): Promise<AuthResult> => {
-  // return safe DTO so password hash never leaks to callers.
   const passwordHash = await hashPasswordUserService(password);
   try {
     const user = await createUserRepo(email, passwordHash);
@@ -44,12 +46,14 @@ export const registerUserUserService = async (
   }
 };
 
+/**
+ * Change a user's password after validating current password.
+ */
 export async function changePasswordUserService(
   userId: number,
   currentPassword: string,
   newPassword: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  // validate current password before overwriting stored hash.
   const user = await findUserByIdRepo(userId);
   if (!user) return { ok: false, error: "user_not_found" };
   if (!user.passwordHash) {

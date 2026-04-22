@@ -9,16 +9,18 @@ export type OrdersPageResponse = {
 export async function fetchOrdersPage(
   cursor?: number,
   limit = 40,
+  status?: string,
 ): Promise<OrdersPageResponse> {
-  const params = new URLSearchParams();
-  params.set("limit", String(limit));
-  if (cursor != null) params.set("cursor", String(cursor));
-  const { data } = await http.get<OrdersPageResponse>(
-    `/features/user/api/orders?${params.toString()}`,
+  const searchParams = new URLSearchParams();
+  searchParams.set("limit", String(limit));
+  if (cursor != null) searchParams.set("cursor", String(cursor));
+  if (status && status !== "all") searchParams.set("status", status);
+  const { data: responsePayload } = await http.get<OrdersPageResponse>(
+    `/features/user/api/orders?${searchParams.toString()}`,
   );
   return {
-    orders: Array.isArray(data.orders) ? data.orders : [],
-    nextCursor: data.nextCursor ?? null,
+    orders: Array.isArray(responsePayload.orders) ? responsePayload.orders : [],
+    nextCursor: responsePayload.nextCursor ?? null,
   };
 }
 
@@ -32,13 +34,13 @@ export async function fetchOrders(): Promise<OrderListItem[]> {
 export async function fetchAllUserOrders(
   maxPages = 25,
 ): Promise<OrderListItem[]> {
-  const out: OrderListItem[] = [];
+  const allOrders: OrderListItem[] = [];
   let cursor: number | undefined;
-  for (let i = 0; i < maxPages; i++) {
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
     const { orders, nextCursor } = await fetchOrdersPage(cursor, 50);
-    out.push(...orders);
+    allOrders.push(...orders);
     if (nextCursor == null) break;
     cursor = nextCursor;
   }
-  return out;
+  return allOrders;
 }

@@ -1,7 +1,3 @@
-/**
- * review action
- * handle review action logic
- */
 // provides product review actions for listing, moderation, and seller responses.
 "use server";
 
@@ -20,13 +16,17 @@ async function currentUserId() {
   return Number.isFinite(id) ? id : null;
 }
 
-// list active product reviews for storefront display.
+/**
+ * Handles list product reviews action.
+ */
 export async function listProductReviewsAction(productId: number) {
   // public list path used by product detail pages.
   return listProductReviewsService(productId);
 }
 
-// create or update current user's product review.
+/**
+ * Handles create or update product review action.
+ */
 export async function createOrUpdateProductReviewAction(params: {
   productId: number;
   rating: number;
@@ -44,7 +44,9 @@ export async function createOrUpdateProductReviewAction(params: {
   });
 }
 
-// update admin reply for a product review.
+/**
+ * Handles reply product review action.
+ */
 export async function replyProductReviewAction(
   reviewId: number,
   adminReply: string,

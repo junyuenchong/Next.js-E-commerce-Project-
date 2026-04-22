@@ -1,7 +1,3 @@
-/**
- * access control repo
- * handle access control repo logic
- */
 // queries role and permission persistence needed for admin access-control decisions.
 import prisma from "@/app/lib/prisma";
 import {
@@ -23,7 +19,9 @@ function cacheKeyForRoleId(roleId: number) {
   return `${CACHE_PREFIX}role:${roleId}`;
 }
 
-// check whether `AdminRoleDefinition.isActive` column exists in DB.
+/**
+ * Handles admin role definition has is active column.
+ */
 export async function adminRoleDefinitionHasIsActiveColumn(): Promise<boolean> {
   if (cachedAdminRoleHasIsActive === true) return true;
   try {
@@ -42,18 +40,24 @@ export async function adminRoleDefinitionHasIsActiveColumn(): Promise<boolean> {
   }
 }
 
-// reset cached `isActive` column capability flag.
+/**
+ * Handles reset admin role definition is active cache.
+ */
 export function resetAdminRoleDefinitionIsActiveCache() {
   cachedAdminRoleHasIsActive = null;
 }
 
-// clear role permission cache entries for provided role ids.
+/**
+ * Handles invalidate admin permission caches.
+ */
 export async function invalidateAdminPermissionCaches(roleIds: number[]) {
   if (roleIds.length === 0) return;
   await deleteCacheKeys(roleIds.map(cacheKeyForRoleId));
 }
 
-// get effective role permission keys with Redis cache.
+/**
+ * Handles get effective permission keys by role id.
+ */
 export async function getEffectivePermissionKeysByRoleId(
   roleId: number,
 ): Promise<string[]> {
@@ -74,7 +78,9 @@ export async function getEffectivePermissionKeysByRoleId(
   return keys as string[];
 }
 
-// find `AdminRoleDefinition` id by slug (or null).
+/**
+ * Handles get role definition id by slug.
+ */
 export async function getRoleDefinitionIdBySlug(
   slug: string,
 ): Promise<number | null> {
@@ -85,7 +91,9 @@ export async function getRoleDefinitionIdBySlug(
   return def?.id ?? null;
 }
 
-// resolve `AdminRoleDefinition` id by id (existence check).
+/**
+ * Handles get role definition id by id.
+ */
 export async function getRoleDefinitionIdById(
   roleId: number,
 ): Promise<number | null> {
@@ -96,7 +104,9 @@ export async function getRoleDefinitionIdById(
   return def?.id ?? null;
 }
 
-// resolve active `AdminRoleDefinition` id or null when inactive/missing.
+/**
+ * Handles get active role definition id by id.
+ */
 export async function getActiveRoleDefinitionIdById(
   roleId: number,
 ): Promise<number | null> {

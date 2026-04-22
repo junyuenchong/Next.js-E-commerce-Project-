@@ -1,11 +1,9 @@
-/**
- * user repo
- * handle user repo logic
- */
 // handles user persistence for account records, password updates, and lookup helpers.
 import prisma from "@/backend/core/db/prisma";
 
-// create new user record with pre-hashed password.
+/**
+ * Handles create user repo.
+ */
 export async function createUserRepo(email: string, passwordHash: string) {
   // persist password hash directly; plaintext never reaches repository layer.
   return prisma.user.create({
@@ -13,21 +11,27 @@ export async function createUserRepo(email: string, passwordHash: string) {
   });
 }
 
-// find user record by email.
+/**
+ * Handles find user by email repo.
+ */
 export async function findUserByEmailRepo(email: string) {
   return prisma.user.findUnique({
     where: { email },
   });
 }
 
-// find user record by id.
+/**
+ * Handles find user by id repo.
+ */
 export async function findUserByIdRepo(id: number) {
   return prisma.user.findUnique({
     where: { id },
   });
 }
 
-// update stored password hash for user.
+/**
+ * Handles update user password hash repo.
+ */
 export async function updateUserPasswordHashRepo(
   userId: number,
   passwordHash: string,

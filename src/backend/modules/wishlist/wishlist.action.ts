@@ -1,7 +1,3 @@
-/**
- * wishlist action
- * handle wishlist action logic
- */
 // provides wishlist server actions that delegate user wishlist mutations and reads.
 import {
   addWishlistItem,

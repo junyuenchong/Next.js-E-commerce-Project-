@@ -97,9 +97,24 @@ const HeaderClient = memo(function HeaderClient({
                   <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                     <Link
                       href="/features/user/profile"
-                      className="text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 whitespace-nowrap hidden sm:inline"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 text-gray-700 hover:border-gray-400 hover:text-gray-900"
+                      aria-label="Open profile"
+                      title="Profile"
                     >
-                      Profile
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.75 7.5a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0"
+                        />
+                      </svg>
                     </Link>
                     <span className="text-xs sm:text-sm text-gray-600 hidden lg:block truncate max-w-[140px]">
                       {user.email}

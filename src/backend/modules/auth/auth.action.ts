@@ -1,7 +1,3 @@
-/**
- * auth action
- * handle auth action logic
- */
 // defines auth server actions for admin session lifecycle operations.
 "use server";
 
@@ -15,12 +11,16 @@ import {
   createPasswordResetForEmail as createPasswordResetForEmailImpl,
 } from "./auth.service";
 
-// start password-reset flow by issuing reset token for email.
+/**
+ * Handles create password reset for email.
+ */
 export async function createPasswordResetForEmail(email: string) {
   return createPasswordResetForEmailImpl(email);
 }
 
-// consume reset token to set a new password hash.
+/**
+ * Handles consume password reset token.
+ */
 export async function consumePasswordResetToken(
   rawToken: string,
   newPasswordHash: string,
@@ -28,17 +28,23 @@ export async function consumePasswordResetToken(
   return consumePasswordResetTokenImpl(rawToken, newPasswordHash);
 }
 
-// read current cookie-based admin session for admin app.
+/**
+ * Handles get admin session action.
+ */
 export async function getAdminSessionAction(request: Request) {
   return getAdminSessionRoute(request);
 }
 
-// create admin session (login) and set admin cookie.
+/**
+ * Handles post admin session action.
+ */
 export async function postAdminSessionAction(request: Request) {
   return postAdminSessionRoute(request);
 }
 
-// destroy admin session cookie for logout.
+/**
+ * Handles delete admin session action.
+ */
 export async function deleteAdminSessionAction() {
   return deleteAdminSessionRoute();
 }

@@ -1,7 +1,3 @@
-/**
- * update user dto
- * handle update user dto logic
- */
 // dTO for authenticated password change (profile API).
 export type UpdateUserPasswordDto = {
   currentPassword: string;

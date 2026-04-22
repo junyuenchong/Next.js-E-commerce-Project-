@@ -1,7 +1,3 @@
-/**
- * access control action
- * handle access control action logic
- */
 // handles admin authorization checks and permission-gated response helpers.
 import { NextResponse } from "next/server";
 import type { UserRole } from "@prisma/client";
@@ -18,7 +14,9 @@ import {
 export const ADMIN_FORBIDDEN_MESSAGE = "You don't have permission to do this.";
 export const ADMIN_UNAUTHORIZED_MESSAGE = "Please sign in to continue.";
 
-// return 401 JSON response for unauthorized (not logged in).
+/**
+ * Handles admin json unauthorized.
+ */
 export function adminJsonUnauthorized() {
   return NextResponse.json(
     { error: "unauthorized", message: ADMIN_UNAUTHORIZED_MESSAGE },
@@ -26,7 +24,9 @@ export function adminJsonUnauthorized() {
   );
 }
 
-// return 403 JSON response for forbidden (user lacks permission).
+/**
+ * Handles admin json forbidden.
+ */
 export function adminJsonForbidden(
   message: string = ADMIN_FORBIDDEN_MESSAGE,
   errorCode: string = "forbidden",
@@ -48,7 +48,9 @@ async function requireAdminUserOrResponse(): Promise<
   return { ok: true, user };
 }
 
-// require a single admin permission key.
+/**
+ * Handles admin api require.
+ */
 export async function adminApiRequire(
   permission: string,
 ): Promise<AdminGuardOk | AdminGuardFail> {
@@ -61,7 +63,9 @@ export async function adminApiRequire(
   return { ok: true, user };
 }
 
-// require at least one permission from the provided list.
+/**
+ * Handles admin api require any.
+ */
 export async function adminApiRequireAny(
   permissions: string[],
 ): Promise<AdminGuardOk | AdminGuardFail> {
@@ -75,7 +79,9 @@ export async function adminApiRequireAny(
   return { ok: false, response: adminJsonForbidden() };
 }
 
-// require catalog access capability for current admin.
+/**
+ * Handles admin api require catalog access.
+ */
 export async function adminApiRequireCatalogAccess(): Promise<
   AdminGuardOk | AdminGuardFail
 > {
@@ -93,7 +99,9 @@ export async function adminApiRequireCatalogAccess(): Promise<
   return { ok: true, user };
 }
 
-// returns whether acting role can assign target role (never SUPER_ADMIN).
+/**
+ * Handles can assign target user role.
+ */
 export function canAssignTargetUserRole(
   _actingRole: UserRole,
   targetRole: UserRole,
@@ -101,7 +109,9 @@ export function canAssignTargetUserRole(
   return targetRole !== "SUPER_ADMIN";
 }
 
-// validate assignable target role and return typed forbidden response.
+/**
+ * Handles assert can assign user role.
+ */
 export function assertCanAssignUserRole(
   _actingRole: UserRole,
   targetRole: UserRole,
@@ -134,7 +144,9 @@ export class AdminActionForbiddenError extends Error {
   }
 }
 
-// throw when current admin lacks required permission.
+/**
+ * Handles require admin permission.
+ */
 export async function requireAdminPermission(
   permission: string,
 ): Promise<void> {
@@ -145,7 +157,9 @@ export async function requireAdminPermission(
   }
 }
 
-// throw when current admin lacks catalog access.
+/**
+ * Handles require admin catalog access.
+ */
 export async function requireAdminCatalogAccess(): Promise<void> {
   const user = await getCurrentAdminUser();
   if (!user) throw new AdminActionUnauthorizedError();

@@ -1,7 +1,3 @@
-/**
- * auth options
- * handle auth options logic
- */
 // nextAuth configuration for providers, sessions, and user auth flow.
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import GoogleProvider from "next-auth/providers/google";

@@ -1,11 +1,13 @@
 /**
- * async safety
- * handle async safety logic
+ * Handles log error with context.
  */
 export function logErrorWithContext(prefix: string, error: unknown): void {
   console.error(prefix, error);
 }
 
+/**
+ * Handles run safely.
+ */
 export async function runSafely<T>(
   task: () => Promise<T>,
   onError: (error: unknown) => T,
@@ -17,6 +19,9 @@ export async function runSafely<T>(
   }
 }
 
+/**
+ * Handles run safely void.
+ */
 export async function runSafelyVoid(
   task: () => Promise<void>,
   logPrefix: string,

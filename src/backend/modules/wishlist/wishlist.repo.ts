@@ -1,11 +1,9 @@
-/**
- * wishlist repo
- * handle wishlist repo logic
- */
 // executes wishlist persistence operations for user-scoped product wish entries.
 import prisma from "@/backend/core/db/prisma";
 
-// list active wishlist items for user with product snapshots.
+/**
+ * Handles list wishlist for user repo.
+ */
 export async function listWishlistForUserRepo(userId: number) {
   return prisma.wishlistItem.findMany({
     where: { userId, isActive: true },
@@ -26,7 +24,9 @@ export async function listWishlistForUserRepo(userId: number) {
   });
 }
 
-// add wishlist item and reactivate inactive row when present.
+/**
+ * Handles add wishlist item repo.
+ */
 export async function addWishlistItemRepo(userId: number, productId: number) {
   // reactivate existing row instead of creating duplicate (user,product) records.
   const existing = await prisma.wishlistItem.findUnique({
@@ -46,7 +46,9 @@ export async function addWishlistItemRepo(userId: number, productId: number) {
   });
 }
 
-// soft-remove wishlist item for user/product pair.
+/**
+ * Handles remove wishlist item repo.
+ */
 export async function removeWishlistItemRepo(
   userId: number,
   productId: number,

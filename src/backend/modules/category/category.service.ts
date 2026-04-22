@@ -1,7 +1,3 @@
-/**
- * category service
- * handle category service logic
- */
 // implements category services for CRUD management, slug rules, and cached reads.
 import slugify from "slugify";
 import { categorySchema, categorySlugSchema } from "@/shared/schema";
@@ -25,6 +21,9 @@ function normalizePagination(limit?: number, page?: number) {
   return { take, skip };
 }
 
+/**
+ * Handles generate unique category slug.
+ */
 export async function generateUniqueCategorySlug(
   name: string,
 ): Promise<string> {
@@ -38,35 +37,45 @@ export async function generateUniqueCategorySlug(
   return slug;
 }
 
+/**
+ * Get one storefront-visible category by slug (active-only).
+ */
 export async function getCategoryBySlugService(slug: string) {
-  // Storefront-safe lookup: validates slug and enforces active-only category visibility.
   const parsed = categorySlugSchema.parse({ slug });
   const category = await findCategoryBySlug(parsed.slug, { activeOnly: true });
   if (!category) throw new Error("Category not found");
   return category;
 }
 
+/**
+ * Get one category by numeric id (admin/internal).
+ */
 export async function getCategoryByIdService(id: number) {
-  // Admin/internal lookup by numeric id (may return inactive rows depending on repo behavior).
   return findCategoryById(id);
 }
 
-// admin category list returns active categories only.
+/**
+ * List categories for admin UI (active-only).
+ */
 export async function getAllCategoriesService() {
   return listCategoriesActive();
 }
 
-// storefront/public category list API.
+/**
+ * List categories for storefront UI (active-only).
+ */
 export async function getStorefrontCategoriesService() {
   return listCategoriesActive();
 }
 
+/**
+ * List products by category slug (page-based pagination).
+ */
 export async function getProductsByCategorySlugService(
   slug: string,
   limit?: number,
   page?: number,
 ) {
-  // Storefront product listing by category slug with optional page-based pagination.
   const parsed = categorySlugSchema.parse({ slug });
   const { take, skip } = normalizePagination(limit, page);
   const rows = await findProductsByCategorySlug({
@@ -77,12 +86,14 @@ export async function getProductsByCategorySlugService(
   return attachPublicListStats(rows);
 }
 
+/**
+ * List products by category slug (cursor-based pagination).
+ */
 export async function getProductsByCategorySlugCursorService(
   slug: string,
   limit?: number,
   cursorId?: number,
 ) {
-  // Cursor-based listing used by infinite scroll UIs; returns stats-enriched rows.
   const parsed = categorySlugSchema.parse({ slug });
   const take = limit && limit > 0 ? limit : 20;
   const rows = await findProductsByCategorySlugCursor({
@@ -93,8 +104,10 @@ export async function getProductsByCategorySlugCursorService(
   return attachPublicListStats(rows);
 }
 
+/**
+ * Create a new active category record (admin).
+ */
 export async function createCategoryService(name: string) {
-  // Validates name, generates unique slug, and persists a new active category record.
   const parsed = categorySchema.parse({ name });
   const slug = await generateUniqueCategorySlug(parsed.name);
   return createCategoryRecord({
@@ -103,8 +116,10 @@ export async function createCategoryService(name: string) {
   });
 }
 
+/**
+ * Update category name (and regenerate slug) (admin).
+ */
 export async function updateCategoryService(id: number, name: string) {
-  // Validates name and updates category; returns message object when target row is missing.
   const parsed = categorySchema.parse({ name });
   const existing = await findCategoryById(id);
   if (!existing) {
@@ -117,13 +132,17 @@ export async function updateCategoryService(id: number, name: string) {
   });
 }
 
+/**
+ * Soft-delete (deactivate) category so storefront hides it.
+ */
 export async function deleteCategoryService(id: number) {
-  // Soft-deactivates category so storefront hides it while preserving historical references.
   return softDeactivateCategoryRecord(id);
 }
 
+/**
+ * Search categories by name (admin picker/autocomplete).
+ */
 export async function searchCategoriesService(query: string) {
-  // Lightweight name search used by admin pickers/autocomplete.
   const parsed = categorySchema.parse({ name: query });
   return searchCategoriesByName(parsed.name);
 }

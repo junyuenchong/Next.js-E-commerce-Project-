@@ -1,13 +1,11 @@
-/**
- * safe user dto
- * handle safe user dto logic
- */
 import type { User } from "@prisma/client";
 
 // frontend-safe user DTO never includes credential fields like `passwordHash`.
 export type SafeUserDto = Omit<User, "passwordHash">;
 
-// convert DB user row to frontend-safe DTO.
+/**
+ * Handles to safe user dto.
+ */
 export function toSafeUserDto(user: User): SafeUserDto {
   const { passwordHash, ...safeUser } = user;
   void passwordHash;

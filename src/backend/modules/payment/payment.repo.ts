@@ -1,7 +1,3 @@
-/**
- * payment repo
- * handle payment repo logic
- */
 // payment persistence helpers (idempotency, status transitions, audit history).
 import type { PaymentProvider, PaymentStatus, Prisma } from "@prisma/client";
 import prisma from "@/app/lib/prisma";
@@ -21,11 +17,34 @@ type CreatePayPalPaymentInput = {
   gatewayResponse?: Prisma.InputJsonValue;
 };
 
+const ALLOWED_PAYMENT_STATUS_TRANSITIONS: Record<
+  PaymentStatus,
+  readonly PaymentStatus[]
+> = {
+  PENDING: ["PROCESSING", "FAILED", "CANCELLED"],
+  PROCESSING: ["PAID", "FAILED", "CANCELLED"],
+  PAID: ["REFUNDED"],
+  FAILED: [],
+  CANCELLED: [],
+  REFUNDED: [],
+};
+
 function toJsonInput(value: Prisma.InputJsonValue | undefined) {
   return value;
 }
 
-// Creates (or reuses) one payment by provider+idempotencyKey to prevent duplicate charges.
+// state-machine guard to prevent invalid status jumps.
+function canTransitionPaymentStatus(
+  fromStatus: PaymentStatus,
+  toStatus: PaymentStatus,
+): boolean {
+  if (fromStatus === toStatus) return true;
+  return ALLOWED_PAYMENT_STATUS_TRANSITIONS[fromStatus].includes(toStatus);
+}
+
+/**
+ * Handles create or reuse pay pal payment repo.
+ */
 export async function createOrReusePayPalPaymentRepo(
   input: CreatePayPalPaymentInput,
 ) {
@@ -57,7 +76,9 @@ export async function createOrReusePayPalPaymentRepo(
   });
 }
 
-// Records status changes in append-only history for audit and support traceability.
+/**
+ * Handles insert payment status history repo.
+ */
 export async function insertPaymentStatusHistoryRepo(params: {
   paymentId: number;
   fromStatus: PaymentStatus | null;
@@ -76,21 +97,28 @@ export async function insertPaymentStatusHistoryRepo(params: {
   });
 }
 
-// Moves payment to PROCESSING and stores gateway order id after create-order succeeds.
+/**
+ * Handles mark payment processing repo.
+ */
 export async function markPaymentProcessingRepo(params: {
   paymentId: number;
   providerOrderId: string;
+  orderId?: number | null;
   gatewayResponse?: Prisma.InputJsonValue;
 }) {
   const current = await prisma.payment.findUnique({
     where: { id: params.paymentId },
   });
   if (!current) return null;
+  if (!canTransitionPaymentStatus(current.status, "PROCESSING")) {
+    return current;
+  }
   const next = await prisma.payment.update({
     where: { id: params.paymentId },
     data: {
       status: "PROCESSING",
       providerOrderId: params.providerOrderId,
+      ...(params.orderId != null ? { orderId: params.orderId } : {}),
       gatewayResponse: toJsonInput(
         params.gatewayResponse ??
           (current.gatewayResponse as Prisma.InputJsonValue),
@@ -109,6 +137,9 @@ export async function markPaymentProcessingRepo(params: {
   return next;
 }
 
+/**
+ * Handles find payment by provider order id repo.
+ */
 export async function findPaymentByProviderOrderIdRepo(
   provider: PaymentProvider,
   providerOrderId: string,
@@ -118,7 +149,58 @@ export async function findPaymentByProviderOrderIdRepo(
   });
 }
 
-// Marks payment as failed with a gateway response snapshot.
+/**
+ * Handles reserve payment for capture repo.
+ */
+export async function reservePaymentForCaptureRepo(params: {
+  paymentId: number;
+  reason?: string;
+}) {
+  // use version-based update (optimistic lock) to avoid double capture.
+  const current = await prisma.payment.findUnique({
+    where: { id: params.paymentId },
+    select: { id: true, status: true, version: true },
+  });
+  if (!current) return { ok: false as const, reason: "payment_not_found" };
+  if (current.status === "PAID")
+    return { ok: false as const, reason: "already_paid" };
+  if (
+    current.status === "CANCELLED" ||
+    current.status === "FAILED" ||
+    current.status === "REFUNDED"
+  ) {
+    return { ok: false as const, reason: "payment_terminal_status" };
+  }
+
+  const updated = await prisma.payment.updateMany({
+    where: {
+      id: current.id,
+      version: current.version,
+      status: { in: ["PENDING", "PROCESSING"] },
+    },
+    data: {
+      status: "PROCESSING",
+      version: { increment: 1 },
+    },
+  });
+  if (updated.count !== 1) {
+    return { ok: false as const, reason: "concurrent_capture_in_progress" };
+  }
+
+  if (current.status !== "PROCESSING") {
+    await insertPaymentStatusHistoryRepo({
+      paymentId: current.id,
+      fromStatus: current.status,
+      toStatus: "PROCESSING",
+      reason: params.reason ?? "capture_attempt_started",
+    });
+  }
+  return { ok: true as const };
+}
+
+/**
+ * Handles mark payment failed repo.
+ */
 export async function markPaymentFailedRepo(params: {
   paymentId: number;
   reason: string;
@@ -128,6 +210,9 @@ export async function markPaymentFailedRepo(params: {
     where: { id: params.paymentId },
   });
   if (!current) return null;
+  if (!canTransitionPaymentStatus(current.status, "FAILED")) {
+    return current;
+  }
   const next = await prisma.payment.update({
     where: { id: params.paymentId },
     data: {
@@ -151,7 +236,9 @@ export async function markPaymentFailedRepo(params: {
   return next;
 }
 
-// Marks payment as paid and links order/capture metadata.
+/**
+ * Handles mark payment paid and link order repo.
+ */
 export async function markPaymentPaidAndLinkOrderRepo(params: {
   paymentId: number;
   orderId: number;
@@ -162,6 +249,9 @@ export async function markPaymentPaidAndLinkOrderRepo(params: {
     where: { id: params.paymentId },
   });
   if (!current) return null;
+  if (!canTransitionPaymentStatus(current.status, "PAID")) {
+    return current;
+  }
   const next = await prisma.payment.update({
     where: { id: params.paymentId },
     data: {
@@ -186,6 +276,9 @@ export async function markPaymentPaidAndLinkOrderRepo(params: {
   return next;
 }
 
+/**
+ * Handles create webhook inbox event repo.
+ */
 export async function createWebhookInboxEventRepo(params: {
   provider: PaymentProvider;
   eventId: string;
@@ -211,6 +304,9 @@ export async function createWebhookInboxEventRepo(params: {
   return { created: true as const, row };
 }
 
+/**
+ * Handles mark webhook handled repo.
+ */
 export async function markWebhookHandledRepo(params: {
   webhookEventId: number;
   handleResult: string;
@@ -224,6 +320,27 @@ export async function markWebhookHandledRepo(params: {
   });
 }
 
+/**
+ * Handles list unhandled webhook events repo.
+ */
+export async function listUnhandledWebhookEventsRepo(params?: {
+  provider?: PaymentProvider;
+  limit?: number;
+}) {
+  // oldest-first replay so backlog drains in a deterministic order.
+  return prisma.paymentWebhookEvent.findMany({
+    where: {
+      handledAt: null,
+      ...(params?.provider ? { provider: params.provider } : {}),
+    },
+    orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+    take: Math.max(1, Math.min(params?.limit ?? 100, 500)),
+  });
+}
+
+/**
+ * Handles transition payment status repo.
+ */
 export async function transitionPaymentStatusRepo(params: {
   paymentId: number;
   toStatus: PaymentStatus;
@@ -235,6 +352,9 @@ export async function transitionPaymentStatusRepo(params: {
   });
   if (!current) return null;
   if (current.status === params.toStatus) return current;
+  if (!canTransitionPaymentStatus(current.status, params.toStatus)) {
+    return current;
+  }
   const next = await prisma.payment.update({
     where: { id: params.paymentId },
     data: {
@@ -257,7 +377,9 @@ export async function transitionPaymentStatusRepo(params: {
   return next;
 }
 
-// Cancels stale pending/processing payments after timeout window.
+/**
+ * Handles cancel expired payments repo.
+ */
 export async function cancelExpiredPaymentsRepo(now: Date) {
   const stale = await prisma.payment.findMany({
     where: {
@@ -271,7 +393,7 @@ export async function cancelExpiredPaymentsRepo(now: Date) {
 
   await prisma.$transaction(async (tx) => {
     for (const payment of stale) {
-      if (payment.status === "CANCELLED") continue;
+      if (!canTransitionPaymentStatus(payment.status, "CANCELLED")) continue;
       await tx.payment.update({
         where: { id: payment.id },
         data: { status: "CANCELLED", version: { increment: 1 } },

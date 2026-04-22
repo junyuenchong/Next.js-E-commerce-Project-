@@ -10,7 +10,7 @@ import { useOrderDetailPage } from "@/app/features/user/hooks";
 export default function OrderDetailPage() {
   const {
     created,
-    id,
+    orderId,
     orderComplete,
     query: orderQuery,
     reviewBusy,
@@ -19,6 +19,10 @@ export default function OrderDetailPage() {
     reviewErr,
     reviewRating,
     reviewTarget,
+    canPayAgain,
+    canMarkReceived,
+    receivedBusy,
+    receivedErr,
     sessionLoading,
     showPaymentSuccessDialog,
     subtotal,
@@ -29,6 +33,7 @@ export default function OrderDetailPage() {
     setReviewComment,
     setReviewRating,
     submitReview,
+    markReceived,
   } = useOrderDetailPage();
 
   // Keep loading/unauthenticated/error branches explicit before main render.
@@ -43,7 +48,7 @@ export default function OrderDetailPage() {
       <div className="min-h-screen bg-gray-50 py-16 px-4 text-center">
         <p className="text-gray-700 mb-6">Sign in to see order details.</p>
         <Link
-          href={`/features/user/auth/sign-in?returnUrl=${encodeURIComponent(`/features/user/orders/${id}`)}`}
+          href={`/features/user/auth/sign-in?returnUrl=${encodeURIComponent(`/features/user/orders/${orderId}`)}`}
           className="text-blue-600 font-medium hover:underline"
         >
           Sign in
@@ -131,6 +136,42 @@ export default function OrderDetailPage() {
             ← Back
           </Link>
         </div>
+
+        {receivedErr ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            {receivedErr}
+          </div>
+        ) : null}
+
+        {canPayAgain || canMarkReceived ? (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-gray-700">
+              {canPayAgain
+                ? "Payment is pending. You can pay again from checkout."
+                : "Confirm receipt to complete this order and unlock reviews."}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {canPayAgain ? (
+                <Link
+                  href="/features/user/checkout"
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  Pay again
+                </Link>
+              ) : null}
+              {canMarkReceived ? (
+                <button
+                  type="button"
+                  disabled={receivedBusy}
+                  onClick={() => void markReceived()}
+                  className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
+                >
+                  {receivedBusy ? "Updating…" : "Received"}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
           <h2 className="font-semibold text-gray-900 mb-3">Items</h2>

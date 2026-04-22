@@ -1,7 +1,3 @@
-/**
- * admin cache service
- * handle admin cache service logic
- */
 // provides cached admin datasets with consistent Redis key invalidation helpers.
 import {
   deleteCacheKeys,
@@ -26,13 +22,17 @@ export const ADMIN_CACHE_TTL_SECONDS = {
   categoriesList: 45, // categories list cache TTL.
 } as const;
 
-// get parsed cached JSON value by key, or null.
+/**
+ * Get parsed cached JSON value by key, or null.
+ */
 export async function getAdminCachedJson<T>(key: string): Promise<T | null> {
   // thin wrapper keeps admin cache calls decoupled from generic Redis helpers.
   return getCachedJson<T>(key);
 }
 
-// set admin cache JSON value with TTL.
+/**
+ * Set admin cache JSON value with TTL.
+ */
 export async function setAdminCachedJson(
   key: string,
   value: unknown,
@@ -42,22 +42,30 @@ export async function setAdminCachedJson(
   await setCachedJson(key, value, ttlSeconds);
 }
 
-// remove analytics summary cache entry.
+/**
+ * Remove analytics summary cache entry.
+ */
 export async function bustAdminAnalyticsCache(): Promise<void> {
   await deleteCacheKeys([ADMIN_CACHE_KEYS.analyticsSummary]);
 }
 
-// remove coupons list cache entry.
+/**
+ * Remove coupons list cache entry.
+ */
 export async function bustAdminCouponsListCache(): Promise<void> {
   await deleteCacheKeys([ADMIN_CACHE_KEYS.couponsList]);
 }
 
-// remove categories list cache entry.
+/**
+ * Remove categories list cache entry.
+ */
 export async function bustAdminCategoriesListCache(): Promise<void> {
   await deleteCacheKeys([ADMIN_CACHE_KEYS.categoriesList]);
 }
 
-// remove analytics and categories list cache entries together.
+/**
+ * Remove analytics and categories list cache entries together.
+ */
 export async function bustAdminAnalyticsAndCategoriesCache(): Promise<void> {
   // common invalidation bundle applied after order/category side effects.
   await deleteCacheKeys([
