@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import http from "@/app/utils/http";
+import { http } from "@/app/lib/network";
 import Link from "next/link";
 
 type PermissionRow = { id: number; key: string; label: string };

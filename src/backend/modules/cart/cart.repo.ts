@@ -13,7 +13,7 @@ type ProductStockRow = {
 };
 
 /**
- * Handles find user cart.
+ * Find the cart bound to a user id.
  */
 export async function findUserCart(
   userId: number,
@@ -29,7 +29,7 @@ export async function findUserCart(
 }
 
 /**
- * Handles find guest cart.
+ * Find a guest cart by guest cart id.
  */
 export async function findGuestCart(
   guestCartId: string,
@@ -45,7 +45,7 @@ export async function findGuestCart(
 }
 
 /**
- * Handles create user cart.
+ * Create a new cart for a user.
  */
 export async function createUserCart(userId: number): Promise<CartWithItems> {
   return prisma.cart.create({
@@ -62,7 +62,7 @@ export async function createUserCart(userId: number): Promise<CartWithItems> {
 }
 
 /**
- * Handles create guest cart.
+ * Create a new guest cart.
  */
 export async function createGuestCart(
   guestCartId: string,
@@ -81,7 +81,7 @@ export async function createGuestCart(
 }
 
 /**
- * Handles get product snapshot.
+ * Read product fields needed for cart snapshots.
  */
 export async function getProductSnapshot(productId: number) {
   // snapshot query only returns active products for cart mutations.
@@ -91,7 +91,7 @@ export async function getProductSnapshot(productId: number) {
 }
 
 /**
- * Handles create cart line item.
+ * Create one cart line item.
  */
 export async function createCartLineItem(data: {
   cartId: string;
@@ -107,7 +107,7 @@ export async function createCartLineItem(data: {
 }
 
 /**
- * Handles update cart line item quantity.
+ * Update quantity for one cart line item.
  */
 export async function updateCartLineItemQuantity(id: string, quantity: number) {
   // isolate quantity updates so service code stays declarative.
@@ -118,21 +118,21 @@ export async function updateCartLineItemQuantity(id: string, quantity: number) {
 }
 
 /**
- * Handles delete cart line item.
+ * Delete one cart line item.
  */
 export async function deleteCartLineItem(id: string) {
   return prisma.cartLineItem.delete({ where: { id } });
 }
 
 /**
- * Handles clear cart line items.
+ * Remove all line items in a cart.
  */
 export async function clearCartLineItems(cartId: string) {
   return prisma.cartLineItem.deleteMany({ where: { cartId } });
 }
 
 /**
- * Handles reconcile cart line items to stock.
+ * Clamp cart quantities to current available stock.
  */
 export async function reconcileCartLineItemsToStock(cartId: string) {
   const cart = await prisma.cart.findUnique({
@@ -164,7 +164,7 @@ export async function reconcileCartLineItemsToStock(cartId: string) {
 }
 
 /**
- * Handles assign guest cart to user.
+ * Assign a guest cart ownership to a user.
  */
 export async function assignGuestCartToUser(
   guestCartId: string,
@@ -185,7 +185,7 @@ export async function assignGuestCartToUser(
 }
 
 /**
- * Handles merge guest into user cart.
+ * Merge guest cart items into the user's cart.
  */
 export async function mergeGuestIntoUserCart(
   guestCartId: string,
@@ -293,7 +293,7 @@ export async function mergeGuestIntoUserCart(
 }
 
 /**
- * Handles get cart with products by user.
+ * Load a user's cart with related product data.
  */
 export async function getCartWithProductsByUser(userId: number) {
   // hydrated cart read path for authenticated users.
@@ -309,7 +309,7 @@ export async function getCartWithProductsByUser(userId: number) {
 }
 
 /**
- * Handles get cart with products by guest.
+ * Load a guest cart with related product data.
  */
 export async function getCartWithProductsByGuest(guestCartId: string) {
   // hydrated cart read path for anonymous sessions.

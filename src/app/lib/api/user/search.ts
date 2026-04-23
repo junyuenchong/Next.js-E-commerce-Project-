@@ -1,4 +1,4 @@
-import { parseSearchQuery } from "@/app/lib/search-query";
+import { parseSearchQuery } from "@/app/lib/auth";
 
 export function navigateToSearch(
   router: { push: (href: string) => void },

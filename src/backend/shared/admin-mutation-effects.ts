@@ -13,7 +13,7 @@ type AdminMutationEffectsParams = {
 };
 
 /**
- * Handles run admin mutation effects.
+ * Run cache invalidation and realtime side effects after admin writes.
  */
 export async function runAdminMutationEffects(
   params: AdminMutationEffectsParams,

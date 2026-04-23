@@ -1,4 +1,7 @@
-/** Email/password registration (server action). */
+/**
+ * customer sign-up page
+ * register email and password with a server action
+ */
 import { registerUser } from "@/backend/modules/user";
 import { getServerSessionCached } from "@/backend/core/session";
 import { redirect } from "next/navigation";

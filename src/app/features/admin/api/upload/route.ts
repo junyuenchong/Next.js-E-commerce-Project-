@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: upload.
+ * admin api route
+ * handle upload
  */
 
 import * as cloudinary from "cloudinary";

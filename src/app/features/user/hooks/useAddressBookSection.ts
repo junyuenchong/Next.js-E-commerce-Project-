@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import http, { isAxiosError } from "@/app/utils/http";
+import { http, isAxiosError } from "@/app/lib/network";
 import type { SavedAddress } from "@/shared/types";
 
 const EMPTY_FORM = {

@@ -1,20 +1,18 @@
 "use client";
 
 /**
- * Create-product flow: categories, validation, image upload hook-in, and API submit.
+ * admin product create hook
+ * manage categories, validation, upload, and submit
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createProduct } from "@/backend/modules/product";
-import { getErrorMessage } from "@/app/utils/http";
+import { getErrorMessage } from "@/app/lib/network";
 import { productSchema } from "@/shared/schema";
-import {
-  fetchAdminCategories,
-  postImageUpload,
-} from "@/app/features/admin/components/client";
-import { buildAdminProductPayload } from "./product-form";
-import { trySetFieldErrorsFromAxios400 } from "./field-errors";
+import { fetchAdminCategories, postImageUpload } from "@/app/lib/api/admin";
+import { buildAdminProductPayload } from "@/app/lib/product";
+import { trySetFieldErrorsFromAxios400 } from "@/app/lib/network";
 
 type AdminCategory = { id: number; name: string };
 

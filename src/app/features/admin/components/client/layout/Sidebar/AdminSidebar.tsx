@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import http from "@/app/utils/http";
+import { http } from "@/app/lib/network";
 import type { AdminMe } from "@/app/features/admin/types";
 import {
   ADMIN_NAV_LINKS,
@@ -20,9 +20,9 @@ export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
-  // Feature: keep admin permissions responsive without constant refetch jitter.
-  // Guard: login/logout path explicitly clears this cache to prevent role bleed.
-  // Note: short stale window smooths route switches inside one active session.
+  // keep admin permissions responsive without noisy refetch.
+  // login and logout flows clear this cache to avoid stale role state.
+  // short stale window smooths route switches in one active session.
   const { data: me } = useQuery({
     queryKey: ["admin-me"],
     queryFn: fetchAdminMe,

@@ -1,4 +1,4 @@
-// implements user account actions for authentication, password resets, and profile access.
+// Module: Provides user account actions for authentication, password resets, and profile access.
 "use server";
 
 import { cookies } from "next/headers";
@@ -47,7 +47,7 @@ async function patchUsers(body: unknown) {
 }
 
 /**
- * Handles set user active action.
+ * Toggle whether a user account is active.
  */
 export async function setUserActiveAction(userId: number, isActive: boolean) {
   // toggle team account active state via shared admin users API.
@@ -56,7 +56,7 @@ export async function setUserActiveAction(userId: number, isActive: boolean) {
 }
 
 /**
- * Handles update user profile admin action.
+ * Update a user's profile from admin tools.
  */
 export async function updateUserProfileAdminAction(
   userId: number,

@@ -4,7 +4,10 @@ import { useEffect } from "react";
 
 type FormState = { message: string } | undefined;
 
-/** Surface NextAuth `?error=` on the sign-in page once (no `useSearchParams` → no Suspense requirement). */
+/**
+ * sign-in alerts
+ * show nextauth error from url once
+ */
 export function useSignInResultAlerts(state: FormState) {
   void state;
   // Reads NextAuth error once from URL and shows a lightweight alert.

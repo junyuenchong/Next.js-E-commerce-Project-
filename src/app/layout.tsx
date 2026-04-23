@@ -1,7 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { getSiteUrl } from "@/app/lib/site-url";
+import { getSiteUrl } from "@/app/lib/auth";
 import QueryProvider from "./providers/QueryProvider";
 import ReduxProvider from "./providers/ReduxProvider";
 

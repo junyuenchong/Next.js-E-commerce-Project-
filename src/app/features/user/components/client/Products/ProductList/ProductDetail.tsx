@@ -7,7 +7,7 @@ import { Home, ChevronRight } from "lucide-react";
 import ProductPrice from "@/app/components/shared/ProductPrice";
 import AddToCartButton from "@/app/features/user/components/client/Products/AddToCartButton/AddToCartButton";
 import SalesCampaignBanner from "@/app/features/user/components/client/SalesCampaignBanner/SalesCampaignBanner";
-import { IMG } from "@/app/lib/image-sizes";
+import { IMG } from "@/app/lib/product";
 import type { ProductDetailPayload } from "@/app/features/user/types";
 import {
   useProductDetail,

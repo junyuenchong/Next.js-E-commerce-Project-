@@ -1,1 +1,1 @@
-export * from "./indexClient";
+export * from "@/app/lib/api/user";

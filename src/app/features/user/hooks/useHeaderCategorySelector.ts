@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { QueryKey } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useRealtimeQuery } from "@/app/lib/query/useRealtimeQuery";
+import { useRealtimeQuery } from "@/app/lib/realtime";
 
 type CategoryRow = { id: number; slug: string; name: string };
 

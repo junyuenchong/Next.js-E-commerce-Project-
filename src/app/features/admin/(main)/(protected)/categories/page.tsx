@@ -1,4 +1,7 @@
-/** Admin: catalog categories. */
+/**
+ * admin categories page
+ * manage catalog categories
+ */
 import AdminCategoriesClient from "@/app/features/admin/components/client/categories/AdminCategoriesClient";
 
 export const metadata = { title: "Categories · Admin" };

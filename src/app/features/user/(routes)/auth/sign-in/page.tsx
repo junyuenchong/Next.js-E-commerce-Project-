@@ -1,4 +1,7 @@
-/** Customer sign-in; redirects if already logged in. */
+/**
+ * customer sign-in page
+ * redirect when already logged in
+ */
 import { getServerSessionCached } from "@/backend/core/session";
 import { postAuthRedirectPath } from "@/backend/core/auth/auth.service";
 import type { UserRole } from "@prisma/client";

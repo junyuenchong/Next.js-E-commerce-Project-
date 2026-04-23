@@ -1,5 +1,6 @@
 /**
- * Admin feature type re-exports: UI imports from here instead of reaching into component files.
+ * admin type exports
+ * re-export admin ui types from one file
  */
 
 export type { Category } from "@/shared/types";

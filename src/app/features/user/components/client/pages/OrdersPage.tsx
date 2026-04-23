@@ -1,14 +1,14 @@
 "use client";
 
-/** Signed-in user order history. */
+/**
+ * orders page client
+ * show signed-in user order history
+ */
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import {
-  fetchAllUserOrders,
-  fetchOrdersPage,
-} from "@/app/features/user/components/client/http";
+import { fetchAllUserOrders, fetchOrdersPage } from "@/app/lib/api/user";
 import { useUser } from "@/app/features/user/components/client/UserContext";
-import { formatPriceRM } from "@/app/lib/format-price";
+import { formatPriceRM } from "@/app/lib/product";
 import { getUserOrderStatusLabel } from "@/app/lib/order-status";
 import type { OrderListItem } from "@/app/features/user/types";
 

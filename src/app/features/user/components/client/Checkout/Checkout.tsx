@@ -3,7 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useCheckoutPage } from "@/app/features/user/hooks";
-import { formatPriceRM } from "@/app/lib/format-price";
+import { formatPriceRM } from "@/app/lib/product";
 
 const PayPalCheckoutButtons = dynamic(
   () =>

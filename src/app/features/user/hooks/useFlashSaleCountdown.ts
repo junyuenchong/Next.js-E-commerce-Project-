@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { formatHms } from "@/app/lib/countdown";
 
 /**
- * Live countdown label from a Unix end time (seconds). When expired, `label` is `00:00:00`.
+ * flash sale countdown hook
+ * return remaining seconds and HH:MM:SS label
  */
 export function useFlashSaleCountdown(endAtUnixSeconds: number) {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
   useEffect(() => {
-    // Note: 1s ticker keeps countdown responsive while staying lightweight.
+    // keep 1s ticker for responsive and lightweight countdown updates.
     const id = window.setInterval(
       () => setNow(Math.floor(Date.now() / 1000)),
       1000,

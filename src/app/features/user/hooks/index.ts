@@ -1,6 +1,6 @@
 "use client";
 
-export { qk } from "@/app/lib/query-keys";
+export { qk } from "@/app/lib/realtime";
 
 export { useAddToCart } from "./useAddToCart";
 export { useCart } from "./useCart";

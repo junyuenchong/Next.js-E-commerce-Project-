@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: support/conversations.
+ * admin api route
+ * handle support/conversations
  */
 
 import { NextResponse } from "next/server";

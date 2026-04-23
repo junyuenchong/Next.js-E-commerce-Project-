@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/utils/http";
+import { http, getErrorMessage } from "@/app/lib/network";
 
 type CouponQuote = {
   subtotal: number;

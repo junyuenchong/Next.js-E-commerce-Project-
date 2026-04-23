@@ -1,4 +1,7 @@
 "use client";
 
-/** Placeholder for post–sign-up flows (e.g. deep links). */
+/**
+ * sign-up followup
+ * placeholder for post sign-up flows (example: deep links)
+ */
 export function useSignUpCredentialsFollowup() {}

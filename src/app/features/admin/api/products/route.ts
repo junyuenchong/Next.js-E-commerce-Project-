@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: products.
+ * admin api route
+ * handle products
  */
 
 import {
@@ -18,9 +19,9 @@ import {
 import { NextResponse } from "next/server";
 import { bustAdminAnalyticsCache } from "@/backend/modules/admin-cache";
 import {
-  clampAdminListLimit,
-  parseAdminCursorId,
-} from "@/backend/shared/pagination/admin-pagination";
+  buildCursorResponseMeta,
+  parseAdminListParams,
+} from "@/backend/shared/pagination/list-pagination";
 import {
   adminApiRequire,
   adminApiRequireCatalogAccess,
@@ -30,7 +31,6 @@ import { jsonInternalServerError } from "@/backend/lib/api-error";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// Create a product from admin form payload.
 export async function POST(req: Request) {
   const guard = await adminApiRequire("product.create");
   if (!guard.ok) return guard.response;
@@ -62,20 +62,18 @@ export async function POST(req: Request) {
   }
 }
 
-// Return products for admin list, search, or cursor pagination views.
 export async function GET(req: Request) {
   const guard = await adminApiRequireCatalogAccess();
   if (!guard.ok) return guard.response;
 
   const { searchParams } = new URL(req.url);
-  const limitParam = searchParams.get("limit");
-  const pageParam = searchParams.get("page");
   const cursorParam = searchParams.get("cursor");
   const q = searchParams.get("q") || "";
-
-  const limit = clampAdminListLimit(limitParam, 20);
-  const page = pageParam ? parseInt(pageParam, 10) : 1;
-  const cursorId = parseAdminCursorId(cursorParam);
+  const {
+    take: limit,
+    page,
+    cursorId,
+  } = parseAdminListParams(searchParams, 20);
 
   try {
     let products: unknown[] = [];
@@ -93,8 +91,9 @@ export async function GET(req: Request) {
         row as ProductListItem & ProductPublicListStats,
       ),
     );
+    const hasMore = serialized.length >= limit;
     const nextCursor =
-      serialized.length > 0
+      hasMore && serialized.length > 0
         ? (serialized[serialized.length - 1] as { id?: number }).id
         : null;
     const headers = {
@@ -106,27 +105,22 @@ export async function GET(req: Request) {
       "x-next-cursor": nextCursor != null ? String(nextCursor) : "",
     };
 
-    // Cursor pagination response shape: `{ items, nextCursor }`
     if (cursorParam != null) {
       return NextResponse.json(
         {
           items: serialized,
-          nextCursor,
-          hasMore: serialized.length >= limit,
-          limit,
+          ...buildCursorResponseMeta(limit, nextCursor ?? null),
         },
         { status: 200, headers },
       );
     }
 
-    // Backward-compatible response: plain array when `cursor` is omitted
     return NextResponse.json(serialized, { status: 200, headers });
   } catch (error: unknown) {
     return jsonInternalServerError(error, "[admin/api/products GET]");
   }
 }
 
-// Update an existing product from inline edit payload.
 export async function PATCH(req: Request) {
   const guard = await adminApiRequire("product.update");
   if (!guard.ok) return guard.response;
@@ -152,7 +146,7 @@ export async function PATCH(req: Request) {
       error instanceof Error && typeof error.message === "string"
         ? error.message
         : "";
-    // Guard: validation failures are expected user input errors → 400 (not 500).
+    // return 400 for validation input errors instead of 500.
     if (
       msg === "Invalid input data" ||
       msg.startsWith("invalid_product_data:")
@@ -172,7 +166,6 @@ export async function PATCH(req: Request) {
   }
 }
 
-// Soft-delete a product by id.
 export async function DELETE(req: Request) {
   const guard = await adminApiRequire("product.delete");
   if (!guard.ok) return guard.response;

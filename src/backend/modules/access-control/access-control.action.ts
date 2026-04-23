@@ -1,4 +1,4 @@
-// handles admin authorization checks and permission-gated response helpers.
+// Module: Provides admin authorization checks and permission-gated response helpers.
 import { NextResponse } from "next/server";
 import type { UserRole } from "@prisma/client";
 import {
@@ -15,7 +15,7 @@ export const ADMIN_FORBIDDEN_MESSAGE = "You don't have permission to do this.";
 export const ADMIN_UNAUTHORIZED_MESSAGE = "Please sign in to continue.";
 
 /**
- * Handles admin json unauthorized.
+ * Return standard unauthorized response for admin endpoints.
  */
 export function adminJsonUnauthorized() {
   return NextResponse.json(
@@ -25,7 +25,7 @@ export function adminJsonUnauthorized() {
 }
 
 /**
- * Handles admin json forbidden.
+ * Return standard forbidden response for admin endpoints.
  */
 export function adminJsonForbidden(
   message: string = ADMIN_FORBIDDEN_MESSAGE,
@@ -49,7 +49,7 @@ async function requireAdminUserOrResponse(): Promise<
 }
 
 /**
- * Handles admin api require.
+ * Require one admin permission for an API request.
  */
 export async function adminApiRequire(
   permission: string,
@@ -64,7 +64,7 @@ export async function adminApiRequire(
 }
 
 /**
- * Handles admin api require any.
+ * Require any permission from a permission set.
  */
 export async function adminApiRequireAny(
   permissions: string[],
@@ -80,7 +80,7 @@ export async function adminApiRequireAny(
 }
 
 /**
- * Handles admin api require catalog access.
+ * Require any catalog-related permission for admin API.
  */
 export async function adminApiRequireCatalogAccess(): Promise<
   AdminGuardOk | AdminGuardFail
@@ -100,7 +100,7 @@ export async function adminApiRequireCatalogAccess(): Promise<
 }
 
 /**
- * Handles can assign target user role.
+ * Check whether actor can assign a target role.
  */
 export function canAssignTargetUserRole(
   _actingRole: UserRole,
@@ -110,7 +110,7 @@ export function canAssignTargetUserRole(
 }
 
 /**
- * Handles assert can assign user role.
+ * Throw if actor cannot assign the target role.
  */
 export function assertCanAssignUserRole(
   _actingRole: UserRole,
@@ -145,7 +145,7 @@ export class AdminActionForbiddenError extends Error {
 }
 
 /**
- * Handles require admin permission.
+ * Require one admin permission for server actions.
  */
 export async function requireAdminPermission(
   permission: string,
@@ -158,7 +158,7 @@ export async function requireAdminPermission(
 }
 
 /**
- * Handles require admin catalog access.
+ * Require catalog access for server actions.
  */
 export async function requireAdminCatalogAccess(): Promise<void> {
   const user = await getCurrentAdminUser();

@@ -1,4 +1,7 @@
-/** HttpOnly cookie: normalized coupon code applied at checkout (1h). */
+/**
+ * checkout coupon cookie
+ * store normalized coupon code at checkout (1h)
+ */
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { normalizeCouponCode } from "@/backend/modules/coupon/coupon.service";

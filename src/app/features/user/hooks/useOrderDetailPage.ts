@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/utils/http";
+import { http, getErrorMessage } from "@/app/lib/network";
 import { useUser } from "@/app/features/user/components/client/UserContext";
-import { postProductReview } from "@/app/features/user/components/client/http";
+import { postProductReview } from "@/app/lib/api/user";
 
 export type OrderItemDto = {
   id: string;

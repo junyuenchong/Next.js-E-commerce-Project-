@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: events/orders.
+ * admin api route
+ * handle events/orders
  */
 
 import {

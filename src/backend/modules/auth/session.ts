@@ -13,7 +13,7 @@ import {
 export type AdminPanelRole = Exclude<UserRole, "USER">;
 
 /**
- * Handles get server session cached.
+ * Return the NextAuth server session with request-local caching.
  */
 export async function getServerSessionCached() {
   // cached session read avoids repeated auth DB work per request/render.
@@ -35,7 +35,7 @@ const getAdminUserRow = cache(async (userId: number) => {
 });
 
 /**
- * Handles get current user.
+ * Return the currently authenticated user or null.
  */
 export async function getCurrentUser() {
   // returns raw NextAuth user; callers should validate `isActive` as needed.
@@ -44,7 +44,7 @@ export async function getCurrentUser() {
 }
 
 /**
- * Handles resolve user id.
+ * Resolve the current user id as a positive integer.
  */
 export async function resolveUserId(): Promise<number | null> {
   // used by checkout/user flows that require stable numeric DB ids.
@@ -60,7 +60,7 @@ export async function resolveUserId(): Promise<number | null> {
 }
 
 /**
- * Handles get current admin user.
+ * Return the current admin session user.
  */
 export async function getCurrentAdminUser(): Promise<AdminSessionUser | null> {
   // admin auth is cookie/JWT-based to stay independent from NextAuth session flow.

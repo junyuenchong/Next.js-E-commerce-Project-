@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDispatch } from "react-redux";
-import { fetchSession } from "@/app/features/user/components/client/http";
+import { fetchSession } from "@/app/lib/api/user";
 import { useUserSessionSync } from "@/app/features/user/hooks/useUserSessionSync";
 
 type SessionUser = {

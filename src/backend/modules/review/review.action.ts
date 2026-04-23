@@ -1,8 +1,9 @@
-// provides product review actions for listing, moderation, and seller responses.
+// Product review actions for listing, write, and admin reply flows.
 "use server";
 
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/backend/modules/auth";
+import { parsePositiveInt } from "@/backend/shared/number";
 import {
   listProductReviewsService,
   updateAdminReplyService,
@@ -12,21 +13,14 @@ import {
 async function currentUserId() {
   const s = await getServerSession(authOptions);
   // route-level auth relies on numeric user IDs for review ownership.
-  const id = s?.user?.id != null ? Number.parseInt(String(s.user.id), 10) : NaN;
-  return Number.isFinite(id) ? id : null;
+  return parsePositiveInt(s?.user?.id) ?? null;
 }
 
-/**
- * Handles list product reviews action.
- */
 export async function listProductReviewsAction(productId: number) {
   // public list path used by product detail pages.
   return listProductReviewsService(productId);
 }
 
-/**
- * Handles create or update product review action.
- */
 export async function createOrUpdateProductReviewAction(params: {
   productId: number;
   rating: number;
@@ -44,9 +38,6 @@ export async function createOrUpdateProductReviewAction(params: {
   });
 }
 
-/**
- * Handles reply product review action.
- */
 export async function replyProductReviewAction(
   reviewId: number,
   adminReply: string,

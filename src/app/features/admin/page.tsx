@@ -1,4 +1,7 @@
-/** `/features/admin` → dashboard (shell lives under `(main)`). */
+/**
+ * route entry
+ * redirect /features/admin to dashboard
+ */
 import { redirect } from "next/navigation";
 
 export default function AdminIndexPage() {

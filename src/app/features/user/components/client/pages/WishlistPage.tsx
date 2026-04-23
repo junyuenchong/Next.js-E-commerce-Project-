@@ -1,11 +1,13 @@
 "use client";
 
-/** Saved wishlist items. */
+/**
+ * wishlist page client
+ * show saved wishlist items
+ */
 import Image from "next/image";
 import Link from "next/link";
 import { useWishlistPage } from "@/app/features/user/hooks";
-import { formatPriceRM } from "@/app/lib/format-price";
-import { IMG } from "@/app/lib/image-sizes";
+import { formatPriceRM, IMG } from "@/app/lib/product";
 
 export default function WishlistPage() {
   const { user, items, showSkeleton, remove } = useWishlistPage();

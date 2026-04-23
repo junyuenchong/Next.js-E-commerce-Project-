@@ -1,6 +1,8 @@
+/**
+ * http helpers
+ * parse { message, error, hint } from api json bodies
+ */
 type JsonErrorBody = { message?: string; error?: string; hint?: string };
-
-/** Parse `{ message, error, hint }` from API JSON bodies. */
 export function parseApiJsonErrorMessage(
   data: unknown,
   status: number,
@@ -58,7 +60,7 @@ export function getErrorMessage(
 type FetchConfig = Omit<RequestInit, "headers"> & { headers?: HeadersInit };
 
 function resolveUrl(input: string) {
-  // Browser: keep relative URLs (cookies match origin). Server: allow base URL.
+  // browser: keep relative urls (cookies match origin). server: allow base url
   const base =
     typeof window === "undefined"
       ? process.env.NEXT_PUBLIC_API_BASE_URL || ""

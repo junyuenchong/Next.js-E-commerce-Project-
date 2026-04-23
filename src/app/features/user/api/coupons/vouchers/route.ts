@@ -1,4 +1,7 @@
-/** Public list of promoted vouchers (cart / checkout strip). Optional `subtotal` for eligibility hints. */
+/**
+ * vouchers api
+ * list promoted vouchers with optional subtotal hints
+ */
 import { NextResponse } from "next/server";
 import { listStorefrontVouchersForUserService } from "@/backend/modules/coupon";
 import { resolveUserId } from "@/backend/core/session";

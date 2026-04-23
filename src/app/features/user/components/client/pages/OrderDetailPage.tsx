@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { formatPriceRM } from "@/app/lib/format-price";
+import { formatPriceRM } from "@/app/lib/product";
 import { getUserOrderStatusLabel } from "@/app/lib/order-status";
 import InvoiceDialog from "@/app/components/shared/InvoiceDialog";
 import { useOrderDetailPage } from "@/app/features/user/hooks";

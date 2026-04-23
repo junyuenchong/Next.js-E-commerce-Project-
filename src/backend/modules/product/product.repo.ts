@@ -1,4 +1,4 @@
-// handles product and review data access for catalog listing and admin operations.
+// Module: Provides product and review data access for catalog listing and admin operations.
 import prisma from "@/app/lib/prisma";
 import { productReviewHasIsActiveColumn } from "@/backend/modules/review/review-schema-capability";
 import { moneyToNumber } from "@/backend/core/money";
@@ -33,7 +33,7 @@ export type ProductListItem = Prisma.ProductGetPayload<{
 }>;
 
 /**
- * Handles find product by slug.
+ * Find a product by slug, optionally restricted to active rows.
  */
 export async function findProductBySlug(
   slug: string,
@@ -53,7 +53,7 @@ export async function findProductBySlug(
 }
 
 /**
- * Handles find product by id.
+ * Find a product by id, optionally restricted to active rows.
  */
 export async function findProductById(
   id: number,
@@ -73,7 +73,7 @@ export async function findProductById(
 }
 
 /**
- * Handles find products.
+ * List active products with offset pagination.
  */
 export async function findProducts(params: { take: number; skip: number }) {
   return prisma.product.findMany({
@@ -86,7 +86,7 @@ export async function findProducts(params: { take: number; skip: number }) {
 }
 
 /**
- * Handles find products cursor.
+ * List active products with cursor pagination.
  */
 export async function findProductsCursor(params: {
   take: number;
@@ -107,7 +107,7 @@ export async function findProductsCursor(params: {
 }
 
 /**
- * Handles search products query.
+ * Search active products by title, description, or category.
  */
 export async function searchProductsQuery(query: string) {
   return prisma.product.findMany({
@@ -148,7 +148,7 @@ function orderByFromSort(
 }
 
 /**
- * Handles search products with filters query.
+ * Search active products with filters and sorting.
  */
 export async function searchProductsWithFiltersQuery(params: {
   query?: string;
@@ -195,7 +195,7 @@ export async function searchProductsWithFiltersQuery(params: {
 }
 
 /**
- * Handles create product record.
+ * Insert a new product row.
  */
 export async function createProductRecord(data: {
   title: string;
@@ -211,7 +211,7 @@ export async function createProductRecord(data: {
 }
 
 /**
- * Handles update product record.
+ * Update an existing product row.
  */
 export async function updateProductRecord(
   id: number,
@@ -230,7 +230,7 @@ export async function updateProductRecord(
 }
 
 /**
- * Handles soft deactivate product by id.
+ * Soft-delete a product by toggling isActive.
  */
 export async function softDeactivateProductById(id: number) {
   return prisma.product.update({
@@ -240,7 +240,7 @@ export async function softDeactivateProductById(id: number) {
 }
 
 /**
- * Handles slug exists.
+ * Check whether a product slug already exists.
  */
 export async function slugExists(slug: string) {
   const existing = await prisma.product.findFirst({
@@ -276,7 +276,7 @@ function likelyMissingColumnError(error: unknown): boolean {
 }
 
 /**
- * Handles get product public list stats.
+ * Compute public product stats in batch for list views.
  */
 export async function getProductPublicListStats(
   productIds: number[],
@@ -348,7 +348,7 @@ export async function getProductPublicListStats(
 }
 
 /**
- * Handles attach public list stats.
+ * Attach derived public stats to product list rows.
  */
 export async function attachPublicListStats<T extends { id: number }>(
   items: T[],
@@ -374,7 +374,7 @@ export async function attachPublicListStats<T extends { id: number }>(
 }
 
 /**
- * Handles serialize admin product list item.
+ * Convert admin product rows into JSON-safe response shape.
  */
 export function serializeAdminProductListItem(
   row: ProductListItem & ProductPublicListStats,

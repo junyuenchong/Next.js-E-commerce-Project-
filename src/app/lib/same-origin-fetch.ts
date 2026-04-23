@@ -1,8 +1,8 @@
-import { parseApiJsonErrorMessage } from "@/app/utils/http";
+import { parseApiJsonErrorMessage } from "@/app/lib/network";
 
 /**
- * Same-origin `fetch` with cookies for admin routes. Bypasses Axios `NEXT_PUBLIC_API_BASE_URL`
- * so the session cookie always matches the admin app origin (e.g. multipart uploads).
+ * same-origin fetch helper
+ * fetch json with cookies for same-origin routes
  */
 export async function fetchSameOriginJson<T>(
   path: string,

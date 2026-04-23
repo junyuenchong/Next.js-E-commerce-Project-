@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: orders/[id]/invoice.
+ * admin api route
+ * handle orders/[id]/invoice
  */
 
 import { NextResponse } from "next/server";

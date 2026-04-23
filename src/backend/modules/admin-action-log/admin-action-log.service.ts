@@ -1,5 +1,6 @@
 // records structured admin audit entries and normalizes actor identifiers for logs.
 import type { AdminActionLogInput } from "@/shared/types";
+import { parsePositiveInt } from "@/backend/shared/number";
 import { createAdminActionLogRecord } from "./admin-action-log.repo";
 
 /**
@@ -10,8 +11,7 @@ export function adminActorNumericId(
 ): number | null {
   const raw = user?.id;
   if (raw == null) return null;
-  const id = typeof raw === "number" ? raw : Number.parseInt(String(raw), 10);
-  return Number.isFinite(id) && id > 0 ? id : null;
+  return parsePositiveInt(raw) ?? null;
 }
 
 /**

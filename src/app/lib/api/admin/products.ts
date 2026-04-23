@@ -1,4 +1,4 @@
-import http from "@/app/utils/http";
+import { http } from "@/app/lib/network";
 import { adminApiPaths } from "./paths";
 
 const PAGE_SIZE = 10;
@@ -18,7 +18,10 @@ export async function fetchAdminProductsByUrl(url: string) {
   return (await http.get(url)).data;
 }
 
-/** Warm cache for admin products page (optional). */
+/**
+ * admin products client
+ * warm cache for products page (optional)
+ */
 export async function prefetchAdminProductsPreview(limit = 20) {
   return fetchAdminProductsByUrl(adminProductsListUrl(limit, null));
 }

@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Admin products table: pagination, sorting, inline edit, and delete actions.
+ * admin product list hook
+ * manage pagination, sorting, edit, and delete
  */
 
 import {
@@ -14,7 +15,7 @@ import {
   type Ref,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/utils/http";
+import { http, getErrorMessage } from "@/app/lib/network";
 import type { ProductWithCategory } from "@/app/features/admin/types";
 import {
   ADMIN_PRODUCTS_PAGE_SIZE,
@@ -22,9 +23,9 @@ import {
   adminProductsListUrl,
   fetchAdminCategories,
   postImageUpload,
-} from "@/app/features/admin/components/client";
-import { buildAdminProductPayload } from "./product-form";
-import { trySetFieldErrorsFromAxios400 } from "./field-errors";
+} from "@/app/lib/api/admin";
+import { buildAdminProductPayload } from "@/app/lib/product";
+import { trySetFieldErrorsFromAxios400 } from "@/app/lib/network";
 
 type AdminCategory = { id: number; name: string };
 

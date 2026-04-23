@@ -1,9 +1,9 @@
 import type { QueryKey } from "@tanstack/react-query";
 import { useRealtimeQuery } from "./useRealtimeQuery";
-import { fetchCategories } from "@/app/features/user/components/client/http";
+import { fetchCategories } from "@/app/lib/api/user";
 
 export function useUserCategoriesList() {
-  // Feature: category list query auto-invalidates from category realtime channel.
+  // auto-invalidate category list query from realtime category updates.
   return useRealtimeQuery(["user-categories"], fetchCategories, {
     channels: "categories",
     matchKey: (key: QueryKey) =>

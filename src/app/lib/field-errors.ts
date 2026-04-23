@@ -1,11 +1,10 @@
+import { isAxiosError } from "@/app/lib/network";
+
 /**
- * Admin forms: turn backend 400 `detail` strings (`field: msg; …`) into per-field error maps.
+ * field error helpers
+ * map backend detail text to field error map
  */
-
-import { isAxiosError } from "@/app/utils/http";
-
 function parseFieldErrorsFromDetail(detail: string): Record<string, string> {
-  // Note: backend format is `field: message; field2: message2`.
   const out: Record<string, string> = {};
   const text = detail.trim();
   if (!text) return out;
@@ -23,8 +22,8 @@ function parseFieldErrorsFromDetail(detail: string): Record<string, string> {
 }
 
 /**
- * Try to surface backend validation details as per-field UI errors.
- * Returns true when field errors were applied.
+ * field error applier
+ * apply parsed backend validation errors to fields
  */
 export function trySetFieldErrorsFromAxios400(
   error: unknown,
@@ -32,9 +31,9 @@ export function trySetFieldErrorsFromAxios400(
 ): boolean {
   if (
     !isAxiosError<{ error?: string; message?: string; detail?: string }>(error)
-  ) {
+  )
     return false;
-  }
+
   const status = error.response?.status ?? 0;
   const detail =
     typeof error.response?.data?.detail === "string"

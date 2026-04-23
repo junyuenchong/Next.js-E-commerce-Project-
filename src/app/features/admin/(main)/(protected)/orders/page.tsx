@@ -1,4 +1,7 @@
-/** Admin: order list. */
+/**
+ * admin orders page
+ * show order list
+ */
 import AdminOrdersClient from "@/app/features/admin/components/client/orders/AdminOrdersClient";
 
 export const metadata = { title: "Orders · Admin" };

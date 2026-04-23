@@ -6,8 +6,7 @@ import Link from "next/link";
 import ProductPrice from "@/app/components/shared/ProductPrice";
 import { useUser } from "@/app/features/user/components/client/UserContext";
 import { useProductCardWishlist } from "@/app/features/user/hooks";
-import { resolveSalePricing } from "@/app/lib/format-price";
-import { IMG } from "@/app/lib/image-sizes";
+import { resolveSalePricing, IMG } from "@/app/lib/product";
 import type { ProductCardProduct } from "@/app/features/user/types";
 
 const RATING_STARS = [0, 1, 2, 3, 4] as const;

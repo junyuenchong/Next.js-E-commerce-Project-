@@ -1,18 +1,22 @@
 "use client";
 
 /**
- * Subscribes to admin SSE endpoints (products/categories/orders) and triggers cache refresh callbacks.
+ * admin sse helpers
+ * subscribe to admin sse and trigger cache refresh callbacks
  */
 
 import { useRef } from "react";
-import { useRealtimeInvalidate } from "@/app/lib/query/useRealtimeQuery";
+import { useRealtimeInvalidate } from "@/app/lib/realtime";
 
 type AdminSSEPath =
   | "/features/admin/api/events/products"
   | "/features/admin/api/events/categories"
   | "/features/admin/api/events/orders";
 
-/** Subscribes to admin SSE and runs `onInvalidate` when events arrive. */
+/**
+ * admin sse hook
+ * run onInvalidate when sse events arrive
+ */
 export function useAdminResourceSSE(
   path: AdminSSEPath,
   onInvalidate: () => void,

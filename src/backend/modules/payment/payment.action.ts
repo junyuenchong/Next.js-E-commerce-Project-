@@ -17,7 +17,7 @@ export {
 };
 
 /**
- * Handles post pay pal capture action.
+ * Delegate PayPal capture to the shared route handler.
  */
 export async function postPayPalCaptureAction(
   req: Request,

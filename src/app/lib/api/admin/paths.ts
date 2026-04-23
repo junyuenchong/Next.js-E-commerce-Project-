@@ -1,4 +1,7 @@
-/** App Router handlers under `/features/admin/api`. */
+/**
+ * admin api paths
+ * app router handlers under /features/admin/api
+ */
 export const adminApiPaths = {
   categories: "/features/admin/api/categories",
   products: "/features/admin/api/products",

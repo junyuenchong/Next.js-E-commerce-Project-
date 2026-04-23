@@ -1,11 +1,14 @@
-/** Storefront home: featured products + banner. */
+/**
+ * storefront home page
+ * show featured products and banner
+ */
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import ProductList from "@/app/features/user/components/client/Products/ProductList/ProductList";
 import type { ProductCardProduct } from "@/app/features/user/types";
 import SalesCampaignBanner from "@/app/features/user/components/client/SalesCampaignBanner/SalesCampaignBanner";
 import ShopLoadingFallback from "@/app/features/user/components/shared/ShopLoadingFallback";
-import { serializeProductCardListForClient } from "@/app/lib/serialize-product-card";
+import { serializeProductCardListForClient } from "@/app/lib/product";
 import { listProductsService } from "@/backend/modules/product";
 
 export const metadata: Metadata = {

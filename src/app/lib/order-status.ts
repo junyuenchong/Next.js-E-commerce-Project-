@@ -3,7 +3,7 @@ import type { OrderListItem } from "@/shared/types";
 type UserFacingOrderStatus = OrderListItem["status"] | string;
 
 // Keep user-facing order labels consistent across list and detail views.
-// Note: this intentionally maps internal lifecycle names (e.g. fulfilled) to customer copy (Completed).
+// map internal lifecycle names to customer-facing status labels.
 export function getUserOrderStatusLabel(status: UserFacingOrderStatus): string {
   switch (String(status).toLowerCase()) {
     case "pending":

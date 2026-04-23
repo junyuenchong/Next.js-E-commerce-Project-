@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import http from "@/app/utils/http";
+import { http } from "@/app/lib/network";
 import ProductItem from "@/app/features/admin/components/client/products/types/ProductItem";
 import {
   useAdminProductList,
@@ -21,7 +21,7 @@ export default function AdminProductsClient() {
   const listRef = useRef<AdminProductListHandle | null>(null);
   const [searchDraft, setSearchDraft] = useState("");
   const [committedSearch, setCommittedSearch] = useState("");
-  // Feature: operator-friendly sort presets for merchandising and stock triage.
+  // keep sort presets for merchandising and stock triage.
   const [sortKey, setSortKey] = useState<
     | "relevance"
     | "nameAZ"
@@ -33,9 +33,9 @@ export default function AdminProductsClient() {
     | "recentlyUpdated"
   >("recentlyUpdated");
 
-  // Feature: keep admin permissions responsive without constant refetch jitter.
-  // Guard: login/logout path explicitly clears this cache to prevent role bleed.
-  // Note: short stale window smooths route switches inside one active session.
+  // keep admin permissions responsive without noisy refetch.
+  // login and logout flows clear this cache to avoid stale role state.
+  // short stale window smooths route switches in one active session.
   const { data: me } = useQuery({
     queryKey: ["admin-me"],
     queryFn: fetchMe,
@@ -71,7 +71,7 @@ export default function AdminProductsClient() {
         className="flex flex-wrap gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          // Guard: commit search only on submit so pagination/sort stay stable while typing.
+          // commit search only on submit so paging and sort stay stable while typing.
           setCommittedSearch(searchDraft.trim());
         }}
       >

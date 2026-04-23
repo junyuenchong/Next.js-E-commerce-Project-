@@ -8,7 +8,8 @@ function toIso(d: unknown): string {
 }
 
 /**
- * Strip non-JSON-friendly fields (Decimals, Dates, nested relations) for RSC / client props.
+ * product serializer
+ * convert product data to json-safe client shape
  */
 export function serializeProductCardForClient(
   p: ProductCardProduct,

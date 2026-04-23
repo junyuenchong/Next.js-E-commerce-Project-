@@ -1,4 +1,4 @@
-// implements review repository queries and updates for product feedback workflows.
+// Module: Provides review repository queries and updates for product feedback workflows.
 import type { Prisma } from "@prisma/client";
 import prisma from "@/app/lib/prisma";
 import { productReviewHasIsActiveColumn } from "./review-schema-capability";
@@ -15,7 +15,7 @@ const userInclude = {
 } as const;
 
 /**
- * Handles list product reviews.
+ * List active product reviews for storefront pages.
  */
 export async function listProductReviews(productId: number) {
   // some environments may not have `ProductReview.isActive` yet.
@@ -36,7 +36,7 @@ export async function listProductReviews(productId: number) {
 }
 
 /**
- * Handles list product reviews for admin.
+ * List product reviews for admin moderation views.
  */
 export async function listProductReviewsForAdmin(productId: number) {
   const hasIsActive = await productReviewHasIsActiveColumn();
@@ -56,7 +56,7 @@ export async function listProductReviewsForAdmin(productId: number) {
 }
 
 /**
- * Handles upsert product review.
+ * Create or update a user's review for a product.
  */
 export async function upsertProductReview(params: {
   productId: number;
@@ -99,7 +99,7 @@ export async function upsertProductReview(params: {
 }
 
 /**
- * Handles update admin reply.
+ * Update the admin reply on a review.
  */
 export async function updateAdminReply(reviewId: number, adminReply: string) {
   // reply update intentionally avoids rating/comment mutations.
@@ -118,7 +118,7 @@ export async function updateAdminReply(reviewId: number, adminReply: string) {
 }
 
 /**
- * Handles find product by id.
+ * Find a product id row for review validation.
  */
 export async function findProductById(productId: number) {
   return prisma.product.findUnique({
@@ -128,7 +128,7 @@ export async function findProductById(productId: number) {
 }
 
 /**
- * Handles has user purchased product.
+ * Check whether the user has a fulfilled order for this product.
  */
 export async function hasUserPurchasedProduct(
   userId: number,
@@ -148,7 +148,7 @@ export async function hasUserPurchasedProduct(
 }
 
 /**
- * Handles soft deactivate product review by id.
+ * Soft-delete a review when schema supports isActive.
  */
 export async function softDeactivateProductReviewById(reviewId: number) {
   const hasIsActive = await productReviewHasIsActiveColumn();
@@ -164,7 +164,7 @@ export async function softDeactivateProductReviewById(reviewId: number) {
 }
 
 /**
- * Handles list all reviews admin repo.
+ * List admin reviews with pagination and optional filters.
  */
 export async function listAllReviewsAdminRepo(params: {
   skip: number;

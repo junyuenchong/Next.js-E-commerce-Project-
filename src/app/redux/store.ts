@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { persistReducer } from "redux-persist";
-import storage from "redux-persist/lib/storage";
+import createWebStorage from "redux-persist/lib/storage/createWebStorage";
 import {
   cartSlice,
   addToCart,
@@ -10,6 +10,25 @@ import {
   setCart,
   setCartId,
 } from "./slices/cartSlice";
+
+const createNoopStorage = () => ({
+  getItem: async (key: string) => {
+    void key;
+    return null;
+  },
+  setItem: async (key: string, value: string) => {
+    void key;
+    return value;
+  },
+  removeItem: async (key: string) => {
+    void key;
+  },
+});
+
+const storage =
+  typeof window !== "undefined"
+    ? createWebStorage("local")
+    : createNoopStorage();
 
 const persistConfig = {
   key: "cart",

@@ -1,4 +1,4 @@
-import { formatPriceRM, resolveSalePricing } from "@/app/lib/format-price";
+import { formatPriceRM, resolveSalePricing } from "@/app/lib/product";
 
 type ProductPriceProps = {
   salePrice: unknown;
@@ -23,7 +23,7 @@ export default function ProductPrice({
   discountSuffix = "%",
   stripSalePriceCurrency = false,
 }: ProductPriceProps) {
-  // Note: pricing rules stay centralized so card/PDP/admin always match.
+  // keep pricing rules centralized so card, product page, and admin match.
   const pricing = resolveSalePricing(compareAtPrice, salePrice);
   const salePriceLabel = stripSalePriceCurrency
     ? formatPriceRM(pricing.salePriceNumber).replace("RM ", "")

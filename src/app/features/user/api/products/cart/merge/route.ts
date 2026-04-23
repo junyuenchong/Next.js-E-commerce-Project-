@@ -1,4 +1,7 @@
-/** POST: merge guest cart into logged-in user (after sign-in). */
+/**
+ * cart merge api
+ * merge guest cart into logged-in user
+ */
 import { NextResponse } from "next/server";
 import {
   getCartWithLiveProductsService,

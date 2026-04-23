@@ -5,7 +5,7 @@ import { Product, Category } from "@prisma/client";
 import dynamic from "next/dynamic";
 import ProductPrice from "@/app/components/shared/ProductPrice";
 import { useAdminProductReviews } from "@/app/features/admin/shared";
-import { resolveSalePricing } from "@/app/lib/format-price";
+import { resolveSalePricing } from "@/app/lib/product";
 
 // Dynamic import for next/image to avoid SSR issues
 const Image = dynamic(() => import("next/image"), { ssr: false });
@@ -78,7 +78,7 @@ const ProductItem = memo(function ProductItem({
     removeReview,
   } = useAdminProductReviews(product.id);
 
-  // Note: we intentionally show discount only when compare-at > sale price.
+  // show discount only when compare-at price is greater than sale price.
   const pricing = resolveSalePricing(product.compareAtPrice, product.price);
 
   return (

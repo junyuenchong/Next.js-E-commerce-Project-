@@ -16,7 +16,7 @@ export {
 };
 
 /**
- * Handles create coupon admin action.
+ * Create a coupon through admin action flow.
  */
 export async function createCouponAdminAction(
   data: Parameters<typeof createCouponAdminService>[0],
@@ -26,7 +26,7 @@ export async function createCouponAdminAction(
 }
 
 /**
- * Handles update coupon admin action.
+ * Update a coupon through admin action flow.
  */
 export async function updateCouponAdminAction(
   id: number,
@@ -37,7 +37,7 @@ export async function updateCouponAdminAction(
 }
 
 /**
- * Handles deactivate coupon admin action.
+ * Deactivate a coupon through admin action flow.
  */
 export async function deactivateCouponAdminAction(id: number) {
   // soft deactivate keeps history while removing active checkout usage.

@@ -1,4 +1,4 @@
-// provides review services for product feedback listing, moderation, and replies.
+// Module: Provides review services for product feedback listing, moderation, and replies.
 import {
   findProductById,
   hasUserPurchasedProduct,

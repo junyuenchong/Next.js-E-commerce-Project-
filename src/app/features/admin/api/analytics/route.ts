@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: analytics.
+ * admin api route
+ * handle analytics
  */
 
 import { NextResponse } from "next/server";

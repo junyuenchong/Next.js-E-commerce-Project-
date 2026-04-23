@@ -1,11 +1,11 @@
-// provides schema-capability probes for review tables (migration-safe branching).
+// Module: Provides schema-capability probes for review tables (migration-safe branching).
 import prisma from "@/app/lib/prisma";
 
 // `true` is cached permanently; `false` is re-checked until migration adds the column.
 let cachedProductReviewHasIsActive: true | null = null;
 
 /**
- * Handles product review has is active column.
+ * Check whether ProductReview has the isActive column.
  */
 export async function productReviewHasIsActiveColumn(): Promise<boolean> {
   // check live schema for soft-delete support; cache positive results permanently.
@@ -27,7 +27,7 @@ export async function productReviewHasIsActiveColumn(): Promise<boolean> {
 }
 
 /**
- * Handles reset product review is active cache.
+ * Reset cached review schema capability (mainly for tests).
  */
 export function resetProductReviewIsActiveCache() {
   // manual reset is used in tests or hot-reloaded schema migrations.

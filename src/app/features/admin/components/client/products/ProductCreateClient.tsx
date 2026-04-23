@@ -4,17 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/utils/http";
+import { http, getErrorMessage } from "@/app/lib/network";
 import {
   adminApiPaths,
   fetchAdminCategories,
   postImageUpload,
-} from "@/app/features/admin/components/client";
+} from "@/app/lib/api/admin";
 import { useAdminToast } from "@/app/providers/AdminProviders";
-import {
-  buildAdminProductPayload,
-  trySetFieldErrorsFromAxios400,
-} from "@/app/features/admin/shared";
+import { buildAdminProductPayload } from "@/app/lib/product";
+import { trySetFieldErrorsFromAxios400 } from "@/app/lib/network";
 
 type AdminCategory = { id: number; name: string };
 
@@ -71,7 +69,7 @@ export default function ProductCreateClient() {
 
   const validatePayloadOrToast = useCallback(
     (payload: ReturnType<typeof buildAdminProductPayload>) => {
-      // Guard: keep UX fast (frontend checks) while backend remains the source of truth.
+      // keep ui fast with frontend checks while backend stays source of truth.
       if (
         !payload.title ||
         !Number.isFinite(payload.price) ||
@@ -116,7 +114,7 @@ export default function ProductCreateClient() {
   const onSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      // Feature: build normalized payload once (avoids per-field parsing spread across UI).
+      // build normalized payload once to avoid duplicated field parsing.
       const payload = buildAdminProductPayload(form);
       if (!validatePayloadOrToast(payload)) return;
       setSubmitting(true);
@@ -126,7 +124,7 @@ export default function ProductCreateClient() {
         router.push("/features/admin/products");
         router.refresh();
       } catch (err) {
-        // Guard: surface backend validation as inline field errors when available.
+        // show backend validation errors as inline field errors when available.
         if (trySetFieldErrorsFromAxios400(err, setFieldErrors)) return;
         showToast(getErrorMessage(err, "Create failed"), "error");
       } finally {

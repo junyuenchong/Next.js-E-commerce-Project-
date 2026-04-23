@@ -2,7 +2,7 @@
 import prisma from "@/backend/core/db/prisma";
 
 /**
- * Handles list wishlist for user repo.
+ * List wishlist items for one user.
  */
 export async function listWishlistForUserRepo(userId: number) {
   return prisma.wishlistItem.findMany({
@@ -25,7 +25,7 @@ export async function listWishlistForUserRepo(userId: number) {
 }
 
 /**
- * Handles add wishlist item repo.
+ * Add one product to a user's wishlist.
  */
 export async function addWishlistItemRepo(userId: number, productId: number) {
   // reactivate existing row instead of creating duplicate (user,product) records.
@@ -47,7 +47,7 @@ export async function addWishlistItemRepo(userId: number, productId: number) {
 }
 
 /**
- * Handles remove wishlist item repo.
+ * Remove one product from a user's wishlist.
  */
 export async function removeWishlistItemRepo(
   userId: number,

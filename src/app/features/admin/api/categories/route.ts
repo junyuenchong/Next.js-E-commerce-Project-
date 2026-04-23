@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: categories.
+ * admin api route
+ * handle categories
  */
 
 import {

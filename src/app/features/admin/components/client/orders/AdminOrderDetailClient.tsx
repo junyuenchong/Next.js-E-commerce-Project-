@@ -4,7 +4,7 @@ import Link from "next/link";
 import { OrderStatus } from "@prisma/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/utils/http";
+import { http, getErrorMessage } from "@/app/lib/network";
 import { useAdminResourceSSE } from "@/app/features/admin/shared";
 import InvoiceDialog from "@/app/components/shared/InvoiceDialog";
 
@@ -95,7 +95,7 @@ function adminOrderStatusLabel(status: OrderStatus): string {
 // Format money safely with a currency fallback.
 function formatMoney(amount: number, currency: string) {
   try {
-    // Note: Malaysia-first formatting (still respects passed currency code).
+    // use malaysia-first formatting and still respect passed currency code.
     return new Intl.NumberFormat("en-MY", {
       style: "currency",
       currency,
@@ -153,9 +153,9 @@ export default function AdminOrderDetailClient({
   const [savingShipment, setSavingShipment] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  // Feature: keep admin permissions responsive without constant refetch jitter.
-  // Guard: login/logout path explicitly clears this cache to prevent role bleed.
-  // Note: short stale window smooths route switches inside one active session.
+  // keep admin permissions responsive without noisy refetch.
+  // login and logout flows clear this cache to avoid stale role state.
+  // short stale window smooths route switches in one active session.
   const { data: me } = useQuery({
     queryKey: ["admin-me"],
     queryFn: async () => (await http.get<Me>("/features/admin/api/me")).data,

@@ -3,7 +3,7 @@ export type LoginProviderId = "local" | "google" | "facebook";
 const ORDER: LoginProviderId[] = ["local", "google", "facebook"];
 
 /**
- * Handles login providers from row.
+ * Derive enabled login providers from user credentials and linked accounts.
  */
 export function loginProvidersFromRow(
   passwordHash: string | null | undefined,

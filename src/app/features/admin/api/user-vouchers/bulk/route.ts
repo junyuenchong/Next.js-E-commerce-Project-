@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: user-vouchers/bulk.
+ * admin api route
+ * handle user-vouchers/bulk
  */
 
 import { NextResponse } from "next/server";

@@ -1,15 +1,16 @@
 "use client";
 
 /**
- * Loads admin categories and keeps cache fresh with realtime invalidation.
+ * admin categories hook
+ * load categories and keep cache fresh
  */
 
 import { useCallback, useMemo } from "react";
 import type { QueryKey } from "@tanstack/react-query";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { qk } from "@/app/lib/query-keys";
+import { qk } from "@/app/lib/realtime";
 import type { Category } from "@/app/features/admin/types";
-import { fetchAdminCategories } from "@/app/features/admin/components/client/http";
+import { fetchAdminCategories } from "@/app/lib/api/admin";
 import { useRealtimeInvalidate } from "./useRealtimeQuery";
 
 // Provides category data, refresh, and realtime invalidation.

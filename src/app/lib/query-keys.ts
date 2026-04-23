@@ -1,6 +1,6 @@
 import type { QueryKey } from "@tanstack/react-query";
 
-export const qk = {
+export const queryKeys = {
   user: {
     productsList: (
       categorySlug: string | null,
@@ -30,3 +30,5 @@ export const qk = {
     categories: (): QueryKey => ["categories", "list", { scope: "admin" }],
   },
 } as const;
+
+export const qk = queryKeys;

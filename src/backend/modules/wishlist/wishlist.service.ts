@@ -1,4 +1,4 @@
-// implements wishlist service methods for item add/remove and list retrieval.
+// Module: Provides wishlist service methods for item add/remove and list retrieval.
 import {
   addWishlistItemRepo,
   listWishlistForUserRepo,

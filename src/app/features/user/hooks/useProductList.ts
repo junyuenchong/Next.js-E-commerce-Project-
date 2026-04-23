@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRealtimeQuery } from "./useRealtimeQuery";
-import { qk } from "@/app/lib/query-keys";
-import {
-  fetchProductsByUrl,
-  productsListUrl,
-} from "@/app/features/user/components/client/http";
+import { qk } from "@/app/lib/realtime";
+import { fetchProductsByUrl, productsListUrl } from "@/app/lib/api/user";
 import type { ProductCardProduct } from "@/app/features/user/types";
 
 const PAGE_SIZE = 10;

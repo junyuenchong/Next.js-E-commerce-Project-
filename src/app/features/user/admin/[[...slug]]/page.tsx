@@ -4,8 +4,8 @@ import { getServerSessionCached } from "@/backend/core/session";
 import { canAccessAdminPanel } from "@/backend/core/auth/auth.service";
 
 /**
- * Legacy path compatibility:
- * /features/user/admin -> /features/admin/dashboard
+ * legacy admin redirect page
+ * redirect old user admin path to admin dashboard
  */
 export default async function LegacyUserAdminPathRedirect() {
   const session = await getServerSessionCached();

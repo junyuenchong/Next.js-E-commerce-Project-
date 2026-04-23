@@ -1,5 +1,5 @@
 /**
- * Handles money to number.
+ * Normalize money-like values to a finite number.
  */
 export function moneyToNumber(value: unknown): number {
   if (value == null) return 0;

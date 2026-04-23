@@ -1,12 +1,12 @@
 /**
- * Handles log error with context.
+ * Log an error with a stable context prefix.
  */
 export function logErrorWithContext(prefix: string, error: unknown): void {
   console.error(prefix, error);
 }
 
 /**
- * Handles run safely.
+ * Run an async task and map failures to a fallback value.
  */
 export async function runSafely<T>(
   task: () => Promise<T>,
@@ -20,7 +20,7 @@ export async function runSafely<T>(
 }
 
 /**
- * Handles run safely void.
+ * Run an async task and swallow errors after logging.
  */
 export async function runSafelyVoid(
   task: () => Promise<void>,

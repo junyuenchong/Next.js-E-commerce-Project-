@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import http from "@/app/utils/http";
+import { http } from "@/app/lib/network";
 import { useUser } from "@/app/features/user/components/client/UserContext";
 
 type WishlistItem = {

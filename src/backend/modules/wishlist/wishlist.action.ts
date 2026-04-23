@@ -1,4 +1,4 @@
-// provides wishlist server actions that delegate user wishlist mutations and reads.
+// Module: Provides wishlist server actions that delegate user wishlist mutations and reads.
 import {
   addWishlistItem,
   listWishlistForUser,

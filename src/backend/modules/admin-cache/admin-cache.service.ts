@@ -1,4 +1,4 @@
-// provides cached admin datasets with consistent Redis key invalidation helpers.
+// Module: Provides cached admin datasets with consistent Redis key invalidation helpers.
 import {
   deleteCacheKeys,
   getCachedJson,
@@ -6,13 +6,13 @@ import {
 } from "@/backend/modules/db/redis";
 
 // version for all admin cache keys.
-const V = "v1";
+const ADMIN_CACHE_KEY_VERSION = "v1";
 
 // redis keys used for admin cache values.
 export const ADMIN_CACHE_KEYS = {
-  analyticsSummary: `admin:${V}:analytics:summary`, // analytics summary key.
-  couponsList: `admin:${V}:coupons:list`, // admin coupons list key.
-  categoriesList: `admin:${V}:categories:list`, // admin categories list key.
+  analyticsSummary: `admin:${ADMIN_CACHE_KEY_VERSION}:analytics:summary`, // analytics summary key.
+  couponsList: `admin:${ADMIN_CACHE_KEY_VERSION}:coupons:list`, // admin coupons list key.
+  categoriesList: `admin:${ADMIN_CACHE_KEY_VERSION}:categories:list`, // admin categories list key.
 } as const;
 
 // tTL policy for admin cache values (seconds).

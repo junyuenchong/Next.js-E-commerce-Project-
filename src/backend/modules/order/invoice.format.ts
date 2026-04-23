@@ -25,7 +25,7 @@ function parseLines(value: unknown): InvoiceLine[] {
 }
 
 /**
- * Handles render invoice text.
+ * Render a plain-text invoice summary.
  */
 export function renderInvoiceText(invoice: InvoiceLike): string {
   const lines = parseLines(invoice.lineItems);

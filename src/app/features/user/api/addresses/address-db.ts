@@ -1,6 +1,8 @@
+/**
+ * address helpers
+ * ensure the user has one default address after deletes
+ */
 import prisma from "@/app/lib/prisma";
-
-/** After delete: if user still has rows and none default, mark the oldest as default. */
 export async function ensureOneDefault(userId: number) {
   const count = await prisma.userAddress.count({
     where: { userId, isActive: true },

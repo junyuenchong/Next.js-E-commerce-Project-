@@ -1,4 +1,7 @@
-/** Admin: RBAC permission profiles. */
+/**
+ * admin permission profiles page
+ * manage rbac permission profiles
+ */
 import RolePermissionsClient from "@/app/features/admin/components/client/role-permissions/RolePermissionsClient";
 
 export const metadata = {

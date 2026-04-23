@@ -1,14 +1,14 @@
 "use client";
 
-/** Admin: customers + team, roles, permission profiles. */
+/**
+ * admin users page client
+ * manage customers, team, roles, and permission profiles
+ */
 import { UserRole } from "@prisma/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import http from "@/app/utils/http";
-import {
-  formatLoginProviderLabel,
-  type LoginProviderId,
-} from "@/app/lib/login-providers";
+import { http } from "@/app/lib/network";
+import { formatLoginProviderLabel, type LoginProviderId } from "@/app/lib/auth";
 import Link from "next/link";
 import {
   setUserActiveAction,
@@ -134,9 +134,9 @@ function UserTailCells({
 
 export default function AdminUsersPage() {
   const searchParams = useSearchParams();
-  // Feature: keep admin permissions responsive without constant refetch jitter.
-  // Guard: login/logout path explicitly clears this cache to prevent role bleed.
-  // Note: short stale window smooths route switches inside one active session.
+  // keep admin permissions responsive without noisy refetch.
+  // login and logout flows clear this cache to avoid stale role state.
+  // short stale window smooths route switches in one active session.
   const { data: me } = useQuery({
     queryKey: ["admin-me"],
     queryFn: fetchAdminMe,

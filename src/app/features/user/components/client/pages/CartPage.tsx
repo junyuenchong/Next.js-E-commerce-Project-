@@ -1,11 +1,14 @@
 "use client";
 
-/** Cart lines, coupon apply/remove, totals. */
+/**
+ * cart page client
+ * show cart lines, coupons, and totals
+ */
 import React from "react";
 import { ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { formatPriceRM } from "@/app/lib/format-price";
+import { formatPriceRM } from "@/app/lib/product";
 import { useCartCoupon, useShoppingCart } from "@/app/features/user/hooks";
 import type { CartItemRowData } from "@/app/features/user/types";
 

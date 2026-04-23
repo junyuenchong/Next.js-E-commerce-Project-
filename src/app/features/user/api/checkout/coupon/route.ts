@@ -1,4 +1,7 @@
-/** GET quote / POST apply / DELETE clear — checkout coupon + cart subtotal. */
+/**
+ * checkout coupon api
+ * get quote, apply, and clear coupon for cart subtotal
+ */
 import { NextResponse } from "next/server";
 import { summarizeCartLines } from "@/app/lib/cart";
 import {

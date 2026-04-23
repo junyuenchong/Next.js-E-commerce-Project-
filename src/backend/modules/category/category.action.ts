@@ -1,4 +1,4 @@
-// exposes category actions for admin management and cached category reads.
+// Category server actions for admin flows and cached reads.
 "use server";
 
 import { Prisma } from "@prisma/client";
@@ -11,6 +11,10 @@ import { publishAdminCategoryEvent } from "@/backend/modules/admin-events";
 import { requireAdminPermission } from "@/backend/core/require-admin-permission";
 import { listProductsService } from "@/backend/modules/product/product.service";
 import { runAdminMutationEffects } from "@/backend/shared/admin-mutation-effects";
+import {
+  resolveListTake,
+  resolvePageNumber,
+} from "@/backend/shared/pagination/list-pagination";
 import {
   createCategoryService,
   deleteCategoryService,
@@ -35,9 +39,6 @@ function mapCategoryMutationError(error: unknown): unknown {
   return error;
 }
 
-/**
- * Handles get category by slug action.
- */
 export async function getCategoryBySlugAction(slug: string) {
   // read-through cache for category detail lookups by slug.
   const cacheKey = cacheKeys.categoryBySlug(slug);
@@ -48,26 +49,21 @@ export async function getCategoryBySlugAction(slug: string) {
   return category;
 }
 
-/**
- * Handles get all products by category action.
- */
 export async function getAllProductsByCategoryAction(
   limit?: number,
   page?: number,
 ) {
   // legacy paged product list cache path used by category/product UIs.
-  const take = limit && limit > 0 ? limit : 20;
-  const cacheKey = cacheKeys.productsList(take, page || 1);
+  const take = resolveListTake(limit, 20);
+  const pageNumber = resolvePageNumber(page);
+  const cacheKey = cacheKeys.productsList(take, pageNumber);
   const cached = await getCachedJson<unknown[]>(cacheKey);
   if (cached) return cached;
-  const products = await listProductsService(take, page);
+  const products = await listProductsService(take, pageNumber);
   await setCachedJson(cacheKey, products);
   return products;
 }
 
-/**
- * Handles get products by category slug action.
- */
 export async function getProductsByCategorySlugAction(
   slug: string,
   limit?: number,
@@ -75,7 +71,7 @@ export async function getProductsByCategorySlugAction(
 ) {
   // category-scoped listing with cache keys partitioned by slug and paging.
   const take = (limit ?? "all") as number | "all";
-  const p = page || 1;
+  const p = resolvePageNumber(page);
   const cacheKey = cacheKeys.productsByCategory(slug, take, p);
   const cached = await getCachedJson<unknown[]>(cacheKey);
   if (cached) return cached;
@@ -84,9 +80,6 @@ export async function getProductsByCategorySlugAction(
   return products;
 }
 
-/**
- * Handles get products by category slug cursor action.
- */
 export async function getProductsByCategorySlugCursorAction(
   slug: string,
   limit?: number,
@@ -96,9 +89,6 @@ export async function getProductsByCategorySlugCursorAction(
   return getProductsByCategorySlugCursorService(slug, limit, cursorId);
 }
 
-/**
- * Handles create category action.
- */
 export async function createCategoryAction(name: string) {
   // admin create path is permission-gated before any mutation.
   await requireAdminPermission("product.update");
@@ -116,25 +106,16 @@ export async function createCategoryAction(name: string) {
   }
 }
 
-/**
- * Handles get all categories action.
- */
 export async function getAllCategoriesAction() {
   // shared action wrapper for admin/public category list reads.
   return getAllCategoriesService();
 }
 
-/**
- * Handles get category by id action.
- */
 export async function getCategoryByIdAction(id: number) {
   // internal/admin lookup by numeric category id.
   return getCategoryByIdService(id);
 }
 
-/**
- * Handles update category action.
- */
 export async function updateCategoryAction(id: number, name: string) {
   // admin update path invalidates current and previous slug cache keys.
   const existing = await getCategoryByIdService(id);
@@ -166,9 +147,6 @@ export async function updateCategoryAction(id: number, name: string) {
   }
 }
 
-/**
- * Handles delete category action.
- */
 export async function deleteCategoryAction(id: number) {
   // soft-delete with related product-list cache and event invalidation.
   await requireAdminPermission("product.delete");
@@ -197,9 +175,6 @@ export async function deleteCategoryAction(id: number) {
   }
 }
 
-/**
- * Handles search categories action.
- */
 export async function searchCategoriesAction(query: string) {
   // lightweight admin search for selectors/autocomplete.
   return searchCategoriesService(query);

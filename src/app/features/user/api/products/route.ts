@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const revalidate = 30;
 
-import { serializeProductCardListForClient } from "@/app/lib/serialize-product-card";
+import { serializeProductCardListForClient } from "@/app/lib/product";
 import type { ProductCardProduct } from "@/app/features/user/types";
 import {
   listProductsCursorService,

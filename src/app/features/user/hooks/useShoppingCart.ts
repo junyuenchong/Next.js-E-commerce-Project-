@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
-import { getErrorMessage } from "@/app/utils/http";
+import { getErrorMessage } from "@/app/lib/network";
 import { postCartMutation } from "@/app/features/user/components/client";
 import { summarizeCartLines } from "@/app/lib/cart";
 import type { CartItemRowData } from "@/app/features/user/types";
 import { useCart } from "./useCart";
 
 export function useShoppingCart() {
-  // Feature: centralize cart mutations + UI-safe error state for cart pages.
+  // centralize cart mutations and user-safe error state for cart pages.
   const { cart, isLoading, mutate } = useCart();
   const [cartActionError, setCartActionError] = useState("");
 

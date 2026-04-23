@@ -1,4 +1,7 @@
-/** Category PLP by URL slug. */
+/**
+ * category page
+ * show product list page by url slug
+ */
 import type { Metadata } from "next";
 import type { Category } from "@prisma/client";
 import { notFound } from "next/navigation";
@@ -7,7 +10,7 @@ import {
   getCategoryBySlug,
   getProductsByCategorySlug,
 } from "@/backend/modules/category";
-import { serializeProductCardListForClient } from "@/app/lib/serialize-product-card";
+import { serializeProductCardListForClient } from "@/app/lib/product";
 import CategoryInfo from "@/app/features/user/components/client/category/CategoryInfo";
 
 export async function generateMetadata({

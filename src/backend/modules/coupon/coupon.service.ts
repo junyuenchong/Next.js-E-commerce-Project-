@@ -1,4 +1,4 @@
-// implements coupon validation, discount math, and admin coupon management services.
+// Module: Provides coupon validation, discount math, and admin coupon management services.
 import type {
   Coupon,
   CouponDiscountType,
@@ -111,7 +111,7 @@ async function validateCouponRedemptionScope(
 }
 
 /**
- * Handles validate coupon window.
+ * Validate whether the coupon is active in the current time window.
  */
 export function validateCouponWindow(
   coupon: Pick<
@@ -130,7 +130,7 @@ export function validateCouponWindow(
 }
 
 /**
- * Handles validate coupon for subtotal.
+ * Validate coupon constraints against the checkout subtotal.
  */
 export function validateCouponForSubtotal(
   coupon: Pick<
@@ -384,7 +384,7 @@ export async function listStorefrontVouchersForUserService(opts?: {
 }
 
 /**
- * Handles compute discount amount.
+ * Compute discount value from coupon type and subtotal.
  */
 export function computeDiscountAmount(
   subtotal: number,

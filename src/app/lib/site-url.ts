@@ -1,6 +1,6 @@
 /**
- * Canonical site origin for metadata, Open Graph, and sitemap URLs.
- * Set NEXT_PUBLIC_SITE_URL in production (e.g. https://yourdomain.com).
+ * site url helper
+ * resolve canonical site origin for metadata links
  */
 export function getSiteUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();

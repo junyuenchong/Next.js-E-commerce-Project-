@@ -1,10 +1,15 @@
-// implements order persistence for paid-order creation, stock updates, and admin queries.
+// Order persistence for checkout, stock transitions, and admin queries.
 import { Prisma, type OrderStatus } from "@prisma/client";
 import prisma from "@/backend/core/db/prisma";
 import {
   shouldDeductForTransition,
   shouldRestockForTransition,
 } from "@/backend/core/stock-policy";
+import { isPositiveInt, parsePositiveInt } from "@/backend/shared/number";
+import {
+  buildCursorPage,
+  resolveListTake,
+} from "@/backend/shared/pagination/list-pagination";
 import type {
   CreatePaidOrderInput,
   CreatePendingOrderInput,
@@ -102,9 +107,6 @@ async function createOrReplaceInvoiceForOrder(params: {
   });
 }
 
-/**
- * Handles create pending order repo.
- */
 export async function createPendingOrderRepo(input: CreatePendingOrderInput) {
   const discount = input.discountAmount ?? 0;
   return prisma.order.upsert({
@@ -143,9 +145,6 @@ export async function createPendingOrderRepo(input: CreatePendingOrderInput) {
   });
 }
 
-/**
- * Handles create paid order repo.
- */
 export async function createPaidOrderRepo(
   input: CreatePaidOrderInput,
   options?: { skipStockDecrement?: boolean },
@@ -264,9 +263,6 @@ export async function createPaidOrderRepo(
   });
 }
 
-/**
- * Handles decrement stock for order lines repo.
- */
 export async function decrementStockForOrderLinesRepo(
   lines: { productId: number; quantity: number }[],
 ) {
@@ -285,17 +281,6 @@ export async function decrementStockForOrderLinesRepo(
 const DEFAULT_PAGE = 40;
 const MAX_PAGE = 100;
 
-// shared cursor-page builder keeps list endpoint behavior consistent.
-function pageFromRows<T extends { id: number }>(rows: T[], limit: number) {
-  const hasMore = rows.length > limit;
-  const page = hasMore ? rows.slice(0, limit) : rows;
-  const nextCursor = hasMore ? page[page.length - 1]!.id : null;
-  return { page, nextCursor };
-}
-
-/**
- * Handles list orders for user repo.
- */
 export async function listOrdersForUserRepo(
   userId: number,
   cursorId?: number,
@@ -303,7 +288,7 @@ export async function listOrdersForUserRepo(
   status?: OrderStatus,
 ) {
   // hard clamp protects API against abusive `take` values.
-  const limit = Math.min(Math.max(1, take), MAX_PAGE);
+  const limit = resolveListTake(take, DEFAULT_PAGE, MAX_PAGE);
   const rows = await prisma.order.findMany({
     where: {
       userId,
@@ -321,13 +306,10 @@ export async function listOrdersForUserRepo(
       createdAt: true,
     },
   });
-  const { page, nextCursor } = pageFromRows(rows, limit);
+  const { page, nextCursor } = buildCursorPage(rows, limit);
   return { orders: page, nextCursor };
 }
 
-/**
- * Handles mark order received by user repo.
- */
 export async function markOrderReceivedByUserRepo(params: {
   userId: number;
   orderId: number;
@@ -345,9 +327,6 @@ export async function markOrderReceivedByUserRepo(params: {
   return { ok: updated.count === 1 };
 }
 
-/**
- * Handles find order by pay pal id repo.
- */
 export async function findOrderByPayPalIdRepo(paypalOrderId: string) {
   return prisma.order.findUnique({
     where: { paypalOrderId },
@@ -355,15 +334,12 @@ export async function findOrderByPayPalIdRepo(paypalOrderId: string) {
   });
 }
 
-/**
- * Handles find order for user by id repo.
- */
 export async function findOrderForUserByIdRepo(
   userId: number,
   orderId: number,
 ) {
-  if (!Number.isFinite(userId) || userId < 1) return null;
-  if (!Number.isFinite(orderId) || orderId < 1) return null;
+  if (!isPositiveInt(userId)) return null;
+  if (!isPositiveInt(orderId)) return null;
   return prisma.order.findFirst({
     where: { id: orderId, userId },
     include: {
@@ -389,27 +365,24 @@ function orderAdminListWhere(
   if (cursorId != null) parts.push({ id: { lt: cursorId } });
   const trimmed = q?.trim() ?? "";
   if (trimmed) {
-    const idNum = Number.parseInt(trimmed, 10);
+    const idNum = parsePositiveInt(trimmed);
     const or: Prisma.OrderWhereInput[] = [
       { paypalOrderId: { contains: trimmed, mode: "insensitive" } },
       { emailSnapshot: { contains: trimmed, mode: "insensitive" } },
       { user: { is: { email: { contains: trimmed, mode: "insensitive" } } } },
     ];
-    if (Number.isFinite(idNum) && idNum > 0) or.push({ id: idNum });
+    if (idNum != null) or.push({ id: idNum });
     parts.push({ OR: or });
   }
   return parts.length ? { AND: parts } : {};
 }
 
-/**
- * Handles list all orders admin repo.
- */
 export async function listAllOrdersAdminRepo(
   cursorId?: number,
   take = DEFAULT_PAGE,
   q?: string,
 ) {
-  const limit = Math.min(Math.max(1, take), MAX_PAGE);
+  const limit = resolveListTake(take, DEFAULT_PAGE, MAX_PAGE);
   const rows = await prisma.order.findMany({
     where: orderAdminListWhere(cursorId, q),
     orderBy: { id: "desc" },
@@ -419,13 +392,10 @@ export async function listAllOrdersAdminRepo(
       items: { take: 8 },
     },
   });
-  const { page, nextCursor } = pageFromRows(rows, limit);
+  const { page, nextCursor } = buildCursorPage(rows, limit);
   return { orders: page, nextCursor };
 }
 
-/**
- * Handles find order admin by id repo.
- */
 export async function findOrderAdminByIdRepo(id: number) {
   return prisma.order.findUnique({
     where: { id },
@@ -444,9 +414,6 @@ export async function findOrderAdminByIdRepo(id: number) {
   });
 }
 
-/**
- * Handles find invoice by user and order repo.
- */
 export async function findInvoiceByUserAndOrderRepo(
   userId: number,
   orderId: number,
@@ -470,9 +437,6 @@ export async function findInvoiceByUserAndOrderRepo(
   });
 }
 
-/**
- * Handles find invoice by order repo.
- */
 export async function findInvoiceByOrderRepo(orderId: number) {
   return prisma.invoice.findUnique({
     where: { orderId },
@@ -493,9 +457,6 @@ export async function findInvoiceByOrderRepo(orderId: number) {
   });
 }
 
-/**
- * Handles ensure invoice for order repo.
- */
 export async function ensureInvoiceForOrderRepo(orderId: number) {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.invoice.findUnique({
@@ -565,9 +526,6 @@ export async function ensureInvoiceForOrderRepo(orderId: number) {
   });
 }
 
-/**
- * Handles update order status repo.
- */
 export async function updateOrderStatusRepo(
   orderId: number,
   status: OrderStatus,
@@ -638,9 +596,6 @@ export async function updateOrderStatusRepo(
   });
 }
 
-/**
- * Handles update order shipment repo.
- */
 export async function updateOrderShipmentRepo(
   orderId: number,
   input: {

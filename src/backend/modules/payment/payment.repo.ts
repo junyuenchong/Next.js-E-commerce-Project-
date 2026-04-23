@@ -43,7 +43,7 @@ function canTransitionPaymentStatus(
 }
 
 /**
- * Handles create or reuse pay pal payment repo.
+ * Create or reuse a PayPal payment record.
  */
 export async function createOrReusePayPalPaymentRepo(
   input: CreatePayPalPaymentInput,
@@ -77,7 +77,7 @@ export async function createOrReusePayPalPaymentRepo(
 }
 
 /**
- * Handles insert payment status history repo.
+ * Insert one payment status history entry.
  */
 export async function insertPaymentStatusHistoryRepo(params: {
   paymentId: number;
@@ -98,7 +98,7 @@ export async function insertPaymentStatusHistoryRepo(params: {
 }
 
 /**
- * Handles mark payment processing repo.
+ * Transition payment state to processing.
  */
 export async function markPaymentProcessingRepo(params: {
   paymentId: number;
@@ -138,7 +138,7 @@ export async function markPaymentProcessingRepo(params: {
 }
 
 /**
- * Handles find payment by provider order id repo.
+ * Find a payment by provider and provider order id.
  */
 export async function findPaymentByProviderOrderIdRepo(
   provider: PaymentProvider,
@@ -150,7 +150,7 @@ export async function findPaymentByProviderOrderIdRepo(
 }
 
 /**
- * Handles reserve payment for capture repo.
+ * Reserve a payment row for capture using optimistic locking.
  */
 export async function reservePaymentForCaptureRepo(params: {
   paymentId: number;
@@ -199,7 +199,7 @@ export async function reservePaymentForCaptureRepo(params: {
 }
 
 /**
- * Handles mark payment failed repo.
+ * Mark a payment as failed.
  */
 export async function markPaymentFailedRepo(params: {
   paymentId: number;
@@ -237,7 +237,7 @@ export async function markPaymentFailedRepo(params: {
 }
 
 /**
- * Handles mark payment paid and link order repo.
+ * Mark payment as paid and attach the order id.
  */
 export async function markPaymentPaidAndLinkOrderRepo(params: {
   paymentId: number;
@@ -277,7 +277,7 @@ export async function markPaymentPaidAndLinkOrderRepo(params: {
 }
 
 /**
- * Handles create webhook inbox event repo.
+ * Create or deduplicate a webhook inbox event row.
  */
 export async function createWebhookInboxEventRepo(params: {
   provider: PaymentProvider;
@@ -305,7 +305,7 @@ export async function createWebhookInboxEventRepo(params: {
 }
 
 /**
- * Handles mark webhook handled repo.
+ * Mark a webhook inbox event as handled.
  */
 export async function markWebhookHandledRepo(params: {
   webhookEventId: number;
@@ -321,7 +321,7 @@ export async function markWebhookHandledRepo(params: {
 }
 
 /**
- * Handles list unhandled webhook events repo.
+ * List webhook inbox events that still need processing.
  */
 export async function listUnhandledWebhookEventsRepo(params?: {
   provider?: PaymentProvider;
@@ -339,7 +339,7 @@ export async function listUnhandledWebhookEventsRepo(params?: {
 }
 
 /**
- * Handles transition payment status repo.
+ * Transition payment status with history logging.
  */
 export async function transitionPaymentStatusRepo(params: {
   paymentId: number;
@@ -378,7 +378,7 @@ export async function transitionPaymentStatusRepo(params: {
 }
 
 /**
- * Handles cancel expired payments repo.
+ * Cancel pending payments that exceeded the expiration window.
  */
 export async function cancelExpiredPaymentsRepo(now: Date) {
   const stale = await prisma.payment.findMany({

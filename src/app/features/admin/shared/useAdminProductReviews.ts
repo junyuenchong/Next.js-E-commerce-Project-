@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * Manages admin review moderation: list, reply, and remove.
+ * admin product reviews hook
+ * manage list, reply, and remove actions
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { getErrorMessage } from "@/app/utils/http";
+import { getErrorMessage } from "@/app/lib/network";
 import {
   deleteAdminReview,
   fetchAdminProductReviews,
   patchAdminReviewReply,
-} from "@/app/features/admin/components/client";
+} from "@/app/lib/api/admin";
 
 export type AdminReviewItem = {
   id: number;

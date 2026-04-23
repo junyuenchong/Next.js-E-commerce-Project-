@@ -1,9 +1,12 @@
 "use client";
 
-/** Profile, avatar, linked accounts, addresses. */
+/**
+ * profile page client
+ * show profile, linked accounts, and addresses
+ */
 import Image from "next/image";
 import Link from "next/link";
-import { formatLoginProviderLabel } from "@/app/lib/login-providers";
+import { formatLoginProviderLabel } from "@/app/lib/auth";
 import AddressBookSection from "@/app/features/user/components/client/profile/AddressBookSection";
 import PasswordInput from "@/app/components/shared/PasswordInput";
 import { useProfilePage } from "@/app/features/user/hooks";

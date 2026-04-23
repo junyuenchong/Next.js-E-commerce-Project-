@@ -1,22 +1,22 @@
-// provides auth-related persistence for admin sessions and password-reset tokens.
+// Module: Provides auth persistence for admin sessions and password reset tokens.
 import prisma from "@/backend/core/db/prisma";
 
 /**
- * Handles find user by email for password reset.
+ * Find a user by email for password reset flows.
  */
 export async function findUserByEmailForPasswordReset(email: string) {
   return prisma.user.findUnique({ where: { email: email.trim() } });
 }
 
 /**
- * Handles delete password reset tokens for user.
+ * Delete all password reset tokens for a user.
  */
 export async function deletePasswordResetTokensForUser(userId: number) {
   return prisma.passwordResetToken.deleteMany({ where: { userId } });
 }
 
 /**
- * Handles create password reset token record.
+ * Create a password reset token record.
  */
 export async function createPasswordResetTokenRecord(data: {
   userId: number;
@@ -27,7 +27,7 @@ export async function createPasswordResetTokenRecord(data: {
 }
 
 /**
- * Handles find password reset token with user.
+ * Find a password reset token and its related user.
  */
 export async function findPasswordResetTokenWithUser(tokenHash: string) {
   return prisma.passwordResetToken.findUnique({
@@ -37,7 +37,7 @@ export async function findPasswordResetTokenWithUser(tokenHash: string) {
 }
 
 /**
- * Handles apply password reset transaction.
+ * Apply password reset and invalidate existing tokens in one transaction.
  */
 export async function applyPasswordResetTransaction(input: {
   userId: number;
@@ -55,7 +55,7 @@ export async function applyPasswordResetTransaction(input: {
 }
 
 /**
- * Handles find admin panel user row by id.
+ * Find admin panel user by id.
  */
 export async function findAdminPanelUserRowById(id: number) {
   return prisma.user.findUnique({
@@ -73,7 +73,7 @@ export async function findAdminPanelUserRowById(id: number) {
 }
 
 /**
- * Handles find user for admin session route.
+ * Find user data needed by admin session route.
  */
 export async function findUserForAdminSessionRoute(userId: number) {
   // minimal select keeps admin session check endpoint lightweight.
@@ -84,7 +84,7 @@ export async function findUserForAdminSessionRoute(userId: number) {
 }
 
 /**
- * Handles find user for admin password login.
+ * Find user data needed by admin password login.
  */
 export async function findUserForAdminPasswordLogin(email: string) {
   // login query returns only fields required for credential verification.

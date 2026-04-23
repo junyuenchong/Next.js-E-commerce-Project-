@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: auth/session.
+ * admin api route
+ * handle auth/session
  */
 
 import {

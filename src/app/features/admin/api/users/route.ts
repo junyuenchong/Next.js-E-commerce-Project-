@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: users.
+ * admin api route
+ * handle users
  */
 
 // Admin users API: list customers/team accounts and perform controlled mutations.
@@ -174,7 +175,7 @@ export async function POST(request: Request) {
               ? null
               : parsed.data.name.trim(),
         passwordHash,
-        // Guard: team account creation is now fixed to ADMIN.
+        // team account creation uses fixed ADMIN role.
         role: "ADMIN",
         isActive: parsed.data.isActive ?? true,
         adminPermissionRoleId: null,

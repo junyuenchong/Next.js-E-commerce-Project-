@@ -3,11 +3,8 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/utils/http";
-import {
-  adminApiPaths,
-  patchAdminReviewReply,
-} from "@/app/features/admin/components/client";
+import { http, getErrorMessage } from "@/app/lib/network";
+import { adminApiPaths, patchAdminReviewReply } from "@/app/lib/api/admin";
 import { useAdminToast } from "@/app/providers/AdminProviders";
 
 type ReviewRow = {

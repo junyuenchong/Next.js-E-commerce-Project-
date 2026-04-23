@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: events/categories.
+ * admin api route
+ * handle events/categories
  */
 
 import {

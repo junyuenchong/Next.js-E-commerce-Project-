@@ -1,4 +1,4 @@
-// implements coupon repository reads and writes for checkout and admin management.
+// Module: Provides coupon repository reads and writes for checkout and admin management.
 import type {
   CouponDiscountType,
   CouponRedemptionScope,
@@ -13,14 +13,14 @@ function toDecimal(n: number): Decimal {
 }
 
 /**
- * Handles find coupon by code repo.
+ * Find a coupon row by code.
  */
 export async function findCouponByCodeRepo(code: string) {
   return prisma.coupon.findUnique({ where: { code } });
 }
 
 /**
- * Handles find user coupon assignment repo.
+ * Find one user-coupon assignment row.
  */
 export async function findUserCouponAssignmentRepo(
   userId: number,
@@ -33,7 +33,7 @@ export async function findUserCouponAssignmentRepo(
 }
 
 /**
- * Handles list active storefront coupons repo.
+ * List active coupons visible on storefront.
  */
 export async function listActiveStorefrontCouponsRepo() {
   // storefront only shows public coupons explicitly surfaced as vouchers.
@@ -48,7 +48,7 @@ export async function listActiveStorefrontCouponsRepo() {
 }
 
 /**
- * Handles list coupons admin repo.
+ * List coupons for admin management pages.
  */
 export async function listCouponsAdminRepo() {
   return prisma.coupon.findMany({
@@ -57,7 +57,7 @@ export async function listCouponsAdminRepo() {
 }
 
 /**
- * Handles create coupon admin repo.
+ * Create a coupon from admin input.
  */
 export async function createCouponAdminRepo(data: {
   code: string;
@@ -97,7 +97,7 @@ export async function createCouponAdminRepo(data: {
 }
 
 /**
- * Handles update coupon admin repo.
+ * Update an existing coupon from admin input.
  */
 export async function updateCouponAdminRepo(
   id: number,
@@ -107,7 +107,7 @@ export async function updateCouponAdminRepo(
 }
 
 /**
- * Handles deactivate coupon admin repo.
+ * Deactivate a coupon by id.
  */
 export async function deactivateCouponAdminRepo(id: number) {
   return prisma.coupon.update({

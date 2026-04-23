@@ -1,7 +1,7 @@
 /**
- * Admin product UI: string form state → numeric API payload (price, compare-at, stock, category).
+ * admin product form helper
+ * normalize admin product form strings into api payload
  */
-
 type AdminProductFormLike = {
   title: string;
   description?: string;
@@ -32,7 +32,6 @@ export type AdminProductPayload = {
   imageUrl?: string;
 };
 
-/** Normalize admin product form strings into API payload. */
 export function buildAdminProductPayload(
   form: AdminProductFormLike,
   options?: { imageUrl?: string | undefined },
@@ -44,7 +43,7 @@ export function buildAdminProductPayload(
   const compareAtParsed =
     compareAtRaw === "" ? null : toFiniteNumberOrNull(compareAtRaw);
 
-  // Guard: invalid compare-at values are treated as "unset" (backend validates strict > price when set).
+  // treat invalid compare-at values as unset; backend validates compare-at > price.
   const compareAtPrice =
     compareAtParsed != null && compareAtParsed > 0 ? compareAtParsed : null;
 

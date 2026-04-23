@@ -1,4 +1,7 @@
-/** Admin: product reviews. */
+/**
+ * admin reviews page
+ * moderate product reviews
+ */
 import AdminReviewsClient from "@/app/features/admin/components/client/reviews/AdminReviewsClient";
 
 export const metadata = { title: "Reviews · Admin" };

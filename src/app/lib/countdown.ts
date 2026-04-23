@@ -1,4 +1,7 @@
-/** Format seconds as `HH:MM:SS` for simple countdown UI. */
+/**
+ * countdown helpers
+ * format seconds as HH:MM:SS
+ */
 export function formatHms(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
   const h = Math.floor(s / 3600);

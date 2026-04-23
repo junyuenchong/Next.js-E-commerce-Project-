@@ -1,6 +1,9 @@
-import { fetchSameOriginJson } from "@/app/features/admin/shared";
+import { fetchSameOriginJson } from "@/app/lib/network";
 
-/** Uses same-origin fetch so auth cookies are always included. */
+/**
+ * upload client
+ * use same-origin fetch so auth cookies are included
+ */
 const ADMIN_UPLOAD_PATH = "/features/admin/api/upload";
 
 export async function postImageUpload(formData: FormData) {

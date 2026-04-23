@@ -1,4 +1,7 @@
-/** Search & filter results (dynamic). */
+/**
+ * search page
+ * show search and filter results (dynamic)
+ */
 import type { Metadata } from "next";
 import type { ProductCardProduct } from "@/app/features/user/types";
 import type { ReactNode } from "react";
@@ -7,8 +10,8 @@ import { Suspense } from "react";
 import SalesCampaignBanner from "@/app/features/user/components/client/SalesCampaignBanner/SalesCampaignBanner";
 import LoadError from "@/app/features/user/components/shared/LoadError";
 import ProductGrid from "@/app/features/user/components/client/Products/ProductGrid/ProductGrid";
-import { parseSearchQuery } from "@/app/lib/search-query";
-import { serializeProductCardListForClient } from "@/app/lib/serialize-product-card";
+import { parseSearchQuery } from "@/app/lib/auth";
+import { serializeProductCardListForClient } from "@/app/lib/product";
 import { getAllCategories } from "@/backend/modules/category";
 import {
   searchProductsWithFilters,

@@ -1,5 +1,5 @@
 /**
- * Handles resolve database url for prisma.
+ * Resolve a Prisma-ready database URL from env.
  */
 export function resolveDatabaseUrlForPrisma(): string | undefined {
   const raw = process.env.DATABASE_URL;

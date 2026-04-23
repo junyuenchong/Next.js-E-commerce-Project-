@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSiteUrl } from "@/app/lib/site-url";
+import { getSiteUrl } from "@/app/lib/auth";
 import { createPasswordResetForEmail } from "@/backend/modules/auth";
 import { clientIp, rateLimit } from "@/app/lib/rate-limit";
 import { sendTransactionalEmail } from "@/backend/modules/notification";

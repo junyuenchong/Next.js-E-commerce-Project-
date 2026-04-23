@@ -4,7 +4,7 @@ import { OrderStatus } from "@prisma/client";
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/utils/http";
+import { http, getErrorMessage } from "@/app/lib/network";
 import { useAdminResourceSSE } from "@/app/features/admin/shared";
 
 type OrderLine = {
@@ -106,7 +106,7 @@ async function fetchOrdersPage(
 // Format money safely with a currency fallback.
 function formatMoney(amount: number, currency: string) {
   try {
-    // Note: Malaysia-first formatting (still respects passed currency code).
+    // use malaysia-first formatting and still respect passed currency code.
     return new Intl.NumberFormat("en-MY", {
       style: "currency",
       currency,
@@ -146,9 +146,9 @@ export default function AdminOrdersClient() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
   const [sortKey, setSortKey] = useState<SortKey>("newestFirst");
 
-  // Feature: keep admin permissions responsive without constant refetch jitter.
-  // Guard: login/logout path explicitly clears this cache to prevent role bleed.
-  // Note: short stale window smooths route switches inside one active session.
+  // keep admin permissions responsive without noisy refetch.
+  // login and logout flows clear this cache to avoid stale role state.
+  // short stale window smooths route switches in one active session.
   const { data: me } = useQuery({
     queryKey: ["admin-me"],
     queryFn: fetchAdminMe,

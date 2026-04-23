@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 /**
- * Handles unknown error message.
+ * Convert unknown errors into a readable message.
  */
 export function unknownErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim() !== "")
@@ -11,7 +11,7 @@ export function unknownErrorMessage(error: unknown): string {
 }
 
 /**
- * Handles json internal server error.
+ * Return a normalized 500 JSON response and log details.
  */
 export function jsonInternalServerError(
   error: unknown,

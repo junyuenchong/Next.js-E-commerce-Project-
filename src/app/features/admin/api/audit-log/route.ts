@@ -1,13 +1,14 @@
 /**
- * Admin HTTP route: audit-log.
+ * admin api route
+ * handle audit-log
  */
 
 import { NextResponse } from "next/server";
 import {
   ADMIN_LIST_DEFAULT,
-  clampAdminListLimit,
-  parseAdminCursorId,
-} from "@/backend/shared/pagination/admin-pagination";
+  buildCursorResponseMeta,
+  parseAdminListParams,
+} from "@/backend/shared/pagination/list-pagination";
 import prisma from "@/app/lib/prisma";
 import { adminApiRequire } from "@/backend/core/admin-api-guard";
 import { jsonInternalServerError } from "@/backend/lib/api-error";
@@ -16,7 +17,6 @@ export const dynamic = "force-dynamic";
 
 type AuditSort = "newest" | "oldest" | "action-a-z";
 
-// Normalize incoming sort value to a supported audit sort mode.
 function parseAuditSort(value: string | null): AuditSort {
   if (value === "oldest") return "oldest";
   // Keep backward compatibility with legacy client value "action_az".
@@ -24,18 +24,16 @@ function parseAuditSort(value: string | null): AuditSort {
   return "newest";
 }
 
-// Return paginated admin audit-log rows with actor details.
 export async function GET(req: Request) {
   try {
     const guard = await adminApiRequire("audit.read");
     if (!guard.ok) return guard.response;
 
     const { searchParams } = new URL(req.url);
-    const take = clampAdminListLimit(
-      searchParams.get("limit"),
+    const { take, cursorId } = parseAdminListParams(
+      searchParams,
       ADMIN_LIST_DEFAULT.audit,
     );
-    const cursorId = parseAdminCursorId(searchParams.get("cursor"));
     const sort = parseAuditSort(searchParams.get("sort"));
 
     const whereByCursor =
@@ -102,9 +100,7 @@ export async function GET(req: Request) {
               ? actorById.get(r.actorUserId)!
               : null,
         })),
-        nextCursor,
-        hasMore: nextCursor != null,
-        limit: take,
+        ...buildCursorResponseMeta(take, nextCursor),
         sort,
       },
       { headers: { "Cache-Control": "no-store" } },

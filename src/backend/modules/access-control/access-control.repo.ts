@@ -20,7 +20,7 @@ function cacheKeyForRoleId(roleId: number) {
 }
 
 /**
- * Handles admin role definition has is active column.
+ * Check whether admin role definition table has isActive column.
  */
 export async function adminRoleDefinitionHasIsActiveColumn(): Promise<boolean> {
   if (cachedAdminRoleHasIsActive === true) return true;
@@ -41,14 +41,14 @@ export async function adminRoleDefinitionHasIsActiveColumn(): Promise<boolean> {
 }
 
 /**
- * Handles reset admin role definition is active cache.
+ * Reset cached role-definition schema capability.
  */
 export function resetAdminRoleDefinitionIsActiveCache() {
   cachedAdminRoleHasIsActive = null;
 }
 
 /**
- * Handles invalidate admin permission caches.
+ * Invalidate cached permission keys for role ids.
  */
 export async function invalidateAdminPermissionCaches(roleIds: number[]) {
   if (roleIds.length === 0) return;
@@ -56,7 +56,7 @@ export async function invalidateAdminPermissionCaches(roleIds: number[]) {
 }
 
 /**
- * Handles get effective permission keys by role id.
+ * Return effective permission keys for a role id.
  */
 export async function getEffectivePermissionKeysByRoleId(
   roleId: number,
@@ -79,7 +79,7 @@ export async function getEffectivePermissionKeysByRoleId(
 }
 
 /**
- * Handles get role definition id by slug.
+ * Resolve role definition id from role slug.
  */
 export async function getRoleDefinitionIdBySlug(
   slug: string,
@@ -92,7 +92,7 @@ export async function getRoleDefinitionIdBySlug(
 }
 
 /**
- * Handles get role definition id by id.
+ * Resolve role definition id from numeric id.
  */
 export async function getRoleDefinitionIdById(
   roleId: number,
@@ -105,7 +105,7 @@ export async function getRoleDefinitionIdById(
 }
 
 /**
- * Handles get active role definition id by id.
+ * Resolve active role definition id from numeric id.
  */
 export async function getActiveRoleDefinitionIdById(
   roleId: number,

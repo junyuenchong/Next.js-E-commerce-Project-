@@ -1,4 +1,7 @@
-/** Admin sign-in; redirects if already authenticated. */
+/**
+ * admin sign-in page
+ * redirect when already authenticated
+ */
 import { getCurrentAdminUser } from "@/backend/core/session";
 import { postAuthRedirectPath } from "@/backend/core/auth/auth.service";
 import { redirect } from "next/navigation";

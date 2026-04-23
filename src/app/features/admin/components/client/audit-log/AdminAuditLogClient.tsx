@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import http from "@/app/utils/http";
-import { adminApiPaths } from "@/app/features/admin/components/client";
+import { http } from "@/app/lib/network";
+import { adminApiPaths } from "@/app/lib/api/admin";
 import { AuditLogDetailsCell } from "@/app/features/admin/components/client/audit/auditLogDetails";
 
 type AuditRow = {

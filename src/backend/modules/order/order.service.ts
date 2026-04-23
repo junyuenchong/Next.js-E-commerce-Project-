@@ -1,6 +1,7 @@
-// Order service layer: business rules for order lifecycle and admin/user views.
+// Order services for lifecycle rules and admin/user workflows.
 import type { OrderStatus } from "@prisma/client";
 import { publishAdminOrderEvent } from "@/backend/modules/admin-events";
+import { isPositiveInt } from "@/backend/shared/number";
 import {
   createPendingOrderRepo,
   ensureInvoiceForOrderRepo,
@@ -46,9 +47,6 @@ function lineStock(item: CartLineWithProduct): number | undefined {
   return typeof availableStock === "number" ? availableStock : undefined;
 }
 
-/**
- * Handles validate cart stock for order.
- */
 export function validateCartStockForOrder(
   items: CartLineWithProduct[],
 ): { ok: true } | { ok: false; productId: number } {
@@ -158,7 +156,7 @@ export async function listAllOrdersAdminService(
  */
 export async function getOrderAdminByIdService(id: number) {
   // reject invalid numeric ids early to avoid unnecessary DB queries.
-  if (!Number.isFinite(id) || id < 1) return null;
+  if (!isPositiveInt(id)) return null;
   return findOrderAdminByIdRepo(id);
 }
 
@@ -233,10 +231,10 @@ export async function markOrderReceivedByUserService(params: {
   userId: number;
   orderId: number;
 }) {
-  if (!Number.isFinite(params.userId) || params.userId < 1) {
+  if (!isPositiveInt(params.userId)) {
     return { ok: false as const, error: "invalid_user" };
   }
-  if (!Number.isFinite(params.orderId) || params.orderId < 1) {
+  if (!isPositiveInt(params.orderId)) {
     return { ok: false as const, error: "invalid_order" };
   }
   const result = await markOrderReceivedByUserRepo(params);

@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/utils/http";
-import { formatPriceRM } from "@/app/lib/format-price";
+import { http, getErrorMessage } from "@/app/lib/network";
+import { formatPriceRM } from "@/app/lib/product";
 import { useAdminResourceSSE } from "@/app/features/admin/shared";
 import type { AdminAnalyticsPayload } from "@/shared/types";
 

@@ -1,10 +1,13 @@
-/** Product PDP + SEO metadata. */
+/**
+ * product page
+ * show product detail and seo metadata
+ */
 import type { Metadata } from "next";
 import ProductDetail from "@/app/features/user/components/client/Products/ProductList/ProductDetail";
 import type { ProductDetailPayload } from "@/app/features/user/types";
 import { getProductById } from "@/backend/modules/product";
-import { serializeProductCardForClient } from "@/app/lib/serialize-product-card";
-import { getSiteUrl } from "@/app/lib/site-url";
+import { serializeProductCardForClient } from "@/app/lib/product";
+import { getSiteUrl } from "@/app/lib/auth";
 
 export async function generateMetadata({
   params,

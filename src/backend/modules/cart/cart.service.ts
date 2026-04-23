@@ -1,4 +1,4 @@
-// implements cart business rules for item updates, pricing, and checkout preparation.
+// Module: Provides cart business rules for item updates, pricing, and checkout preparation.
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { moneyToNumber } from "@/backend/core/money";

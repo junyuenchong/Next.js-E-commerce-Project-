@@ -1,4 +1,4 @@
-import http from "@/app/utils/http";
+import { http } from "@/app/lib/network";
 
 const CART_API = "/features/user/api/cart";
 const MERGE_API = "/features/user/api/products/cart/merge";

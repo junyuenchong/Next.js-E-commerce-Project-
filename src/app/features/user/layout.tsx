@@ -31,7 +31,7 @@ export const metadata: Metadata = {
 };
 
 const UserLayout = async ({ children }: { children: React.ReactNode }) => {
-  // Guard: resolve session with shared backend auth options (single source of truth).
+  // resolve session with shared backend auth options.
   const session = await getServerSession(authOptions);
   return (
     <UserAppProvider session={session}>

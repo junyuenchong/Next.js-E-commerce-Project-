@@ -1,3 +1,4 @@
-// Compatibility alias for the planned `app/utils` structure.
-export { default } from "@/app/lib/http";
-export * from "@/app/lib/http";
+// Compatibility alias for legacy imports.
+// Keep a single source of truth in `app/lib/network`.
+export { http as default } from "@/app/lib/network";
+export * from "@/app/lib/network";

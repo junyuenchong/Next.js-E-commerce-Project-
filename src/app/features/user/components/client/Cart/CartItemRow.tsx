@@ -3,7 +3,7 @@
 import React, { memo, useCallback } from "react";
 import { Trash2, Minus, Plus } from "lucide-react";
 import Image from "next/image";
-import { IMG } from "@/app/lib/image-sizes";
+import { IMG } from "@/app/lib/product";
 import type { CartItemRowData } from "@/app/features/user/types";
 import { moneyToNumber } from "@/backend/core/money";
 

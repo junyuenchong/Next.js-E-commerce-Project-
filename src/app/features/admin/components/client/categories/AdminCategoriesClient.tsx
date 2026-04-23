@@ -2,8 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import http, { getErrorMessage } from "@/app/utils/http";
-import { adminApiPaths } from "@/app/features/admin/components/client/http";
+import { http, getErrorMessage } from "@/app/lib/network";
+import { adminApiPaths } from "@/app/lib/api/admin";
 import CategoryItem from "@/app/features/admin/components/client/category/types/CategoryItem";
 import type { Category } from "@/shared/types";
 

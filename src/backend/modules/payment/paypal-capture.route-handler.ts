@@ -1,4 +1,4 @@
-// handles PayPal capture webhook-like route flow with auth, validation, and order finalization.
+// Module: Provides PayPal capture route flow with auth, validation, and order finalization.
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
@@ -355,7 +355,7 @@ async function runFulfillmentFlow(params: {
 }
 
 /**
- * Handles post pay pal capture route.
+ * Execute PayPal capture flow and persist local order/payment side effects.
  */
 export async function postPayPalCaptureRoute(
   req: Request,

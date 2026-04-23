@@ -1,4 +1,4 @@
-// implements authentication and password-reset service logic with role-aware access checks.
+// Module: Provides authentication and password reset service logic with role-aware access checks.
 import { createHash, randomBytes } from "crypto";
 import type { UserRole } from "@prisma/client";
 import type { AppPermissionRole } from "@/backend/modules/access-control";
@@ -14,7 +14,7 @@ const HOUR_MS = 60 * 60 * 1000;
 const INTERNAL_ADMIN_LOGIN_DOMAIN = "admin.local";
 
 /**
- * Handles hash reset token.
+ * Hash a password-reset token for storage and lookup.
  */
 export function hashResetToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -25,7 +25,7 @@ function isEmailLikeIdentifier(value: string): boolean {
 }
 
 /**
- * Handles normalize admin login identifier.
+ * Normalize admin login identifier (email or username-like input).
  */
 export function normalizeAdminLoginIdentifier(raw: string): string {
   const value = raw.trim().toLowerCase();
@@ -78,7 +78,7 @@ export async function consumePasswordResetToken(
 }
 
 /**
- * Handles permission app role from user role.
+ * Map persisted user role to permission app role.
  */
 export function permissionAppRoleFromUserRole(
   role: UserRole,
@@ -105,7 +105,7 @@ export function canAccessAdminPanel(role: UserRole): boolean {
 const ADMIN_DASHBOARD = "/features/admin/dashboard";
 
 /**
- * Handles post auth redirect path.
+ * Compute post-auth redirect path from role and callback input.
  */
 export function postAuthRedirectPath(
   role: UserRole | string,

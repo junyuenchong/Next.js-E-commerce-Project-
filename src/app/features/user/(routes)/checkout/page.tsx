@@ -1,4 +1,7 @@
-/** Checkout: server passes PayPal client id / currency to client. */
+/**
+ * checkout page
+ * pass paypal client id and currency to client
+ */
 import Checkout from "@/app/features/user/components/client/Checkout/Checkout";
 
 export default function CheckoutPage() {

@@ -1,14 +1,15 @@
 /**
- * Admin HTTP route: orders.
+ * admin api route
+ * handle orders
  */
 
 import { NextResponse } from "next/server";
 import { bustAdminAnalyticsCache } from "@/backend/modules/admin-cache";
 import {
   ADMIN_LIST_DEFAULT,
-  clampAdminListLimit,
-  parseAdminCursorId,
-} from "@/backend/shared/pagination/admin-pagination";
+  buildCursorResponseMeta,
+  parseAdminListParams,
+} from "@/backend/shared/pagination/list-pagination";
 import prisma from "@/app/lib/prisma";
 import {
   listAllOrdersAdminService,
@@ -34,19 +35,16 @@ import { moneyToNumber } from "@/backend/core/money";
 import { jsonInternalServerError } from "@/backend/lib/api-error";
 import { resolveStockMutationForTransition } from "@/backend/core/stock-policy";
 
-// Parse shared cursor/search params for the orders list endpoint.
 function parseCursorParams(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() || undefined;
-  const take = clampAdminListLimit(
-    searchParams.get("limit"),
+  const { take, cursorId: cursor } = parseAdminListParams(
+    searchParams,
     ADMIN_LIST_DEFAULT.orders,
   );
-  const cursor = parseAdminCursorId(searchParams.get("cursor"));
   return { cursor, take, q };
 }
 
-// Return paginated admin order rows for the orders table.
 export async function GET(request: Request) {
   try {
     const guard = await adminApiRequire("order.read");
@@ -71,9 +69,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         orders: payload,
-        nextCursor,
-        hasMore: nextCursor != null,
-        limit: take,
+        ...buildCursorResponseMeta(take, nextCursor),
       },
       {
         headers: {
@@ -87,7 +83,6 @@ export async function GET(request: Request) {
   }
 }
 
-// Update either order status or shipment details from one endpoint.
 export async function PATCH(request: Request) {
   const json = (await request.json().catch(() => null)) as unknown;
   const statusParsed = updateOrderStatusSchema.safeParse(json);

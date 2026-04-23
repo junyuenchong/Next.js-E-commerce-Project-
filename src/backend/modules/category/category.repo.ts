@@ -1,8 +1,8 @@
-// provides category persistence for hierarchical catalog structures and lookup helpers.
+// Module: Provides category persistence for hierarchical catalog structures and lookup helpers.
 import prisma from "@/app/lib/prisma";
 
 /**
- * Handles find category by slug.
+ * Find a category by slug.
  */
 export async function findCategoryBySlug(
   slug: string,
@@ -16,14 +16,14 @@ export async function findCategoryBySlug(
 }
 
 /**
- * Handles find category by id.
+ * Find a category by id.
  */
 export async function findCategoryById(id: number) {
   return prisma.category.findUnique({ where: { id } });
 }
 
 /**
- * Handles list categories active.
+ * List categories that are marked active.
  */
 export async function listCategoriesActive() {
   return prisma.category.findMany({
@@ -33,7 +33,7 @@ export async function listCategoriesActive() {
 }
 
 /**
- * Handles find products by category slug.
+ * List products for one category slug with offset pagination.
  */
 export async function findProductsByCategorySlug(params: {
   slug: string;
@@ -74,7 +74,7 @@ export async function findProductsByCategorySlug(params: {
 }
 
 /**
- * Handles find products by category slug cursor.
+ * List products for one category slug with cursor pagination.
  */
 export async function findProductsByCategorySlugCursor(params: {
   slug: string;
@@ -120,7 +120,7 @@ export async function findProductsByCategorySlugCursor(params: {
 }
 
 /**
- * Handles create category record.
+ * Create a category row.
  */
 export async function createCategoryRecord(data: {
   name: string;
@@ -130,7 +130,7 @@ export async function createCategoryRecord(data: {
 }
 
 /**
- * Handles update category record.
+ * Update a category row.
  */
 export async function updateCategoryRecord(
   id: number,
@@ -140,7 +140,7 @@ export async function updateCategoryRecord(
 }
 
 /**
- * Handles soft deactivate category record.
+ * Soft-delete a category by toggling isActive.
  */
 export async function softDeactivateCategoryRecord(id: number) {
   // Soft-delete keeps FK references intact (orders/products history).
@@ -151,7 +151,7 @@ export async function softDeactivateCategoryRecord(id: number) {
 }
 
 /**
- * Handles search categories by name.
+ * Search categories by display name.
  */
 export async function searchCategoriesByName(query: string) {
   return prisma.category.findMany({
@@ -164,7 +164,7 @@ export async function searchCategoriesByName(query: string) {
 }
 
 /**
- * Handles category slug exists.
+ * Check whether a category slug already exists.
  */
 export async function categorySlugExists(slug: string) {
   // Existence check is used by service layer before create/update writes.

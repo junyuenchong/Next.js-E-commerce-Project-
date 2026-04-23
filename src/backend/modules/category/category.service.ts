@@ -1,5 +1,10 @@
-// implements category services for CRUD management, slug rules, and cached reads.
+// Category domain services for CRUD, slug generation, and listing flows.
 import slugify from "slugify";
+import {
+  resolveOffsetPage,
+  resolveListTake,
+  toPositiveOrUndefined,
+} from "@/backend/shared/pagination/list-pagination";
 import { categorySchema, categorySlugSchema } from "@/shared/schema";
 import { attachPublicListStats } from "@/backend/modules/product/product.repo";
 import {
@@ -15,15 +20,6 @@ import {
   updateCategoryRecord,
 } from "./category.repo";
 
-function normalizePagination(limit?: number, page?: number) {
-  const take = limit && limit > 0 ? limit : undefined;
-  const skip = take && page && page > 1 ? (page - 1) * take : undefined;
-  return { take, skip };
-}
-
-/**
- * Handles generate unique category slug.
- */
 export async function generateUniqueCategorySlug(
   name: string,
 ): Promise<string> {
@@ -77,7 +73,7 @@ export async function getProductsByCategorySlugService(
   page?: number,
 ) {
   const parsed = categorySlugSchema.parse({ slug });
-  const { take, skip } = normalizePagination(limit, page);
+  const { take, skip } = resolveOffsetPage({ limit, page });
   const rows = await findProductsByCategorySlug({
     slug: parsed.slug,
     take,
@@ -95,11 +91,11 @@ export async function getProductsByCategorySlugCursorService(
   cursorId?: number,
 ) {
   const parsed = categorySlugSchema.parse({ slug });
-  const take = limit && limit > 0 ? limit : 20;
+  const take = resolveListTake(limit, 20);
   const rows = await findProductsByCategorySlugCursor({
     slug: parsed.slug,
     take,
-    cursorId,
+    cursorId: toPositiveOrUndefined(cursorId),
   });
   return attachPublicListStats(rows);
 }

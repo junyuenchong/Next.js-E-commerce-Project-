@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: coupons.
+ * admin api route
+ * handle coupons
  */
 
 import { NextResponse } from "next/server";

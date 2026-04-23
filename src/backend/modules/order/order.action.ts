@@ -39,7 +39,7 @@ export {
 };
 
 /**
- * Handles update order status admin action.
+ * Proxy order-status updates through the service layer.
  */
 export async function updateOrderStatusAdminAction(
   orderId: number,

@@ -94,7 +94,7 @@ export type OrderAnalyticsJobPayload = {
 };
 
 /**
- * Handles enqueue order email job.
+ * Enqueue an order confirmation email job.
  */
 export async function enqueueOrderEmailJob(payload: OrderEmailJobPayload) {
   // fail hard only when MQ is configured but unreachable.
@@ -117,7 +117,7 @@ export async function enqueueOrderEmailJob(payload: OrderEmailJobPayload) {
 }
 
 /**
- * Handles enqueue order payment job.
+ * Enqueue an order payment processing job.
  */
 export async function enqueueOrderPaymentJob(payload: OrderPaymentJobPayload) {
   // payment-side effects are offloaded to worker pipeline via queue.
@@ -140,7 +140,7 @@ export async function enqueueOrderPaymentJob(payload: OrderPaymentJobPayload) {
 }
 
 /**
- * Handles enqueue order analytics job.
+ * Enqueue an order analytics update job.
  */
 export async function enqueueOrderAnalyticsJob(
   payload: OrderAnalyticsJobPayload,

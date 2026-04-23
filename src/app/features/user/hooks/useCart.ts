@@ -1,10 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRealtimeInvalidate } from "@/app/lib/query/useRealtimeQuery";
-import { fetchCart } from "@/app/features/user/components/client/http";
+import { useRealtimeInvalidate } from "@/app/lib/realtime";
+import { fetchCart } from "@/app/lib/api/user";
 
-/** Stable query key for cart + realtime invalidation. */
+/**
+ * cart query key
+ * keep stable query key for realtime invalidation
+ */
 export const USER_CART_QUERY_KEY = ["user-cart"] as const;
 
 export function useCart() {

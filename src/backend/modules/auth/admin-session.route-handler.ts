@@ -1,4 +1,4 @@
-// implements admin session HTTP route handlers for login, lookup, and logout lifecycle.
+// Module: Provides admin session HTTP route handlers for login, lookup, and logout lifecycle.
 import { NextResponse } from "next/server";
 import { verifyPasswordUserService } from "@/backend/modules/user/user.service";
 import { canAccessAdminPanel } from "@/backend/modules/auth/auth.service";
@@ -44,7 +44,7 @@ function jsonAdminForbidden() {
 }
 
 /**
- * Handles get admin session route.
+ * Handle GET admin session route.
  */
 export async function getAdminSessionRoute(request: Request) {
   try {
@@ -103,7 +103,7 @@ export async function getAdminSessionRoute(request: Request) {
 }
 
 /**
- * Handles post admin session route.
+ * Handle POST admin session route.
  */
 export async function postAdminSessionRoute(request: Request) {
   try {
@@ -185,7 +185,7 @@ export async function postAdminSessionRoute(request: Request) {
 }
 
 /**
- * Handles delete admin session route.
+ * Handle DELETE admin session route.
  */
 export async function deleteAdminSessionRoute() {
   try {

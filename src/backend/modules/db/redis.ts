@@ -9,7 +9,7 @@ import {
 let redis: RedisClientType | null = null;
 
 /**
- * Handles get redis client.
+ * Return a shared Redis client instance.
  */
 export function getRedisClient() {
   if (!process.env.REDIS_URL) return null;
@@ -38,7 +38,7 @@ async function ensureRedisConnected(): Promise<RedisClientType | null> {
 }
 
 /**
- * Handles get cached json.
+ * Read and decode a JSON value from cache.
  */
 export async function getCachedJson<T>(key: string): Promise<T | null> {
   const client = await ensureRedisConnected();
@@ -57,7 +57,7 @@ export async function getCachedJson<T>(key: string): Promise<T | null> {
 }
 
 /**
- * Handles set cached json.
+ * Serialize and cache a JSON value.
  */
 export async function setCachedJson(
   key: string,
@@ -72,7 +72,7 @@ export async function setCachedJson(
 }
 
 /**
- * Handles delete cache keys.
+ * Delete cache entries by explicit keys.
  */
 export async function deleteCacheKeys(keys: string[]) {
   const client = await ensureRedisConnected();
@@ -83,7 +83,7 @@ export async function deleteCacheKeys(keys: string[]) {
 }
 
 /**
- * Handles delete cache keys by pattern.
+ * Delete cache entries that match a key pattern.
  */
 export async function deleteCacheKeysByPattern(pattern: string) {
   const client = await ensureRedisConnected();

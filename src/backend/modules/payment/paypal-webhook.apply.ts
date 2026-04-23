@@ -83,7 +83,7 @@ export type PayPalWebhookPayload = {
 } | null;
 
 /**
- * Handles apply verified pay pal webhook event.
+ * Apply a verified PayPal webhook event to local payment/order state.
  */
 export async function applyVerifiedPayPalWebhookEvent(
   webhookPayload: PayPalWebhookPayload,

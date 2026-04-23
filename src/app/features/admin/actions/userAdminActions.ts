@@ -1,5 +1,6 @@
 /**
- * Server Actions surface for admin user management (thin re-export from backend module).
+ * admin user action exports
+ * re-export admin user server actions
  */
 
 export {

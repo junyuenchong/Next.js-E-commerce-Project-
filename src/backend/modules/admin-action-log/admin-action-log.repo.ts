@@ -12,7 +12,7 @@ function toJsonValue(
 }
 
 /**
- * Handles create admin action log record.
+ * Insert one admin action log record.
  */
 export async function createAdminActionLogRecord(
   input: AdminActionLogInput,

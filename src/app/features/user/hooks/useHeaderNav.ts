@@ -17,7 +17,7 @@ export function useHeaderNav() {
   );
 
   useEffect(() => {
-    // Feature: auto-hide header while scrolling down to maximize viewport space.
+    // auto-hide header on downward scroll to save viewport space.
     let last = window.scrollY;
     const onScroll = () => {
       const y = window.scrollY;

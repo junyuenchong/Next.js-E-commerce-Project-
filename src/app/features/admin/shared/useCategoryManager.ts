@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Category manager UI state: search, edit, delete, and server actions wiring.
+ * category manager hook
+ * manage search, edit, delete, and submit actions
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";

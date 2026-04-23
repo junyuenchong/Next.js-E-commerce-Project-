@@ -1,5 +1,6 @@
 /**
- * Returns current admin session identity and capability flags for UI gating.
+ * admin me api route
+ * return admin identity and permission flags
  */
 
 import { NextResponse } from "next/server";

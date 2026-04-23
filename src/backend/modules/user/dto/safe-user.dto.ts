@@ -4,7 +4,7 @@ import type { User } from "@prisma/client";
 export type SafeUserDto = Omit<User, "passwordHash">;
 
 /**
- * Handles to safe user dto.
+ * Strip sensitive fields before returning user data to clients.
  */
 export function toSafeUserDto(user: User): SafeUserDto {
   const { passwordHash, ...safeUser } = user;

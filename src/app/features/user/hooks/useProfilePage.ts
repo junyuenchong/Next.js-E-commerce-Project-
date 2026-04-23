@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import http, { isAxiosError } from "@/app/utils/http";
+import { http, isAxiosError } from "@/app/lib/network";
 import { useUser } from "@/app/features/user/components/client/UserContext";
-import type { LoginProviderId } from "@/app/lib/login-providers";
+import type { LoginProviderId } from "@/app/lib/auth";
 
 type ProfileDto = {
   id: number;

@@ -12,14 +12,14 @@ import {
 } from "./auth.service";
 
 /**
- * Handles create password reset for email.
+ * Start password reset flow for an email address.
  */
 export async function createPasswordResetForEmail(email: string) {
   return createPasswordResetForEmailImpl(email);
 }
 
 /**
- * Handles consume password reset token.
+ * Consume a password reset token and set a new password.
  */
 export async function consumePasswordResetToken(
   rawToken: string,
@@ -29,21 +29,21 @@ export async function consumePasswordResetToken(
 }
 
 /**
- * Handles get admin session action.
+ * Forward GET admin session request to route handler.
  */
 export async function getAdminSessionAction(request: Request) {
   return getAdminSessionRoute(request);
 }
 
 /**
- * Handles post admin session action.
+ * Forward POST admin session request to route handler.
  */
 export async function postAdminSessionAction(request: Request) {
   return postAdminSessionRoute(request);
 }
 
 /**
- * Handles delete admin session action.
+ * Forward DELETE admin session request to route handler.
  */
 export async function deleteAdminSessionAction() {
   return deleteAdminSessionRoute();

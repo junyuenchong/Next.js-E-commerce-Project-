@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { formatPriceRM } from "@/app/lib/format-price";
+import { formatPriceRM } from "@/app/lib/product";
 import { useSupportChatPage } from "@/app/features/user/hooks";
 
 export default function SupportChatPage() {

@@ -1,7 +1,7 @@
 import type { Category } from "@prisma/client";
 import { useRealtimeQuery } from "./useRealtimeQuery";
-import { qk } from "@/app/lib/query-keys";
-import { fetchCategoryBySlug } from "@/app/features/user/components/client/http";
+import { qk } from "@/app/lib/realtime";
+import { fetchCategoryBySlug } from "@/app/lib/api/user";
 
 export function useCategoryDetail(slug: string, initialCategory?: Category) {
   return useRealtimeQuery(

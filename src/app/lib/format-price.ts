@@ -1,4 +1,7 @@
-/** MYR display + sale badge % from compare-at vs price. */
+/**
+ * price helpers
+ * format MYR values and compute discount percent
+ */
 import { moneyToNumber } from "@/backend/core/money";
 
 export function formatPriceRM(value: unknown): string {
@@ -24,7 +27,10 @@ export function discountPercentFromCompareAt(
   return Math.round((1 - p / c) * 100);
 }
 
-/** Normalize product pricing for consistent UI (card/PDP/admin). */
+/**
+ * sale pricing helpers
+ * normalize pricing for card, product page, and admin ui
+ */
 export function resolveSalePricing(
   compareAt: unknown,
   salePrice: unknown,
@@ -35,7 +41,7 @@ export function resolveSalePricing(
   hasDiscount: boolean;
 } {
   const salePriceNumber = moneyToNumber(salePrice);
-  // Guard: keep "unset" compare-at as null (avoid treating null/"" as 0).
+  // keep unset compare-at as null and avoid treating null or empty as zero.
   const compareAtPriceNumber =
     compareAt === null || compareAt === undefined || compareAt === ""
       ? null

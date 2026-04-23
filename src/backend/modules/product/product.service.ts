@@ -1,5 +1,10 @@
-// handles product domain services for admin maintenance and storefront product retrieval.
+// Product domain services for validation, retrieval, and search flows.
 import slugify from "slugify";
+import {
+  resolveListTake,
+  resolvePageNumber,
+  toPositiveOrUndefined,
+} from "@/backend/shared/pagination/list-pagination";
 import { productSchema, productSlugSchema } from "@/shared/schema";
 import {
   attachPublicListStats,
@@ -14,12 +19,6 @@ import {
   slugExists,
   updateProductRecord,
 } from "./product.repo";
-
-function normalizePagination(limit?: number, page?: number) {
-  const take = limit && limit > 0 ? limit : 20;
-  const skip = take && page && page > 1 ? (page - 1) * take : 0;
-  return { take, skip };
-}
 
 /**
  * Normalize and validate product input for create/update flows.
@@ -137,7 +136,8 @@ export async function getProductByIdService(
  * List storefront products using page-based pagination.
  */
 export async function listProductsService(limit?: number, page?: number) {
-  const { take, skip } = normalizePagination(limit, page);
+  const take = resolveListTake(limit, 20);
+  const skip = (resolvePageNumber(page) - 1) * take;
   const rows = await findProducts({ take, skip });
   return attachPublicListStats(rows);
 }
@@ -149,8 +149,11 @@ export async function listProductsCursorService(
   limit?: number,
   cursorId?: number,
 ) {
-  const take = limit && limit > 0 ? limit : 20;
-  const rows = await findProductsCursor({ take, cursorId });
+  const take = resolveListTake(limit, 20);
+  const rows = await findProductsCursor({
+    take,
+    cursorId: toPositiveOrUndefined(cursorId),
+  });
   return attachPublicListStats(rows);
 }
 

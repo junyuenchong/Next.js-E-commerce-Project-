@@ -1,4 +1,4 @@
-import http from "@/app/utils/http";
+import { http } from "@/app/lib/network";
 import type { OrderListItem } from "@/app/features/user/types";
 
 export type OrdersPageResponse = {
@@ -24,13 +24,19 @@ export async function fetchOrdersPage(
   };
 }
 
-/** First page only (backward compatible for simple callers). */
+/**
+ * orders client
+ * fetch first page only for backward compatible callers
+ */
 export async function fetchOrders(): Promise<OrderListItem[]> {
   const { orders } = await fetchOrdersPage();
   return orders;
 }
 
-/** Refetch all pages (e.g. SSE refresh); caps pages to avoid runaway. */
+/**
+ * orders client
+ * refetch all pages (example: sse refresh) with max page cap
+ */
 export async function fetchAllUserOrders(
   maxPages = 25,
 ): Promise<OrderListItem[]> {

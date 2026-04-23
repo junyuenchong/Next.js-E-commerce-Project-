@@ -1,5 +1,6 @@
 /**
- * Sidebar navigation model and permission-based filtering rules.
+ * admin nav helpers
+ * define nav links and permission filters
  */
 
 import type { AdminMe } from "@/app/features/admin/types";

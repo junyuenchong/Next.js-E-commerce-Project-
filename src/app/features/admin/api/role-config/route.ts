@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: role-config.
+ * admin api route
+ * handle role-config
  */
 
 import { NextResponse } from "next/server";
@@ -75,8 +76,8 @@ async function canMutateRoleDefinition(
 }
 
 /**
- * Loads role definitions. Probes for `isActive` first so we never issue a failing query
- * when the DB is behind migrations.
+ * role config loader
+ * load role definitions with schema-safe fallback
  */
 async function loadRoleDefinitionsForRoleConfig() {
   const hasIsActiveColumn = await adminRoleDefinitionHasIsActiveColumn();

@@ -2,15 +2,15 @@ import { useCallback, useMemo, useState, type FormEvent } from "react";
 import type { ProductDetailPayload } from "@/app/features/user/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRealtimeQuery } from "./useRealtimeQuery";
-import { qk } from "@/app/lib/query-keys";
-import { messageFromReviewSubmitError } from "@/app/lib/review-errors";
+import { qk } from "@/app/lib/realtime";
+import { messageFromReviewSubmitError } from "@/app/lib/product";
 import { useUser } from "@/app/features/user/components/client/UserContext";
 import {
   fetchProductById,
   fetchProductReviews,
   fetchProductReviewEligibility,
   postProductReview,
-} from "@/app/features/user/components/client/http";
+} from "@/app/lib/api/user";
 
 export type ProductReview = {
   id: number;

@@ -1,6 +1,6 @@
 "use client";
 
-import { formatPriceRM } from "@/app/lib/format-price";
+import { formatPriceRM } from "@/app/lib/product";
 import { useStorefrontVoucherStrip } from "@/app/features/user/hooks";
 
 type Props = {

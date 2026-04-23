@@ -1,4 +1,7 @@
-/** OAuth/callback landing: merge guest cart, then role-based redirect. */
+/**
+ * post-login page
+ * merge guest cart then redirect by role
+ */
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import {

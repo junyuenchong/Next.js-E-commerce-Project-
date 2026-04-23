@@ -1,4 +1,7 @@
-/** Normalize search `query` param; empty / whitespace → browse mode (`null`). */
+/**
+ * search query helpers
+ * normalize query param; empty means browse mode (null)
+ */
 export function parseSearchQuery(
   raw: string | string[] | null | undefined,
 ): string | null {

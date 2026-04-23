@@ -1,4 +1,7 @@
-/** Cart: API → Redux lines, and live line totals for checkout. */
+/**
+ * cart helpers
+ * map api payload to redux lines and compute totals
+ */
 import type { CartItemRowData } from "@/app/features/user/types";
 import { moneyToNumber } from "@/backend/core/money";
 

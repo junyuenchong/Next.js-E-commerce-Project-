@@ -1,5 +1,6 @@
 /**
- * Admin HTTP route: reviews/[id].
+ * admin api route
+ * handle reviews/[id]
  */
 
 import { NextResponse } from "next/server";

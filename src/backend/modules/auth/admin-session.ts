@@ -13,7 +13,7 @@ function adminSessionSecret(): string | null {
 }
 
 /**
- * Handles sign admin session token.
+ * Sign an admin session token.
  */
 export async function signAdminSessionToken(
   claims: AdminSessionClaims,
@@ -35,7 +35,7 @@ export async function signAdminSessionToken(
 }
 
 /**
- * Handles verify admin session token.
+ * Verify and decode an admin session token.
  */
 export async function verifyAdminSessionToken(
   token: string,
